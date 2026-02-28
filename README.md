@@ -1,6 +1,6 @@
 # 🎮 MixOverlays
 
-Overlay pour League of Legends similaire à Porofessor — affiche les stats des joueurs en temps réel pendant la sélection de champion.
+Overlay pour League of Legends — affiche les stats des joueurs en temps réel pendant la sélection de champion.
 
 ## Fonctionnalités
 
@@ -244,3 +244,4 @@ L'historique des parties peut maintenant se déplier pour afficher les autres jo
 - Les certificats auto-signés du client LoL sont acceptés (`ServerCertificateCustomValidationCallback`)
 - Data Dragon est utilisé pour les icônes de champions et de profil
 - L'overlay in-game est une fenêtre `AllowsTransparency=True` avec `Topmost=True`
+
