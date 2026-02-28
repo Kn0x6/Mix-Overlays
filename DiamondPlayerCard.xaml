@@ -1,0 +1,178 @@
+<UserControl x:Class="MixOverlays.Views.DiamondPlayerCard"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:MixOverlays.Converters"
+             Width="130" Height="210">
+
+    <UserControl.Resources>
+        <conv:BoolToVisibilityConverter             x:Key="BoolVis"/>
+        <conv:InverseBoolToVisibilityConverter      x:Key="InvBoolVis"/>
+        <conv:RankTierBrushConverter                x:Key="RankBrush"/>
+        <conv:WinRateBrushConverter                 x:Key="WinRateBrush"/>
+        <conv:PercentFormatConverter                x:Key="PctFmt"/>
+        <conv:ChampionNameToSplashConverter         x:Key="ChampSplash"/>
+        <conv:SummonerSpellIdToImageConverter       x:Key="SpellToImg"/>
+        <conv:RuneIdToImageConverter                x:Key="RuneToImg"/>
+    </UserControl.Resources>
+
+    <!-- Taille du losange : 130×210, pointes à (65,6), (124,105), (65,204), (6,105) -->
+    <Grid Width="130" Height="210">
+
+        <!-- ══ 1. Artwork du champion (fond, clippé au losange) ══ -->
+        <Image Stretch="UniformToFill" Opacity="0.75"
+               Source="{Binding LiveChampionName, Converter={StaticResource ChampSplash}}">
+            <Image.Clip>
+                <PathGeometry>
+                    <PathFigure StartPoint="65,6" IsClosed="True">
+                        <LineSegment Point="124,105"/>
+                        <LineSegment Point="65,204"/>
+                        <LineSegment Point="6,105"/>
+                    </PathFigure>
+                </PathGeometry>
+            </Image.Clip>
+        </Image>
+
+        <!-- ══ 2. Dégradé sombre (lisibilité du texte) ══ -->
+        <Rectangle>
+            <Rectangle.Fill>
+                <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
+                    <GradientStop Color="#DD0A0E1A" Offset="0.0"/>
+                    <GradientStop Color="#550A0E1A" Offset="0.45"/>
+                    <GradientStop Color="#DD0A0E1A" Offset="1.0"/>
+                </LinearGradientBrush>
+            </Rectangle.Fill>
+            <Rectangle.Clip>
+                <PathGeometry>
+                    <PathFigure StartPoint="65,6" IsClosed="True">
+                        <LineSegment Point="124,105"/>
+                        <LineSegment Point="65,204"/>
+                        <LineSegment Point="6,105"/>
+                    </PathFigure>
+                </PathGeometry>
+            </Rectangle.Clip>
+        </Rectangle>
+
+        <!-- ══ 3. Contour losange ══ -->
+        <!-- Equipe bleue : bordure cyan ; équipe rouge : bordure rouge/orange -->
+        <Polygon StrokeThickness="1.5" Fill="Transparent">
+            <Polygon.Points>
+                <PointCollection>65,6 124,105 65,204 6,105</PointCollection>
+            </Polygon.Points>
+            <Polygon.Style>
+                <Style TargetType="Polygon">
+                    <Setter Property="Stroke" Value="#4DC7DB"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding TeamId}" Value="200">
+                            <Setter Property="Stroke" Value="#FF6B6B"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Polygon.Style>
+        </Polygon>
+
+        <!-- ══ 4. Reflet lumineux (coin supérieur) ══ -->
+        <Path Fill="#18FFFFFF" Data="M65,6 L95,55 L65,40 Z"/>
+
+        <!-- ══ 5. Contenu centré dans le losange ══ -->
+        <Grid VerticalAlignment="Center" HorizontalAlignment="Center"
+              Width="88" Margin="0,-4,0,0">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+
+                <!-- RUNE keystone (tout en haut) -->
+                <Border Width="26" Height="26" CornerRadius="13"
+                        Background="#BB000000"
+                        BorderBrush="#40FFFFFF" BorderThickness="1"
+                        HorizontalAlignment="Center" Margin="0,0,0,5"
+                        Visibility="{Binding HasLiveRune, Converter={StaticResource BoolVis}}">
+                    <Image Source="{Binding LiveRuneId, Converter={StaticResource RuneToImg}}"
+                           Stretch="Uniform" Margin="2"/>
+                </Border>
+
+                <!-- NOM DU JOUEUR -->
+                <TextBlock Text="{Binding GameName}"
+                           Foreground="White" FontSize="11" FontWeight="Bold"
+                           TextAlignment="Center"
+                           TextTrimming="CharacterEllipsis"
+                           MaxWidth="85"
+                           HorizontalAlignment="Center"/>
+
+                <!-- RANG Solo/Duo -->
+                <TextBlock HorizontalAlignment="Center" TextAlignment="Center"
+                           FontSize="10" FontWeight="SemiBold" Margin="0,2,0,0">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="#9CA3AF"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SoloRank}" Value="{x:Null}">
+                                    <Setter Property="Text" Value="Non classé"/>
+                                    <Setter Property="Foreground" Value="#6B7280"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                    <Run Text="{Binding SoloRank.tier, Mode=OneWay}"
+                         Foreground="{Binding SoloRank.tier, Converter={StaticResource RankBrush}}"/>
+                    <Run Text=" "/>
+                    <Run Text="{Binding SoloRank.rank, Mode=OneWay}"
+                         Foreground="{Binding SoloRank.tier, Converter={StaticResource RankBrush}}"/>
+                </TextBlock>
+
+                <!-- WINRATE avec le champion actuel -->
+                <TextBlock Text="{Binding ChampionWinRateDisplay}"
+                           HorizontalAlignment="Center" TextAlignment="Center"
+                           FontSize="10" FontWeight="SemiBold" Margin="0,3,0,0"
+                           Foreground="{Binding ChampionWinRate, Converter={StaticResource WinRateBrush}}"/>
+
+                <!-- BADGE EXPERTISE -->
+                <Border CornerRadius="5" Padding="7,2" Margin="0,4,0,0"
+                        HorizontalAlignment="Center"
+                        Background="{Binding ExpertiseBadgeBackground}">
+                    <TextBlock Text="{Binding ExpertiseLabel}"
+                               FontSize="8" FontWeight="Bold" TextAlignment="Center"
+                               Foreground="{Binding ExpertiseBadgeForeground}"/>
+                </Border>
+
+                <!-- SUMMONER SPELLS + séparateur -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"
+                            Margin="0,6,0,0">
+                    <Border Width="19" Height="19" CornerRadius="3"
+                            ClipToBounds="True" Margin="0,0,3,0"
+                            Background="#66000000">
+                        <Image Source="{Binding LiveSpell1Id, Converter={StaticResource SpellToImg}}"
+                               Stretch="UniformToFill"/>
+                    </Border>
+                    <Border Width="19" Height="19" CornerRadius="3"
+                            ClipToBounds="True"
+                            Background="#66000000">
+                        <Image Source="{Binding LiveSpell2Id, Converter={StaticResource SpellToImg}}"
+                               Stretch="UniformToFill"/>
+                    </Border>
+                </StackPanel>
+
+            </StackPanel>
+        </Grid>
+
+        <!-- ══ 6. Skeleton de chargement ══ -->
+        <Grid Visibility="{Binding IsLoading, Converter={StaticResource BoolVis}}">
+            <Grid.Clip>
+                <PathGeometry>
+                    <PathFigure StartPoint="65,6" IsClosed="True">
+                        <LineSegment Point="124,105"/>
+                        <LineSegment Point="65,204"/>
+                        <LineSegment Point="6,105"/>
+                    </PathFigure>
+                </PathGeometry>
+            </Grid.Clip>
+            <Rectangle Fill="#CC0D1117"/>
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Opacity="0.5">
+                <Border Width="60" Height="10" CornerRadius="5"
+                        Background="#334155" Margin="0,0,0,8"/>
+                <Border Width="40" Height="8" CornerRadius="4"
+                        Background="#334155" Margin="0,0,0,6"/>
+                <Border Width="50" Height="8" CornerRadius="4"
+                        Background="#334155"/>
+            </StackPanel>
+        </Grid>
+
+    </Grid>
+</UserControl>
