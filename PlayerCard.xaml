@@ -321,13 +321,21 @@
                                                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                             </Border>
 
-                                            <!-- ChampIcon + Rune + vs + Opponent -->
+                                            <!-- ChampIcon + Sorts + Rune + vs + Opponent -->
                                             <StackPanel Grid.Column="1" Orientation="Horizontal"
                                                         VerticalAlignment="Center" Margin="0,0,8,0">
                                                 <Border Width="36" Height="36" CornerRadius="18" ClipToBounds="True">
                                                     <Image Source="{Binding ChampionName, Converter={StaticResource ChampToImg}}"
                                                            Stretch="UniformToFill"/>
                                                 </Border>
+                                                <StackPanel VerticalAlignment="Center" Margin="3,0,6,0">
+                                                    <Border Width="16" Height="16" CornerRadius="3" ClipToBounds="True" Margin="0,0,0,2">
+                                                        <Image Source="{Binding Summoner1Id, Converter={StaticResource SpellToImg}}" Stretch="UniformToFill"/>
+                                                    </Border>
+                                                    <Border Width="16" Height="16" CornerRadius="3" ClipToBounds="True">
+                                                        <Image Source="{Binding Summoner2Id, Converter={StaticResource SpellToImg}}" Stretch="UniformToFill"/>
+                                                    </Border>
+                                                </StackPanel>
                                                 <Border Width="30" Height="30" CornerRadius="15"
                                                         Background="#CC0D1117"
                                                         BorderBrush="#40FFFFFF" BorderThickness="1"
@@ -412,18 +420,8 @@
                                                 </StackPanel>
                                             </StackPanel>
 
-                                            <!-- Sorts -->
-                                            <StackPanel Grid.Column="3" VerticalAlignment="Center" Margin="0,0,6,0">
-                                                <Border Width="22" Height="22" CornerRadius="4" ClipToBounds="True" Margin="0,0,0,2">
-                                                    <Image Source="{Binding Summoner1Id, Converter={StaticResource SpellToImg}}" Stretch="UniformToFill"/>
-                                                </Border>
-                                                <Border Width="22" Height="22" CornerRadius="4" ClipToBounds="True">
-                                                    <Image Source="{Binding Summoner2Id, Converter={StaticResource SpellToImg}}" Stretch="UniformToFill"/>
-                                                </Border>
-                                            </StackPanel>
-
                                             <!-- KDA ratio -->
-                                            <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
                                                 <TextBlock VerticalAlignment="Center"
                                                            Text="{Binding KDA, Converter={StaticResource DblFmt}, Mode=OneWay}"
                                                            Foreground="{Binding KDA, Converter={StaticResource KdaBrush}}"
@@ -434,7 +432,7 @@
                                             </StackPanel>
 
                                             <!-- Durée -->
-                                            <TextBlock Grid.Column="5" VerticalAlignment="Center"
+                                            <TextBlock Grid.Column="4" VerticalAlignment="Center"
                                                        Text="{Binding GameDuration, Converter={StaticResource GameDuration}}"
                                                        Foreground="{StaticResource TextSecondaryBrush}"
                                                        FontSize="11" Margin="4,0,0,0"/>

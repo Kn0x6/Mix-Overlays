@@ -279,11 +279,9 @@
 
                         <Grid Grid.Row="1">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>         <!-- Fiche joueur (gauche) -->
-                                <ColumnDefinition Width="280"/>       <!-- Stats champions (droite) -->
+                                <ColumnDefinition Width="*"/>         <!-- Fiche joueur -->
                             </Grid.ColumnDefinitions>
 
-                            <!-- Colonne gauche : fiche joueur existante -->
                             <ScrollViewer Grid.Column="0"
                                           VerticalScrollBarVisibility="Auto"
                                           Style="{StaticResource SlimScrollViewer}">
@@ -322,18 +320,6 @@
                                            Converter={StaticResource BoolVis}}"/>
                                 </Grid>
                             </ScrollViewer>
-
-                            <!-- Colonne droite : stats champions -->
-                            <Border Grid.Column="1"
-                                    BorderBrush="{StaticResource BorderBrush}"
-                                    BorderThickness="1,0,0,0">
-                                <views:ChampionStatsCard
-                                    DataContext="{Binding MyAccount}"
-                                    Visibility="{Binding DataContext.HasMyAccount,
-                         RelativeSource={RelativeSource AncestorType=Border},
-                         Converter={StaticResource BoolVis}}"
-                                    Margin="0"/>
-                            </Border>
                         </Grid>
                     </Grid>
 
@@ -405,11 +391,9 @@
                         <!-- Result -->
                         <Grid Grid.Row="2">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>      <!-- Fiche joueur (gauche) -->
-                                <ColumnDefinition Width="280"/>    <!-- Stats champions (droite) -->
+                                <ColumnDefinition Width="*"/>      <!-- Fiche joueur -->
                             </Grid.ColumnDefinitions>
 
-                            <!-- Colonne gauche : résultat de recherche -->
                             <ScrollViewer Grid.Column="0"
                                           VerticalScrollBarVisibility="Auto"
                                           Style="{StaticResource SlimScrollViewer}">
@@ -480,16 +464,6 @@
                                     </StackPanel>
                                 </Grid>
                             </ScrollViewer>
-
-                            <!-- Colonne droite : stats champions -->
-                            <Border Grid.Column="1"
-                                    BorderBrush="{StaticResource BorderBrush}"
-                                    BorderThickness="1,0,0,0">
-                                <views:ChampionStatsCard
-                                    DataContext="{Binding SearchedPlayer}"
-                                    Visibility="{Binding HasSearchResult, Converter={StaticResource BoolVis}}"
-                                    Margin="0"/>
-                            </Border>
                         </Grid>
                     </Grid>
 
