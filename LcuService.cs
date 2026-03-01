@@ -326,8 +326,8 @@ namespace MixOverlays.Services
                         L($"  PCS: puuid={pcs.puuid?[..Math.Min(8, pcs.puuid?.Length ?? 0)]}... champId={pcs.championId} spell1={pcs.spell1Id} spell2={pcs.spell2Id}");
                 }
                 
-                foreach (var m in gd.teamOne) L($"  T1: sid={m.summonerId} puuid={m.puuid[..Math.Min(8,m.puuid.Length)]}...");
-                foreach (var m in gd.teamTwo) L($"  T2: sid={m.summonerId} puuid={m.puuid[..Math.Min(8,m.puuid.Length)]}...");
+                foreach (var m in gd.teamOne) L($"  T1: sid={m.summonerId} puuid={m.puuid?[..Math.Min(8, m.puuid?.Length ?? 0)]}...");
+                foreach (var m in gd.teamTwo) L($"  T2: sid={m.summonerId} puuid={m.puuid?[..Math.Min(8, m.puuid?.Length ?? 0)]}...");
                 await ResolveMissingPuuidsAsync(gd.teamOne);
                 await ResolveMissingPuuidsAsync(gd.teamTwo);
                 return gd;

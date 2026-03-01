@@ -96,16 +96,17 @@
                            MaxWidth="85"
                            HorizontalAlignment="Center"/>
 
-                <!-- RANG Solo/Duo -->
+                <!-- ══ RANG Solo/Duo — FIX : deux TextBlocks séparés au lieu de Text+Inlines ══ -->
+                <!-- Rang affiché quand SoloRank est disponible -->
                 <TextBlock HorizontalAlignment="Center" TextAlignment="Center"
-                           FontSize="10" FontWeight="SemiBold" Margin="0,2,0,0">
+                           FontSize="10" FontWeight="SemiBold" Margin="0,2,0,0"
+                           Foreground="{Binding SoloRank.tier, Converter={StaticResource RankBrush}}">
                     <TextBlock.Style>
                         <Style TargetType="TextBlock">
-                            <Setter Property="Foreground" Value="#9CA3AF"/>
+                            <Setter Property="Visibility" Value="Visible"/>
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding SoloRank}" Value="{x:Null}">
-                                    <Setter Property="Text" Value="Non classé"/>
-                                    <Setter Property="Foreground" Value="#6B7280"/>
+                                    <Setter Property="Visibility" Value="Collapsed"/>
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
@@ -115,6 +116,23 @@
                     <Run Text=" "/>
                     <Run Text="{Binding SoloRank.rank, Mode=OneWay}"
                          Foreground="{Binding SoloRank.tier, Converter={StaticResource RankBrush}}"/>
+                </TextBlock>
+
+                <!-- "Non classé" affiché uniquement quand SoloRank est null -->
+                <TextBlock Text="Non classé"
+                           HorizontalAlignment="Center" TextAlignment="Center"
+                           FontSize="10" Margin="0,2,0,0"
+                           Foreground="#6B7280">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SoloRank}" Value="{x:Null}">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
                 </TextBlock>
 
                 <!-- WINRATE avec le champion actuel -->
@@ -132,7 +150,7 @@
                                Foreground="{Binding ExpertiseBadgeForeground}"/>
                 </Border>
 
-                <!-- SUMMONER SPELLS + séparateur -->
+                <!-- SUMMONER SPELLS -->
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"
                             Margin="0,6,0,0">
                     <Border Width="19" Height="19" CornerRadius="3"

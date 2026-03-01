@@ -230,7 +230,7 @@ namespace MixOverlays.ViewModels
 
                 // ── Récupérer champion + spells depuis playerChampionSelections ──
                 var champSel = gameData.playerChampionSelections
-                    .FirstOrDefault(c => c.puuid == m.puuid);
+                    ?.FirstOrDefault(c => c.puuid == m.puuid);
 
                 var championName = m.championName;
                 int spell1 = m.spell1Id;
@@ -250,7 +250,7 @@ namespace MixOverlays.ViewModels
 
                 return new PlayerData
                 {
-                    Puuid             = m.puuid,
+                    Puuid             = m.puuid ?? string.Empty,
                     GameName          = gameName,
                     TagLine           = tagLine,
                     TeamId            = teamId,
@@ -437,9 +437,9 @@ namespace MixOverlays.ViewModels
             }
 
             // ── FIX : Valider le PUUID LCU en le convertissant en PUUID Riot ──
-            string riotPuuid = pd.Puuid;
-            string gameName = pd.GameName;
-            string tagLine = pd.TagLine;
+            string? riotPuuid = pd.Puuid;
+            string  gameName  = pd.GameName;
+            string  tagLine   = pd.TagLine;
 
             if (!string.IsNullOrEmpty(riotPuuid))
             {
@@ -482,7 +482,7 @@ namespace MixOverlays.ViewModels
 
             // Mettre à jour le PUUID dans le PlayerData pour que le VM match
             string originalPuuid = pd.Puuid;
-            pd.Puuid = riotPuuid;
+            pd.Puuid = riotPuuid!;
             pd.GameName = gameName;
             pd.TagLine = tagLine;
 
@@ -492,11 +492,11 @@ namespace MixOverlays.ViewModels
                 Application.Current.Dispatcher.Invoke(() =>
                 {
                     var vm = collection.FirstOrDefault(v => v.Data.Puuid == originalPuuid);
-                    if (vm != null) vm.Data.Puuid = riotPuuid;
+                    if (vm != null) vm.Data.Puuid = riotPuuid!;
                 });
             }
 
-            var fullData = await _riot.LoadFullPlayerDataAsync(riotPuuid, gameName, tagLine);
+            var fullData = await _riot.LoadFullPlayerDataAsync(riotPuuid!, gameName, tagLine);
             System.Diagnostics.Debug.WriteLine($"[LOAD] fullData pour {gameName}: SoloRank={fullData.SoloRank?.tier ?? "null"}, Icon={fullData.ProfileIconId}, Level={fullData.SummonerLevel}, Error={fullData.ErrorMessage ?? "none"}");
 
 fullData.TeamId       = pd.TeamId;

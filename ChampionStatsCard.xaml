@@ -1,0 +1,194 @@
+<UserControl x:Class="MixOverlays.Views.ChampionStatsCard"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:MixOverlays.Converters">
+
+    <UserControl.Resources>
+        <conv:BoolToVisibilityConverter             x:Key="BoolVis"/>
+        <conv:InverseBoolToVisibilityConverter      x:Key="InvBoolVis"/>
+        <conv:ChampionNameToImageConverter          x:Key="ChampToImg"/>
+        <conv:WinRateBrushConverter                 x:Key="WinRateBrush"/>
+        <conv:KdaBrushConverter                     x:Key="KdaBrush"/>
+    </UserControl.Resources>
+
+    <Border Background="#0D1117"
+            BorderBrush="#21262D"
+            BorderThickness="1"
+            CornerRadius="10">
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="40"/>   <!-- Header -->
+                <RowDefinition Height="*"/>    <!-- Content -->
+            </Grid.RowDefinitions>
+
+            <!-- ── Header ── -->
+            <Border Grid.Row="0"
+                    Background="#161B22"
+                    CornerRadius="10,10,0,0"
+                    BorderBrush="#21262D"
+                    BorderThickness="0,0,0,1">
+                <Grid Margin="14,0">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="📊" FontSize="13" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                        <TextBlock Text="STATS PAR CHAMPION"
+                                   Foreground="#C9D1D9"
+                                   FontSize="11" FontWeight="Bold"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <!-- badge nombre de parties -->
+                    <Border HorizontalAlignment="Right" VerticalAlignment="Center"
+                            CornerRadius="10" Padding="7,2"
+                            Background="#1F6FEB22" BorderBrush="#1F6FEB" BorderThickness="1"
+                            Visibility="{Binding HasChampionStats, Converter={StaticResource BoolVis}}">
+                        <TextBlock Foreground="#58A6FF" FontSize="9" FontWeight="SemiBold">
+                            <Run Text="{Binding RecentMatches.Count, Mode=OneWay}"/>
+                            <Run Text=" parties"/>
+                        </TextBlock>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- ── Empty state ── -->
+            <StackPanel Grid.Row="1"
+                        VerticalAlignment="Center" HorizontalAlignment="Center"
+                        Opacity="0.45"
+                        Visibility="{Binding HasChampionStats, Converter={StaticResource InvBoolVis}}">
+                <TextBlock Text="📭" FontSize="32" HorizontalAlignment="Center"/>
+                <TextBlock Text="Aucune partie chargée"
+                           Foreground="#8B949E" FontSize="12"
+                           HorizontalAlignment="Center" Margin="0,8,0,0"/>
+            </StackPanel>
+
+            <!-- ── Liste des champions ── -->
+            <ScrollViewer Grid.Row="1"
+                          VerticalScrollBarVisibility="Auto"
+                          Margin="0,4,0,4"
+                          Visibility="{Binding HasChampionStats, Converter={StaticResource BoolVis}}">
+                <ItemsControl ItemsSource="{Binding TopChampionsFromHistory}"
+                              Margin="10,4,10,8">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+
+                            <!-- Carte d'un champion -->
+                            <Border Margin="0,4" Padding="10,9"
+                                    CornerRadius="8"
+                                    Background="#161B22"
+                                    BorderBrush="#21262D"
+                                    BorderThickness="1">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>   <!-- Ligne principale -->
+                                        <RowDefinition Height="6"/>      <!-- Espacement -->
+                                        <RowDefinition Height="Auto"/>   <!-- Barre + KDA -->
+                                    </Grid.RowDefinitions>
+
+                                    <!-- ── Ligne 1 : icône · nom · V/D · winrate ── -->
+                                    <Grid Grid.Row="0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="36"/>   <!-- Icône -->
+                                            <ColumnDefinition Width="*"/>    <!-- Nom + parties -->
+                                            <ColumnDefinition Width="Auto"/> <!-- V / D -->
+                                            <ColumnDefinition Width="44"/>   <!-- Winrate -->
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Icône -->
+                                        <Border Grid.Column="0"
+                                                Width="34" Height="34" CornerRadius="17"
+                                                ClipToBounds="True"
+                                                BorderBrush="#30FFFFFF" BorderThickness="1.5">
+                                            <Image Source="{Binding ChampionName, Converter={StaticResource ChampToImg}}"
+                                                   Stretch="UniformToFill"/>
+                                        </Border>
+
+                                        <!-- Nom + nb parties -->
+                                        <StackPanel Grid.Column="1"
+                                                    VerticalAlignment="Center"
+                                                    Margin="10,0,8,0">
+                                            <TextBlock Text="{Binding ChampionName}"
+                                                       Foreground="#E6EDF3"
+                                                       FontSize="13" FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding GamesDisplay}"
+                                                       Foreground="#8B949E"
+                                                       FontSize="10" Margin="0,1,0,0"/>
+                                        </StackPanel>
+
+                                        <!-- V / D -->
+                                        <StackPanel Grid.Column="2"
+                                                    VerticalAlignment="Center"
+                                                    HorizontalAlignment="Right"
+                                                    Margin="0,0,10,0">
+                                            <TextBlock FontSize="11" TextAlignment="Right" FontWeight="SemiBold">
+                                                <Run Text="{Binding Wins, Mode=OneWay}" Foreground="#3FB950"/>
+                                                <Run Text="V" Foreground="#3FB95088"/>
+                                            </TextBlock>
+                                            <TextBlock FontSize="11" TextAlignment="Right" FontWeight="SemiBold">
+                                                <Run Text="{Binding Losses, Mode=OneWay}" Foreground="#F85149"/>
+                                                <Run Text="D" Foreground="#F8514988"/>
+                                            </TextBlock>
+                                        </StackPanel>
+
+                                        <!-- Winrate -->
+                                        <Border Grid.Column="3"
+                                                VerticalAlignment="Center"
+                                                HorizontalAlignment="Right">
+                                            <TextBlock Text="{Binding WinRateDisplay}"
+                                                       Foreground="{Binding WinRate, Converter={StaticResource WinRateBrush}}"
+                                                       FontSize="14" FontWeight="Bold"
+                                                       TextAlignment="Right"/>
+                                        </Border>
+                                    </Grid>
+
+                                    <!-- ── Ligne 2 : barre victoires + KDA ── -->
+                                    <Grid Grid.Row="2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>    <!-- Barre -->
+                                            <ColumnDefinition Width="Auto"/> <!-- KDA -->
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Barre bicolore victoires/défaites -->
+                                        <Grid Grid.Column="0" Height="4" Margin="0,0,10,0">
+                                            <!-- Fond (défaites) -->
+                                            <Border CornerRadius="2" Background="#F8514940"/>
+                                            <!-- Victoires -->
+                                            <Border CornerRadius="2"
+                                                    HorizontalAlignment="Left"
+                                                    Background="#3FB95099">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Width" Value="0"/>
+                                                    </Style>
+                                                </Border.Style>
+                                                <Border.Width>
+                                                    <Binding Path="WinBarWidth"/>
+                                                </Border.Width>
+                                            </Border>
+                                        </Grid>
+
+                                        <!-- KDA -->
+                                        <StackPanel Grid.Column="1"
+                                                    Orientation="Horizontal"
+                                                    VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding KdaDisplay}"
+                                                       Foreground="{Binding AvgKDA, Converter={StaticResource KdaBrush}}"
+                                                       FontSize="11" FontWeight="SemiBold"/>
+                                            <TextBlock Text=" · " Foreground="#484F58" FontSize="10"
+                                                       VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding KdaDetail}"
+                                                       Foreground="#8B949E"
+                                                       FontSize="10"
+                                                       VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Grid>
+
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
+        </Grid>
+    </Border>
+</UserControl>

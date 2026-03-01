@@ -277,45 +277,64 @@
                             </Grid>
                         </Border>
 
-                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
-                                      Style="{StaticResource SlimScrollViewer}">
-                            <Grid Margin="16">
-                                <!-- Loading -->
-                                <StackPanel Visibility="{Binding IsLoadingMyAccount, Converter={StaticResource BoolVis}}"
-                                            HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,40">
-                                    <TextBlock Text="⏳ Chargement de votre compte..."
-                                               Foreground="{StaticResource TextSecondaryBrush}"
-                                               FontSize="14" HorizontalAlignment="Center"/>
-                                </StackPanel>
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>         <!-- Fiche joueur (gauche) -->
+                                <ColumnDefinition Width="280"/>       <!-- Stats champions (droite) -->
+                            </Grid.ColumnDefinitions>
 
-                                <!-- Error -->
-                                <Border Visibility="{Binding HasMyAccountError, Converter={StaticResource BoolVis}}"
-                                        Background="{StaticResource BgCardBrush}"
-                                        BorderBrush="#F85149" BorderThickness="1" CornerRadius="8"
-                                        Padding="16" Margin="0,20">
-                                    <TextBlock Text="{Binding MyAccountError}"
-                                               Foreground="#F85149" FontSize="13"
-                                               TextWrapping="Wrap"/>
-                                </Border>
+                            <!-- Colonne gauche : fiche joueur existante -->
+                            <ScrollViewer Grid.Column="0"
+                                          VerticalScrollBarVisibility="Auto"
+                                          Style="{StaticResource SlimScrollViewer}">
+                                <Grid Margin="16">
+                                    <!-- Loading skeleton -->
+                                    <StackPanel Visibility="{Binding IsLoadingMyAccount, Converter={StaticResource BoolVis}}"
+                                                HorizontalAlignment="Center" VerticalAlignment="Top"
+                                                Margin="0,40" Opacity="0.6">
+                                        <TextBlock Text="⏳ Chargement..."
+                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                   FontSize="13" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                    <!-- Error -->
+                                    <Border Visibility="{Binding HasMyAccountError, Converter={StaticResource BoolVis}}"
+                                            Background="#1AF85149" BorderBrush="#F85149" BorderThickness="1"
+                                            CornerRadius="8" Padding="16" Margin="0,20">
+                                        <TextBlock Text="{Binding MyAccountError}"
+                                                   Foreground="#F85149" FontSize="13" TextWrapping="Wrap"/>
+                                    </Border>
+                                    <!-- Not connected -->
+                                    <StackPanel Visibility="{Binding IsConnected, Converter={StaticResource InvBoolVis}}"
+                                                HorizontalAlignment="Center" VerticalAlignment="Top"
+                                                Margin="0,60" Opacity="0.5">
+                                        <TextBlock Text="🔌" FontSize="48" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="Client LoL non connecté"
+                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                   FontSize="14" HorizontalAlignment="Center" Margin="0,12,0,0"/>
+                                        <TextBlock Text="Lancez le client League of Legends"
+                                                   Foreground="{StaticResource TextMutedBrush}"
+                                                   FontSize="12" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                    <!-- Fiche joueur -->
+                                    <views:PlayerCard DataContext="{Binding MyAccount}"
+                                                      Visibility="{Binding DataContext.HasMyAccount,
+                                           RelativeSource={RelativeSource AncestorType=ScrollViewer},
+                                           Converter={StaticResource BoolVis}}"/>
+                                </Grid>
+                            </ScrollViewer>
 
-                                <!-- Not connected -->
-                                <StackPanel Visibility="{Binding IsConnected, Converter={StaticResource InvBoolVis}}"
-                                            HorizontalAlignment="Center" VerticalAlignment="Top"
-                                            Margin="0,60" Opacity="0.5">
-                                    <TextBlock Text="🔌" FontSize="48" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="Client LoL non connecté"
-                                               Foreground="{StaticResource TextSecondaryBrush}"
-                                               FontSize="14" HorizontalAlignment="Center" Margin="0,12,0,0"/>
-                                    <TextBlock Text="Lancez le client League of Legends"
-                                               Foreground="{StaticResource TextMutedBrush}"
-                                               FontSize="12" HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                                </StackPanel>
-
-                                <!-- Player card -->
-                                <views:PlayerCard DataContext="{Binding MyAccount}"
-                                                  Visibility="{Binding DataContext.HasMyAccount, RelativeSource={RelativeSource AncestorType=ScrollViewer}, Converter={StaticResource BoolVis}}"/>
-                            </Grid>
-                        </ScrollViewer>
+                            <!-- Colonne droite : stats champions -->
+                            <Border Grid.Column="1"
+                                    BorderBrush="{StaticResource BorderBrush}"
+                                    BorderThickness="1,0,0,0">
+                                <views:ChampionStatsCard
+                                    DataContext="{Binding MyAccount}"
+                                    Visibility="{Binding DataContext.HasMyAccount,
+                         RelativeSource={RelativeSource AncestorType=Border},
+                         Converter={StaticResource BoolVis}}"
+                                    Margin="0"/>
+                            </Border>
+                        </Grid>
                     </Grid>
 
                     <!-- SEARCH PAGE -->
@@ -384,77 +403,94 @@
                         </Border>
 
                         <!-- Result -->
-                        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto"
-                                      Style="{StaticResource SlimScrollViewer}">
-                            <Grid Margin="16">
-                                <!-- Loading -->
-                                <StackPanel Visibility="{Binding IsSearching, Converter={StaticResource BoolVis}}"
-                                            HorizontalAlignment="Center" VerticalAlignment="Top"
-                                            Margin="0,40">
-                                    <TextBlock Text="⏳ Chargement des données..."
-                                               Foreground="{StaticResource TextSecondaryBrush}"
-                                               FontSize="14" HorizontalAlignment="Center"/>
-                                </StackPanel>
+                        <Grid Grid.Row="2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>      <!-- Fiche joueur (gauche) -->
+                                <ColumnDefinition Width="280"/>    <!-- Stats champions (droite) -->
+                            </Grid.ColumnDefinitions>
 
-                                <!-- Player card result -->
-                                <views:PlayerCard DataContext="{Binding SearchedPlayer}"
-                                                  Visibility="{Binding HasSearchResult, Converter={StaticResource BoolVis}}"/>
-
-                                <!-- Historique des recherches / Empty state -->
-                                <StackPanel Visibility="{Binding HasSearchResult, Converter={StaticResource InvBoolVis}}">
-                                    <!-- Historique -->
-                                    <StackPanel Visibility="{Binding HasSearchHistory, Converter={StaticResource BoolVis}}">
-                                        <TextBlock Text="RÉCEMMENT RECHERCHÉS"
-                                                   Foreground="{StaticResource TextMutedBrush}"
-                                                   FontSize="10" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                                        <ItemsControl ItemsSource="{Binding SearchHistory}">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <Border Margin="0,2" Cursor="Hand" CornerRadius="6"
-                                                            Background="{StaticResource BgCardBrush}"
-                                                            BorderBrush="{StaticResource BorderBrush}"
-                                                            BorderThickness="1" Padding="10,8"
-                                                            MouseLeftButtonUp="HistoryItem_Click">
-                                                        <Border.Style>
-                                                            <Style TargetType="Border">
-                                                                <Style.Triggers>
-                                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                                        <Setter Property="Background" Value="{StaticResource BgHoverBrush}"/>
-                                                                    </Trigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </Border.Style>
-                                                        <StackPanel Orientation="Horizontal">
-                                                            <TextBlock Text="{Binding GameName}"
-                                                                       Foreground="{StaticResource TextPrimaryBrush}"
-                                                                       FontWeight="SemiBold" FontSize="13"/>
-                                                            <TextBlock Text="#" Foreground="{StaticResource TextMutedBrush}"
-                                                                       FontSize="12" Margin="3,1,0,0"/>
-                                                            <TextBlock Text="{Binding TagLine}"
-                                                                       Foreground="{StaticResource TextMutedBrush}"
-                                                                       FontSize="12" Margin="0,1,0,0"/>
-                                                        </StackPanel>
-                                                    </Border>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                    </StackPanel>
-
-                                    <!-- Empty state (quand pas d'historique) -->
-                                    <StackPanel Visibility="{Binding HasSearchHistory, Converter={StaticResource InvBoolVis}}"
-                                                HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                Opacity="0.5" Margin="0,60">
-                                        <TextBlock Text="🔍" FontSize="48" HorizontalAlignment="Center"/>
-                                        <TextBlock Text="Entrez un Riot ID pour rechercher un joueur"
+                            <!-- Colonne gauche : résultat de recherche -->
+                            <ScrollViewer Grid.Column="0"
+                                          VerticalScrollBarVisibility="Auto"
+                                          Style="{StaticResource SlimScrollViewer}">
+                                <Grid Margin="16">
+                                    <!-- Loading -->
+                                    <StackPanel Visibility="{Binding IsSearching, Converter={StaticResource BoolVis}}"
+                                                HorizontalAlignment="Center" VerticalAlignment="Top"
+                                                Margin="0,40">
+                                        <TextBlock Text="⏳ Chargement des données..."
                                                    Foreground="{StaticResource TextSecondaryBrush}"
-                                                   FontSize="14" HorizontalAlignment="Center" Margin="0,12,0,0"/>
-                                        <TextBlock Text="Format : NomDeJoueur#EUW ou NomDeJoueur#FR1"
-                                                   Foreground="{StaticResource TextMutedBrush}"
-                                                   FontSize="12" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                                                   FontSize="14" HorizontalAlignment="Center"/>
                                     </StackPanel>
-                                </StackPanel>
-                            </Grid>
-                        </ScrollViewer>
+                                    <!-- Résultat -->
+                                    <views:PlayerCard DataContext="{Binding SearchedPlayer}"
+                                                      Visibility="{Binding HasSearchResult, Converter={StaticResource BoolVis}}"/>
+                                    <!-- Historique + empty state (inchangé) -->
+                                    <StackPanel Visibility="{Binding HasSearchResult, Converter={StaticResource InvBoolVis}}">
+                                        <!-- Historique -->
+                                        <StackPanel Visibility="{Binding HasSearchHistory, Converter={StaticResource BoolVis}}">
+                                            <TextBlock Text="RÉCEMMENT RECHERCHÉS"
+                                                       Foreground="{StaticResource TextMutedBrush}"
+                                                       FontSize="10" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                            <ItemsControl ItemsSource="{Binding SearchHistory}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Margin="0,2" Cursor="Hand" CornerRadius="6"
+                                                                Background="{StaticResource BgCardBrush}"
+                                                                BorderBrush="{StaticResource BorderBrush}"
+                                                                BorderThickness="1" Padding="10,8"
+                                                                MouseLeftButtonUp="HistoryItem_Click">
+                                                            <Border.Style>
+                                                                <Style TargetType="Border">
+                                                                    <Style.Triggers>
+                                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                                            <Setter Property="Background" Value="{StaticResource BgHoverBrush}"/>
+                                                                        </Trigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Border.Style>
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <TextBlock Text="{Binding GameName}"
+                                                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                                                           FontWeight="SemiBold" FontSize="13"/>
+                                                                <TextBlock Text="#" Foreground="{StaticResource TextMutedBrush}"
+                                                                           FontSize="12" Margin="3,1,0,0"/>
+                                                                <TextBlock Text="{Binding TagLine}"
+                                                                           Foreground="{StaticResource TextMutedBrush}"
+                                                                           FontSize="12" Margin="0,1,0,0"/>
+                                                            </StackPanel>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+
+                                        <!-- Empty state (quand pas d'historique) -->
+                                        <StackPanel Visibility="{Binding HasSearchHistory, Converter={StaticResource InvBoolVis}}"
+                                                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                    Opacity="0.5" Margin="0,60">
+                                            <TextBlock Text="🔍" FontSize="48" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="Entrez un Riot ID pour rechercher un joueur"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                       FontSize="14" HorizontalAlignment="Center" Margin="0,12,0,0"/>
+                                            <TextBlock Text="Format : NomDeJoueur#EUW ou NomDeJoueur#FR1"
+                                                       Foreground="{StaticResource TextMutedBrush}"
+                                                       FontSize="12" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Grid>
+                            </ScrollViewer>
+
+                            <!-- Colonne droite : stats champions -->
+                            <Border Grid.Column="1"
+                                    BorderBrush="{StaticResource BorderBrush}"
+                                    BorderThickness="1,0,0,0">
+                                <views:ChampionStatsCard
+                                    DataContext="{Binding SearchedPlayer}"
+                                    Visibility="{Binding HasSearchResult, Converter={StaticResource BoolVis}}"
+                                    Margin="0"/>
+                            </Border>
+                        </Grid>
                     </Grid>
 
                     <!-- SETTINGS PAGE -->

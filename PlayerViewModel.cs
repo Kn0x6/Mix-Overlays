@@ -102,6 +102,25 @@ namespace MixOverlays.ViewModels
                 OnPropertyChanged(nameof(PrimaryLane));
                 OnPropertyChanged(nameof(SecondaryLane));
                 OnPropertyChanged(nameof(HasLaneData));
+                OnPropertyChanged(nameof(TopChampionsFromHistory));
+                OnPropertyChanged(nameof(HasChampionStats));
+                OnPropertyChanged(nameof(RecentWins));
+                OnPropertyChanged(nameof(RecentLosses));
+                OnPropertyChanged(nameof(RecentGames));
+                OnPropertyChanged(nameof(RecentWinRate));
+                OnPropertyChanged(nameof(RecentWinRateDisplay));
+                OnPropertyChanged(nameof(RecentWinRateHex));
+                OnPropertyChanged(nameof(RecentAvgKDA));
+                OnPropertyChanged(nameof(RecentAvgKDADisplay));
+                OnPropertyChanged(nameof(RecentAvgKDAHex));
+                OnPropertyChanged(nameof(RecentAvgKillsDisplay));
+                OnPropertyChanged(nameof(RecentAvgDeathsDisplay));
+                OnPropertyChanged(nameof(RecentAvgAssistsDisplay));
+                OnPropertyChanged(nameof(RecentAvgCSPerMinDisplay));
+                OnPropertyChanged(nameof(RecentAvgCSDisplay));
+                OnPropertyChanged(nameof(RecentAvgDurationDisplay));
+                OnPropertyChanged(nameof(CurrentStreakDisplay));
+                OnPropertyChanged(nameof(CurrentStreakHex));
             }
             catch (Exception ex)
             {
@@ -158,6 +177,25 @@ namespace MixOverlays.ViewModels
         {
             OnPropertyChanged(nameof(RecentMatches));
             OnPropertyChanged(nameof(HasMoreMatches));
+            OnPropertyChanged(nameof(TopChampionsFromHistory));
+            OnPropertyChanged(nameof(HasChampionStats));
+            OnPropertyChanged(nameof(RecentWins));
+            OnPropertyChanged(nameof(RecentLosses));
+            OnPropertyChanged(nameof(RecentGames));
+            OnPropertyChanged(nameof(RecentWinRate));
+            OnPropertyChanged(nameof(RecentWinRateDisplay));
+            OnPropertyChanged(nameof(RecentWinRateHex));
+            OnPropertyChanged(nameof(RecentAvgKDA));
+            OnPropertyChanged(nameof(RecentAvgKDADisplay));
+            OnPropertyChanged(nameof(RecentAvgKDAHex));
+            OnPropertyChanged(nameof(RecentAvgKillsDisplay));
+            OnPropertyChanged(nameof(RecentAvgDeathsDisplay));
+            OnPropertyChanged(nameof(RecentAvgAssistsDisplay));
+            OnPropertyChanged(nameof(RecentAvgCSPerMinDisplay));
+            OnPropertyChanged(nameof(RecentAvgCSDisplay));
+            OnPropertyChanged(nameof(RecentAvgDurationDisplay));
+            OnPropertyChanged(nameof(CurrentStreakDisplay));
+            OnPropertyChanged(nameof(CurrentStreakHex));
         }
         public string ProfileIconUrl =>
             $"https://ddragon.leagueoflegends.com/cdn/{VersionHolder.Latest}/img/profileicon/{_data.ProfileIconId}.png";
