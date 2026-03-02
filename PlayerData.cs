@@ -262,7 +262,7 @@ namespace MixOverlays.Models
         public long LiveGameStartTime { get; set; } = 0; // epoch ms (gameStartTime du spectateur)
     }
 
-    public class MatchSummary
+public partial class MatchSummary
     {
         public string MatchId { get; set; } = string.Empty;
         public bool Win { get; set; }
