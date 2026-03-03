@@ -236,7 +236,25 @@ namespace MixOverlays.ViewModels
         public int[]  Items        { get; set; } = new int[7];
         public int    Summoner1Id  { get; set; }
         public int    Summoner2Id  { get; set; }
-        public double KDA          => Deaths == 0 ? Kills + Assists : (double)(Kills + Assists) / Deaths;
+public double KDA          => Deaths == 0 ? Kills + Assists : (double)(Kills + Assists) / Deaths;
+
+public long GameDuration { get; set; }
+
+public int PerformanceScore
+{
+    get
+    {
+        if (GameDuration <= 0) return 0;
+        double min   = GameDuration / 60.0;
+        double kda   = Deaths == 0 ? Kills + Assists : (double)(Kills + Assists) / Deaths;
+        double csMin = min > 0 ? CS / min : 0;
+        double raw   = Math.Min(kda / 6.0, 1.0) * 40 + Math.Min(csMin / 7.0, 1.0) * 30 + (Win ? 30 : 0);
+        int score    = Math.Clamp((int)Math.Round(raw), 0, 98);
+        if (Win && kda >= 5.0 && csMin >= 6.0) return 100;
+        if (kda >= 4.0 && score >= 75)         return 99;
+        return score;
+    }
+}
 
         // ─── Rang Solo/Duo ────────────────────────────────────────────────────
         public string Tier         { get; set; } = string.Empty;

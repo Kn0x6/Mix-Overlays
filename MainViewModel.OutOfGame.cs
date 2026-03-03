@@ -460,7 +460,7 @@ namespace MixOverlays.ViewModels
                     var tempSummary = new MatchSummary
                     {
                         MatchId         = matchId,
-                        GameDuration    = match.info.gameDuration,
+                        GameDuration    = RiotApiService.ResolveGameDuration(match.info),
                         GameCreation    = match.info.gameCreation,
                         QueueId         = match.info.queueId,
                         AllParticipants = match.info.participants.Select(p => new MatchParticipantSummary
@@ -499,29 +499,30 @@ namespace MixOverlays.ViewModels
             detail.GameCreation = summary.GameCreation;
             detail.QueueId      = summary.QueueId;
 
-            var participants = summary.AllParticipants.Select(p => new MatchParticipantViewModel
-            {
-                Puuid        = p.Puuid,
-                GameName     = p.GameName,
-                TagLine      = p.TagLine,
-                ChampionName = p.ChampionName,
-                ChampionId   = p.ChampionId,
-                Kills        = p.Kills,
-                Deaths       = p.Deaths,
-                Assists      = p.Assists,
-                CS           = p.CS,
-                Win          = p.Win,
-                Position     = p.Position,
-                TotalDamage  = p.TotalDamage,
-                GoldEarned   = p.GoldEarned,
-                VisionScore  = p.VisionScore,
-                Items        = p.Items,
-                Summoner1Id  = p.Summoner1Id,
-                Summoner2Id  = p.Summoner2Id,
-                Tier         = p.Tier,
-                Rank         = p.Rank,
-                LeaguePoints = p.LeaguePoints,
-            }).ToList();
+var participants = summary.AllParticipants.Select(p => new MatchParticipantViewModel
+{
+    Puuid        = p.Puuid,
+    GameName     = p.GameName,
+    TagLine      = p.TagLine,
+    ChampionName = p.ChampionName,
+    ChampionId   = p.ChampionId,
+    Kills        = p.Kills,
+    Deaths       = p.Deaths,
+    Assists      = p.Assists,
+    CS           = p.CS,
+    Win          = p.Win,
+    Position     = p.Position,
+    TotalDamage  = p.TotalDamage,
+    GoldEarned   = p.GoldEarned,
+    VisionScore  = p.VisionScore,
+                    GameDuration = p.GameDuration,
+    Items        = p.Items,
+    Summoner1Id  = p.Summoner1Id,
+    Summoner2Id  = p.Summoner2Id,
+    Tier         = p.Tier,
+    Rank         = p.Rank,
+    LeaguePoints = p.LeaguePoints,
+}).ToList();
 
             var blueTeam = participants.Where(p => p.Win).ToList();
             var redTeam  = participants.Where(p => !p.Win).ToList();
@@ -614,8 +615,6 @@ namespace MixOverlays.ViewModels
 
         private async Task LoadLiveGameDetailAsync(SpectatorGameInfo game, string focusPuuid)
         {
-            if (string.IsNullOrEmpty(_settings.Current.RiotApiKey)) return;
-
             var detail = new LiveGameDetailViewModel { IsLoading = true };
             Application.Current.Dispatcher.Invoke(() => LiveGameDetail = detail);
 
@@ -633,61 +632,41 @@ namespace MixOverlays.ViewModels
             var allyParticipants  = focusInSide1 ? side1 : side2;
             var enemyParticipants = focusInSide1 ? side2 : side1;
 
-            async Task LoadSideAsync(List<SpectatorParticipant> participants, ObservableCollection<PlayerViewModel> collection, int teamId)
+            void BuildSide(List<SpectatorParticipant> participants,
+                           ObservableCollection<PlayerViewModel> collection,
+                           int teamId)
             {
                 foreach (var p in participants)
                 {
-                    string puuid    = p.puuid;
-                    string champName = _champions.GetName(p.championId);
-                    string gameName = p.summonerName;
-                    string tagLine  = string.Empty;
-
-                    if (!string.IsNullOrEmpty(puuid))
-                    {
-                        var account = await _riot.GetAccountByPuuidAsync(puuid);
-                        if (account != null) { gameName = account.gameName; tagLine = account.tagLine; }
-                    }
-
+                    // Tout vient directement de SpectatorGameInfo — 0 appel API
                     var pd = new PlayerData
                     {
-                        Puuid        = puuid,
-                        GameName     = gameName,
-                        TagLine      = tagLine,
+                        Puuid        = p.puuid,
+                        GameName     = p.summonerName, // déjà dans les données spectateur
+                        TagLine      = string.Empty,
                         ChampionId   = p.championId,
-                        ChampionName = champName,
+                        ChampionName = _champions.GetName(p.championId),
                         TeamId       = teamId,
                         LiveSpell1Id = p.spell1Id,
                         LiveSpell2Id = p.spell2Id,
-                        IsLoading    = true
+                        IsLoading    = false,
+                        IsLoaded     = true,
                     };
-
-                    Application.Current.Dispatcher.Invoke(() => collection.Add(new PlayerViewModel(pd)));
-
-                    if (!string.IsNullOrEmpty(puuid))
-                    {
-                        var fullData = await _riot.LoadFullPlayerDataAsync(puuid, gameName, tagLine);
-                        fullData.ChampionId   = p.championId;
-                        fullData.ChampionName = champName;
-                        fullData.TeamId       = teamId;
-                        fullData.LiveSpell1Id = p.spell1Id;
-                        fullData.LiveSpell2Id = p.spell2Id;
-                        foreach (var m in fullData.TopMasteries) m.ChampionName = _champions.GetName(m.championId);
-
-                        Application.Current.Dispatcher.Invoke(() =>
-                        {
-                            var vm = collection.FirstOrDefault(v => v.Data.Puuid == puuid);
-                            vm?.UpdateData(fullData);
-                        });
-                    }
+                    collection.Add(new PlayerViewModel(pd));
                 }
             }
 
-            Application.Current.Dispatcher.Invoke(() => detail.IsLoading = false);
+            // Tout sur le dispatcher, synchrone, instantané
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                detail.AllyTeam.Clear();
+                detail.EnemyTeam.Clear();
+                BuildSide(allyParticipants,  detail.AllyTeam,  focusInSide1 ? 100 : 200);
+                BuildSide(enemyParticipants, detail.EnemyTeam, focusInSide1 ? 200 : 100);
+                detail.IsLoading = false;
+            });
 
-            await Task.WhenAll(
-                LoadSideAsync(allyParticipants,  detail.AllyTeam,  100),
-                LoadSideAsync(enemyParticipants, detail.EnemyTeam, 200)
-            );
+            await Task.CompletedTask; // méthode gardée async pour compatibilité
         }
 
         // ══════════════════════════════════════════════════════════════════════
@@ -710,20 +689,23 @@ namespace MixOverlays.ViewModels
 
             try
             {
-                var me = await _lcu.GetCurrentSummonerAsync();
-                if (me != null && !string.IsNullOrEmpty(me.puuid))
-                {
-                    var account = await _riot.GetAccountByPuuidAsync(me.puuid);
-                    if (account != null)
-                    {
-                        ApiTestMessage = $"✓ Clé valide — {account.gameName}#{account.tagLine}";
-                        ApiTestSuccess = true;
-                        return;
-                    }
-                    ApiTestMessage = $"✗ Clé invalide ou expirée — {_riot.LastHttpError}";
-                    ApiTestSuccess = false;
-                    return;
-                }
+var me = await _lcu.GetCurrentSummonerAsync();
+if (me != null && !string.IsNullOrEmpty(me.gameName))
+{
+    // Utiliser by-riot-id (plus fiable que by-puuid avec le PUUID LCU)
+    var tagLine = me.tagLine ?? _settings.Current.Region.ToUpper();
+    var account = await _riot.GetAccountByRiotIdAsync(me.gameName, tagLine);
+    if (account != null)
+    {
+        ApiTestMessage = $"✓ Clé valide — {account.gameName}#{account.tagLine}";
+        ApiTestSuccess = true;
+        return;
+    }
+    // Si by-riot-id échoue aussi, c'est la clé qui est mauvaise
+    ApiTestMessage = $"✗ Clé invalide ou expirée — {_riot.LastHttpError}";
+    ApiTestSuccess = false;
+    return;
+}
 
                 var status = await _riot.TestPlatformStatusAsync();
                 ApiTestMessage = status

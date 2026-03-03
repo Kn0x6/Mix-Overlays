@@ -60,6 +60,11 @@
             Padding="14,10"
             MouseLeftButtonDown="Overlay_MouseLeftButtonDown">
 
+        <!-- ── Scale global de l'overlay : modifier ScaleX/ScaleY pour changer la taille ── -->
+        <Border.LayoutTransform>
+            <ScaleTransform ScaleX="1.25" ScaleY="1.25"/>
+        </Border.LayoutTransform>
+
         <StackPanel>
 
             <!-- ── Barre de titre compacte ── -->

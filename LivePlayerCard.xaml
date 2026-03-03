@@ -46,17 +46,28 @@
 
                 <!-- Avatar + badge niveau -->
                 <Grid Grid.Column="0" Width="40" Height="40" Margin="0,0,10,0"
-                      VerticalAlignment="Top">
+                      VerticalAlignment="Top"
+                      Visibility="{Binding IsLoaded, Converter={StaticResource BoolVis}}">
                     <Border CornerRadius="20"
                             BorderBrush="{Binding SoloRank.tier, Converter={StaticResource RankBrush}}"
                             BorderThickness="2" ClipToBounds="True">
                         <Image Source="{Binding ProfileIconUrl, Converter={StaticResource UrlToImgWithFallback}}"
                                Stretch="UniformToFill"/>
                     </Border>
-                    <!-- Niveau -->
+                    <!-- Niveau — masqué si non chargé (SummonerLevel <= 0) -->
                     <Border Background="#DD0D1117" CornerRadius="3"
                             Padding="4,1" HorizontalAlignment="Center"
                             VerticalAlignment="Bottom" Margin="0,0,0,-6">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SummonerLevel}" Value="0">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
                         <TextBlock Text="{Binding SummonerLevel}"
                                    Foreground="White" FontSize="9" FontWeight="Bold"
                                    HorizontalAlignment="Center"/>
@@ -159,9 +170,19 @@
                     </StackPanel>
                 </StackPanel>
 
-                <!-- Rang + Win Rate + V/D -->
+                <!-- Rang + Win Rate + V/D — masqué si SoloRank non chargé -->
                 <StackPanel Grid.Column="3" VerticalAlignment="Center"
                             HorizontalAlignment="Right">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SoloRank}" Value="{x:Null}">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
 
                     <!-- Rang Solo -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
@@ -195,19 +216,7 @@
                                 </Style>
                             </TextBlock.Style>
                         </TextBlock>
-                        <TextBlock Text="Non classé"
-                                   Foreground="{StaticResource TextMutedBrush}" FontSize="11">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding SoloRank}" Value="{x:Null}">
-                                            <Setter Property="Visibility" Value="Visible"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
+                        <!-- Non classé masqué en mode live simplifié -->
                     </StackPanel>
 
                     <!-- Win Rate + V / D -->

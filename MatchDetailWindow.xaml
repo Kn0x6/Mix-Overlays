@@ -270,18 +270,64 @@
                                                        Margin="0,1,0,0"/>
                                         </StackPanel>
 
-                                        <!-- CS -->
-                                        <StackPanel Grid.Column="4" VerticalAlignment="Center" HorizontalAlignment="Right">
-                                            <TextBlock Text="{Binding BluePlayer.CS, StringFormat={}{0} CS}"
-                                                       Foreground="#8B949E"
-                                                       FontSize="11"
-                                                       HorizontalAlignment="Right"/>
-                                            <TextBlock Text="{Binding BluePlayer.ChampionName}"
-                                                       Foreground="#444D56"
-                                                       FontSize="9"
-                                                       HorizontalAlignment="Right"
-                                                       TextTrimming="CharacterEllipsis"
-                                                       Margin="0,1,0,0"/>
+<!-- Score + CS -->
+                                        <StackPanel Grid.Column="4" VerticalAlignment="Center" HorizontalAlignment="Right"
+                                                    Orientation="Horizontal">
+                                            <StackPanel VerticalAlignment="Center" Margin="0,0,5,0">
+                                                <TextBlock HorizontalAlignment="Right" FontSize="14" FontWeight="Bold">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="#C9D1D9"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding BluePlayer.PerformanceScore}" Value="100">
+                                                                    <Setter Property="Foreground" Value="#F5A623"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                    <Run Text="{Binding BluePlayer.PerformanceScore, Mode=OneWay}"/>
+                                                </TextBlock>
+                                                <TextBlock HorizontalAlignment="Right" FontSize="9" Foreground="#6B7280">
+                                                    <Run Text="{Binding BluePlayer.CS, Mode=OneWay}"/>
+                                                    <Run Text=" CS"/>
+                                                </TextBlock>
+                                            </StackPanel>
+                                            <Grid Width="28" Height="28" VerticalAlignment="Center">
+                                                <Ellipse StrokeThickness="2">
+                                                    <Ellipse.Style>
+                                                        <Style TargetType="Ellipse">
+                                                            <Setter Property="Stroke" Value="#3B82F6"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding BluePlayer.PerformanceScore}" Value="100">
+                                                                    <Setter Property="Stroke" Value="#F5A623"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding BluePlayer.PerformanceScore}" Value="99">
+                                                                    <Setter Property="Stroke" Value="#10B981"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Ellipse.Style>
+                                                </Ellipse>
+                                                <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                           FontSize="7" FontWeight="Bold">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Text" Value=""/>
+                                                            <Setter Property="Foreground" Value="#6B7280"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding BluePlayer.PerformanceScore}" Value="100">
+                                                                    <Setter Property="Text" Value="MVP"/>
+                                                                    <Setter Property="Foreground" Value="#F5A623"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding BluePlayer.PerformanceScore}" Value="99">
+                                                                    <Setter Property="Text" Value="ACE"/>
+                                                                    <Setter Property="Foreground" Value="#10B981"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </Grid>
                                         </StackPanel>
                                     </Grid>
                                 </Border>
@@ -311,16 +357,64 @@
                                             <ColumnDefinition Width="40"/>
                                         </Grid.ColumnDefinitions>
 
-                                        <!-- CS (mirroir) -->
-                                        <StackPanel Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Left">
-                                            <TextBlock Text="{Binding RedPlayer.CS, StringFormat={}{0} CS}"
-                                                       Foreground="#8B949E"
-                                                       FontSize="11"/>
-                                            <TextBlock Text="{Binding RedPlayer.ChampionName}"
-                                                       Foreground="#444D56"
-                                                       FontSize="9"
-                                                       TextTrimming="CharacterEllipsis"
-                                                       Margin="0,1,0,0"/>
+<!-- Score + CS (miroir) -->
+                                        <StackPanel Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Left"
+                                                    Orientation="Horizontal">
+                                            <Grid Width="28" Height="28" VerticalAlignment="Center">
+                                                <Ellipse StrokeThickness="2">
+                                                    <Ellipse.Style>
+                                                        <Style TargetType="Ellipse">
+                                                            <Setter Property="Stroke" Value="#F85149"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding RedPlayer.PerformanceScore}" Value="100">
+                                                                    <Setter Property="Stroke" Value="#F5A623"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding RedPlayer.PerformanceScore}" Value="99">
+                                                                    <Setter Property="Stroke" Value="#10B981"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Ellipse.Style>
+                                                </Ellipse>
+                                                <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                           FontSize="7" FontWeight="Bold">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Text" Value=""/>
+                                                            <Setter Property="Foreground" Value="#6B7280"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding RedPlayer.PerformanceScore}" Value="100">
+                                                                    <Setter Property="Text" Value="MVP"/>
+                                                                    <Setter Property="Foreground" Value="#F5A623"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding RedPlayer.PerformanceScore}" Value="99">
+                                                                    <Setter Property="Text" Value="ACE"/>
+                                                                    <Setter Property="Foreground" Value="#10B981"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </Grid>
+                                            <StackPanel VerticalAlignment="Center" Margin="5,0,0,0">
+                                                <TextBlock FontSize="14" FontWeight="Bold">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="#C9D1D9"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding RedPlayer.PerformanceScore}" Value="100">
+                                                                    <Setter Property="Foreground" Value="#F5A623"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                    <Run Text="{Binding RedPlayer.PerformanceScore, Mode=OneWay}"/>
+                                                </TextBlock>
+                                                <TextBlock FontSize="9" Foreground="#6B7280">
+                                                    <Run Text="{Binding RedPlayer.CS, Mode=OneWay}"/>
+                                                    <Run Text=" CS"/>
+                                                </TextBlock>
+                                            </StackPanel>
                                         </StackPanel>
 
                                         <!-- KDA -->

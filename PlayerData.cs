@@ -141,15 +141,16 @@ namespace MixOverlays.Models
         public List<string> participants { get; set; } = new();
     }
 
-    public class MatchInfo
-    {
-        public long gameCreation { get; set; }
-        public long gameDuration { get; set; }
-        public string gameMode { get; set; } = string.Empty;
-        public string gameType { get; set; } = string.Empty;
-        public int queueId { get; set; }
-        public List<MatchParticipant> participants { get; set; } = new();
-    }
+public class MatchInfo
+{
+    public long gameCreation     { get; set; }
+    public long gameDuration     { get; set; }
+    public long gameEndTimestamp { get; set; }
+    public string gameMode       { get; set; } = string.Empty;
+    public string gameType       { get; set; } = string.Empty;
+    public int queueId           { get; set; }
+    public List<MatchParticipant> participants { get; set; } = new();
+}
 
     public class MatchParticipant
     {
@@ -314,7 +315,8 @@ public partial class MatchSummary
         public string Position     { get; set; } = string.Empty;
         public int    TotalDamage  { get; set; }
         public int    GoldEarned   { get; set; }
-        public int    VisionScore  { get; set; }
+public int VisionScore { get; set; }
+public long GameDuration { get; set; }
         public int[]  Items        { get; set; } = new int[7];
         public int    Summoner1Id  { get; set; }
         public int    Summoner2Id  { get; set; }
