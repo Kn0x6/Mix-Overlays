@@ -32,22 +32,29 @@ namespace MixOverlays.Models
         {
             get
             {
-                if (GameDuration <= 0) return 0;
+                try
+                {
+                    if (GameDuration <= 0) return 0;
 
-                double minutes    = GameDuration / 60.0;
-                double kda        = Deaths == 0 ? Kills + Assists : (double)(Kills + Assists) / Deaths;
-                double csPerMin   = minutes > 0 ? CS / minutes : 0;
+                    double minutes    = GameDuration / 60.0;
+                    double kda        = Deaths == 0 ? Kills + Assists : (double)(Kills + Assists) / Deaths;
+                    double csPerMin   = minutes > 0 ? CS / minutes : 0;
 
-                double kdaScore   = Math.Min(kda / 6.0, 1.0) * 40.0;
-                double csScore    = Math.Min(csPerMin / 7.0, 1.0) * 30.0;
-                double winScore   = Win ? 30.0 : 0.0;
+                    double kdaScore   = Math.Min(kda / 6.0, 1.0) * 40.0;
+                    double csScore    = Math.Min(csPerMin / 7.0, 1.0) * 30.0;
+                    double winScore   = Win ? 30.0 : 0.0;
 
-                int raw = Math.Clamp((int)Math.Round(kdaScore + csScore + winScore), 0, 98);
+                    int raw = Math.Clamp((int)Math.Round(kdaScore + csScore + winScore), 0, 98);
 
-                if (Win && kda >= 5.0 && csPerMin >= 6.0) return 100;
-                if (kda >= 4.0 && raw >= 75)              return 99;
+                    if (Win && kda >= 5.0 && csPerMin >= 6.0) return 100;
+                    if (kda >= 4.0 && raw >= 75)              return 99;
 
-                return raw;
+                    return raw;
+                }
+                catch
+                {
+                    return 0;
+                }
             }
         }
 

@@ -561,7 +561,8 @@
                     </StackPanel>
 
                     <!-- Top 3 champions — style référence -->
-                    <ItemsControl ItemsSource="{Binding TopChampionStats}">
+                    <ItemsControl ItemsSource="{Binding TopChampionsFromHistory}"
+                                  Visibility="{Binding HasChampionStats, Converter={StaticResource BoolVis}}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <UniformGrid Rows="1" Columns="3"/>
@@ -573,12 +574,16 @@
                                         BorderBrush="#1E2435" BorderThickness="1" Padding="8,12">
                                     <StackPanel HorizontalAlignment="Center">
 
-                                        <!-- Champion icon — grand, circulaire -->
+                                        <!-- Champion icon — circulaire -->
                                         <Border Width="52" Height="52" CornerRadius="26"
-                                                ClipToBounds="True" HorizontalAlignment="Center"
-                                                BorderBrush="#30FFFFFF" BorderThickness="1.5">
-                                            <Image Source="{Binding ChampionName, Converter={StaticResource ChampToImg}}"
-                                                   Stretch="UniformToFill"/>
+                                                HorizontalAlignment="Center"
+                                                BorderBrush="#50FFFFFF" BorderThickness="2"
+                                                Background="#1AFFFFFF">
+                                            <Border CornerRadius="24" ClipToBounds="True">
+                                                <Image Source="{Binding ChampionName, Converter={StaticResource ChampToImg}}"
+                                                       Stretch="UniformToFill"
+                                                       Width="48" Height="48"/>
+                                            </Border>
                                         </Border>
 
                                         <!-- Nom du champion -->
@@ -586,10 +591,10 @@
                                                    FontSize="11" FontWeight="SemiBold"
                                                    Foreground="#C9D1D9"
                                                    HorizontalAlignment="Center"
-                                                   Margin="0,7,0,4"
+                                                   Margin="0,6,0,4"
                                                    TextTrimming="CharacterEllipsis"/>
 
-                                        <!-- W - L record (style "4W - 0L") -->
+                                        <!-- W - L record -->
                                         <TextBlock HorizontalAlignment="Center" FontSize="11" FontWeight="Bold">
                                             <Run Text="{Binding Wins, Mode=OneWay}" Foreground="#3FB950"/>
                                             <Run Text="W - " Foreground="#6B7280"/>
@@ -599,14 +604,13 @@
 
                                         <!-- KDA moyen -->
                                         <TextBlock HorizontalAlignment="Center" FontSize="10" Margin="0,3,0,0"
-                                                   Foreground="{Binding AvgKDA, Converter={StaticResource KdaBrush}}">
-                                            <Run Text="{Binding AvgKDA, StringFormat={}{0:F2}, Mode=OneWay}"/>
-                                            <Run Text=" KDA" Foreground="#6B7280"/>
+                                                   Foreground="{Binding KdaHex, Converter={StaticResource HexBrush}}">
+                                            <Run Text="{Binding KdaDisplay, Mode=OneWay}"/>
                                         </TextBlock>
 
                                         <!-- Winrate % -->
                                         <TextBlock HorizontalAlignment="Center" FontSize="10" Margin="0,2,0,0"
-                                                   Foreground="{Binding WinRate, Converter={StaticResource WinRateBrush}}">
+                                                   Foreground="{Binding WinRateHex, Converter={StaticResource HexBrush}}">
                                             <Run Text="{Binding WinRateDisplay, Mode=OneWay}"/>
                                         </TextBlock>
 
