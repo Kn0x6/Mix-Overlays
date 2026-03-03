@@ -133,6 +133,13 @@ namespace MixOverlays.ViewModels
                 allyData .Select(pd => LoadAndRefreshPlayerAsync(pd, AllyTeam))
                 .Concat(enemyData.Select(pd => LoadAndRefreshPlayerAsync(pd, EnemyTeam)))
             );
+
+            // ── Tri face-à-face par lane une fois toutes les données chargées ──
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                SortTeamByLane(AllyTeam);
+                SortTeamByLane(EnemyTeam);
+            });
         }
 
         // ══════════════════════════════════════════════════════════════════════
@@ -285,6 +292,13 @@ namespace MixOverlays.ViewModels
                 allyData .Select(pd => LoadAndRefreshPlayerAsync(pd, AllyTeam))
                 .Concat(enemyData.Select(pd => LoadAndRefreshPlayerAsync(pd, EnemyTeam)))
             );
+
+            // ── Tri face-à-face par lane une fois toutes les données chargées ──
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                SortTeamByLane(AllyTeam);
+                SortTeamByLane(EnemyTeam);
+            });
         }
 
         // ══════════════════════════════════════════════════════════════════════
@@ -496,7 +510,7 @@ namespace MixOverlays.ViewModels
                 });
             }
 
-            var fullData = await _riot.LoadFullPlayerDataAsync(riotPuuid!, gameName, tagLine);
+            var fullData = await _riot.LoadFullPlayerDataAsync(riotPuuid!, gameName, tagLine, matchCount: 5);
             System.Diagnostics.Debug.WriteLine($"[LOAD] fullData pour {gameName}: SoloRank={fullData.SoloRank?.tier ?? "null"}, Icon={fullData.ProfileIconId}, Level={fullData.SummonerLevel}, Error={fullData.ErrorMessage ?? "none"}");
 
 fullData.TeamId       = pd.TeamId;
@@ -515,6 +529,36 @@ foreach (var m in fullData.TopMasteries) m.ChampionName = _champions.GetName(m.c
                 vm?.UpdateData(fullData);
             });
         }
+
+        // ══════════════════════════════════════════════════════════════════════
+        //  HELPER — Tri par lane (TOP → JUNGLE → MID → ADC → SUPPORT)
+        // ══════════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// Réordonne une ObservableCollection de PlayerViewModel dans l'ordre standard
+        /// des lanes : TOP → JUNGLE → MID → ADC/BOT → SUPPORT.
+        /// Utilise Move() pour éviter un rebuild complet (moins de flickering UI).
+        /// </summary>
+        private static void SortTeamByLane(ObservableCollection<PlayerViewModel> team)
+        {
+            var sorted = team.OrderBy(vm => LaneOrderIndex(vm.PrimaryLane)).ToList();
+            for (int i = 0; i < sorted.Count; i++)
+            {
+                var currentIndex = team.IndexOf(sorted[i]);
+                if (currentIndex != i)
+                    team.Move(currentIndex, i);
+            }
+        }
+
+        private static int LaneOrderIndex(string? laneDisplay) => laneDisplay switch
+        {
+            var s when s?.Contains("Top")     == true => 0,
+            var s when s?.Contains("Jungle")  == true => 1,
+            var s when s?.Contains("Mid")     == true => 2,
+            var s when s?.Contains("Bot")     == true => 3,
+            var s when s?.Contains("Support") == true => 4,
+            _ => 5  // Lane inconnue → en dernier
+        };
 
     }
 }

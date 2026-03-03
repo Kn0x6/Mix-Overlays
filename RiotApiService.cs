@@ -19,12 +19,18 @@ namespace MixOverlays.Services
 
         // ─── Cache simple (clé → (valeur sérialisée, expiration)) ────────────
         private readonly ConcurrentDictionary<string, (string Json, DateTime Expires)> _cache = new();
-        private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(3);
+        private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(10); // 10min — les stats ne changent pas en live
 
-        // ─── Rate limiting ────────────────────────────────────────────────────
-        private readonly SemaphoreSlim _apiSemaphore = new(5, 5); // max 5 requêtes simultanées
-        private readonly Dictionary<string, DateTime> _lastRequestTime = new();
-        private static readonly TimeSpan MinRequestInterval = TimeSpan.FromMilliseconds(1200); // 1.2s entre requêtes
+        // ─── Token Bucket — respecte les limites Riot API dev key ────────────────
+        // Riot dev key : 20 req/s + 100 req/2min → on vise ~15/s + 80/2min pour avoir de la marge
+        private readonly SemaphoreSlim _rateLimitGate = new(1, 1); // accès séquentiel au bucket
+        private int    _tokensPerSecond = 12;   // 12 req/s max (marge sur les 20/s)
+        private int    _tokens          = 12;   // tokens disponibles actuellement
+        private DateTime _lastRefill    = DateTime.UtcNow;
+
+        // Compteur 2 minutes
+        private readonly Queue<DateTime> _requestTimestamps = new(); // fenêtre glissante 2 min
+        private const int MaxPer2Min = 80; // marge sur les 100/2min
 
         private string PlatformUrl => $"https://{_settings.Current.Region.ToLower()}.api.riotgames.com";
         private string RegionalUrl => $"https://{SettingsService.GetRegionalRoute(_settings.Current.Region).ToLower()}.api.riotgames.com";
@@ -195,9 +201,9 @@ namespace MixOverlays.Services
 
         /// <summary>
         /// Charge les données d'un joueur en parallélisant tous les appels indépendants.
-        /// Charge uniquement les 10 premières parties ; utilisez LoadMoreMatchesAsync pour la pagination.
+        /// Charge uniquement les matchCount premières parties ; utilisez LoadMoreMatchesAsync pour la pagination.
         /// </summary>
-        public async Task<PlayerData> LoadFullPlayerDataAsync(string puuid, string gameName, string tagLine)
+        public async Task<PlayerData> LoadFullPlayerDataAsync(string puuid, string gameName, string tagLine, int matchCount = 20)
         {
             var player = new PlayerData
             {
@@ -252,15 +258,15 @@ namespace MixOverlays.Services
                 }
                 else errors.Append("[masteries:null] ");
 
-                // ── Match History (10 premières, 10 suivantes disponibles via MatchIdBuffer) ──
+                // ── Match History (matchCount premières, 10 suivantes disponibles via MatchIdBuffer) ──
                 if (matchIds != null && matchIds.Count > 0)
                 {
                     // On garde les IDs en réserve pour la pagination
                     player.MatchIdBuffer = matchIds;
 
-            var first20 = matchIds.Take(20).ToList();
-            player.RecentMatches = await LoadMatchSummariesAsync(puuid, first20, errors);
-            player.MatchesOffset = 20;
+            var firstN = matchIds.Take(matchCount).ToList();
+            player.RecentMatches = await LoadMatchSummariesAsync(puuid, firstN, errors);
+            player.MatchesOffset = matchCount;
                 }
                 else errors.Append("[matches:null] ");
 
@@ -335,10 +341,10 @@ namespace MixOverlays.Services
             return newMatches;
         }
 
-        /// <summary>Charge une liste de matchIds en parallèle (max 5 simultanés) et retourne les MatchSummary.</summary>
+        /// <summary>Charge une liste de matchIds en parallèle (max 2 simultanés) et retourne les MatchSummary.</summary>
         private async Task<List<MatchSummary>> LoadMatchSummariesAsync(string puuid, List<string> matchIds, System.Text.StringBuilder errors)
         {
-            var semaphore = new SemaphoreSlim(5, 5);
+            var semaphore = new SemaphoreSlim(2, 2);
             var summaries = new ConcurrentBag<(int index, MatchSummary summary)>();
 
             var tasks = matchIds.Select(async (id, index) =>
@@ -376,7 +382,7 @@ namespace MixOverlays.Services
                         Assists              = participant.assists,
                         CS                   = participant.CS,
                         Position             = participant.teamPosition,
-                        GameDuration         = match.info.gameDuration,
+                        GameDuration         = ResolveGameDuration(match.info),
                         GameCreation         = match.info.gameCreation,
                         QueueId              = match.info.queueId,
                         Summoner1Id          = participant.summoner1Id,
@@ -386,7 +392,7 @@ namespace MixOverlays.Services
                         OpponentChampionName = opponent?.championName ?? string.Empty,
                     };
 
-                    summary.AllParticipants = match.info.participants
+summary.AllParticipants = match.info.participants
                         .Select(p => new MatchParticipantSummary
                         {
                             Puuid        = p.puuid,
@@ -403,6 +409,7 @@ namespace MixOverlays.Services
                             TotalDamage  = p.totalDamageDealtToChampions,
                             GoldEarned   = p.goldEarned,
                             VisionScore  = p.visionScore,
+                            GameDuration = ResolveGameDuration(match.info),
                             Items        = new[] { p.item0, p.item1, p.item2, p.item3, p.item4, p.item5, p.item6 },
                             Summoner1Id  = p.summoner1Id,
                             Summoner2Id  = p.summoner2Id
@@ -431,6 +438,50 @@ namespace MixOverlays.Services
 
         public string LastHttpError { get; set; } = string.Empty;
 
+        /// <summary>
+        /// Attend qu'un token soit disponible avant d'envoyer une requête.
+        /// Implémente un token bucket : recharge 12 tokens/seconde, max 80/2min.
+        /// </summary>
+        private async Task WaitForTokenAsync()
+        {
+            while (true)
+            {
+                await _rateLimitGate.WaitAsync();
+                try
+                {
+                    var now = DateTime.UtcNow;
+
+                    // ── Recharge du bucket par seconde ──
+                    var elapsed = (now - _lastRefill).TotalSeconds;
+                    if (elapsed >= 1.0)
+                    {
+                        int refill = (int)(elapsed * _tokensPerSecond);
+                        _tokens = Math.Min(_tokens + refill, _tokensPerSecond);
+                        _lastRefill = now;
+                    }
+
+                    // ── Nettoyage de la fenêtre 2 minutes ──
+                    while (_requestTimestamps.Count > 0 && (now - _requestTimestamps.Peek()).TotalSeconds > 120)
+                        _requestTimestamps.Dequeue();
+
+                    // ── Peut-on envoyer ? ──
+                    if (_tokens > 0 && _requestTimestamps.Count < MaxPer2Min)
+                    {
+                        _tokens--;
+                        _requestTimestamps.Enqueue(now);
+                        return; // token obtenu, on peut envoyer
+                    }
+                }
+                finally
+                {
+                    _rateLimitGate.Release();
+                }
+
+                // Pas de token disponible → attendre 200ms et réessayer
+                await Task.Delay(200);
+            }
+        }
+
         private async Task<T?> GetAsync<T>(string url, bool useCache = true)
         {
             bool isSpectator = url.Contains("/spectator/");
@@ -440,22 +491,9 @@ namespace MixOverlays.Services
                 catch { }
             }
 
-            // Rate limiting
-            var host = new Uri(url).Host;
-            var delay = TimeSpan.Zero;
-            lock (_lastRequestTime)
-            {
-                if (_lastRequestTime.TryGetValue(host, out var last) && 
-                    DateTime.UtcNow - last < MinRequestInterval)
-                {
-                    delay = MinRequestInterval - (DateTime.UtcNow - last);
-                }
-                _lastRequestTime[host] = DateTime.UtcNow;
-            }
-            if (delay > TimeSpan.Zero)
-                await Task.Delay(delay);
+            // Token bucket : attend qu'on puisse envoyer
+            await WaitForTokenAsync();
 
-            await _apiSemaphore.WaitAsync();
             try
             {
                 // ─── DEBUG TEMPORAIRE ───
@@ -479,7 +517,19 @@ namespace MixOverlays.Services
                     // Si c'est une erreur 429, on attend un peu plus longtemps
                     if (resp.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
                     {
-                        await Task.Delay(5000); // Attendre 5 secondes pour les erreurs 429
+                        // Backoff exponentiel : vider le bucket + attendre
+                        await _rateLimitGate.WaitAsync();
+                        _tokens = 0; // forcer l'arrêt temporaire
+                        _rateLimitGate.Release();
+
+                        // Lire le Retry-After si présent
+                        int retryAfter = 10;
+                        if (resp.Headers.TryGetValues("Retry-After", out var vals) &&
+                            int.TryParse(vals.FirstOrDefault(), out int ra))
+                            retryAfter = ra;
+
+                        App.Log($"[RateLimit] 429 reçu — attente {retryAfter}s avant reprise");
+                        await Task.Delay(retryAfter * 1000);
                     }
                     
                     return default;
@@ -496,13 +546,30 @@ namespace MixOverlays.Services
                 LastHttpError = $"Exception : {ex.Message}";
                 return default;
             }
-            finally
-            {
-                _apiSemaphore.Release();
-            }
         }
+    /// <summary>
+    /// Calcule la durée réelle en secondes depuis le MatchInfo.
+    /// - Avant le patch 11.20 (gameCreation < 1634000000000), l'API renvoyait des ms
+    /// - Si gameDuration == 0, fallback sur gameEndTimestamp - gameCreation
+    /// </summary>
+    internal static long ResolveGameDuration(MatchInfo info)
+    {
+        long duration = info.gameDuration;
 
+        // Patch 11.20 = 2021-10-21 → epoch ms = 1634774400000
+        // Avant cette date, gameDuration était en millisecondes
+        if (info.gameCreation > 0 && info.gameCreation < 1_634_774_400_000L && duration > 3600)
+            duration = duration / 1000;
+
+        // Fallback si toujours 0 : calculer depuis les timestamps
+        if (duration <= 0 && info.gameEndTimestamp > 0 && info.gameCreation > 0)
+            duration = (info.gameEndTimestamp - info.gameCreation) / 1000;
+
+        return duration;
     }
+    }
+
+    
 
     // ─── Helper : WhenAll pour 5 types différents ──────────────────────────────
     internal static class TaskExtensions
