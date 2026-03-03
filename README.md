@@ -245,3 +245,4 @@ L'historique des parties peut maintenant se déplier pour afficher les autres jo
 - Data Dragon est utilisé pour les icônes de champions et de profil
 - L'overlay in-game est une fenêtre `AllowsTransparency=True` avec `Topmost=True`
 
+ 
