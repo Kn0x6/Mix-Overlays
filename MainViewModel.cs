@@ -106,6 +106,17 @@ namespace MixOverlays.ViewModels
             _lcu.StateChanged += OnLcuStateChanged;
 
             _ = _champions.EnsureLoadedAsync();
+
+            // Pré-charger le dernier profil connu au démarrage si le client LoL est fermé
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(1500); // laisser le temps à LCU de tenter la connexion
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    if (MyAccount == null && _clientState == LcuState.Disconnected)
+                        _ = LoadMyAccountFromCacheAsync();
+                });
+            });
         }
 
         // ─── Changement d'état LCU (core : gère la connexion et le compte) ───
@@ -126,6 +137,10 @@ namespace MixOverlays.ViewModels
                 // Chargement du compte géré par OutOfGame
                 if (e.State == LcuState.Connected && MyAccount == null)
                     _ = LoadMyAccountAsync();
+
+                // NOUVEAU : si déconnecté, charger depuis le cache
+                if (e.State == LcuState.Disconnected && MyAccount == null)
+                    _ = LoadMyAccountFromCacheAsync();
             });
         }
 

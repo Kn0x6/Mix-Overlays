@@ -23,6 +23,12 @@ namespace MixOverlays.Models
 
         // Historique de recherche persisté
         public System.Collections.Generic.List<SearchHistoryEntry> SearchHistory { get; set; } = new();
+
+        // Dernier profil connu pour le mode hors-ligne
+        public string LastKnownGameName { get; set; } = string.Empty;
+        public string LastKnownTagLine  { get; set; } = string.Empty;
+        public string LastKnownPuuid    { get; set; } = string.Empty;
+        public bool   HasLastKnownProfile => !string.IsNullOrEmpty(LastKnownPuuid);
     }
 
     public class SearchHistoryEntry

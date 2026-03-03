@@ -41,7 +41,10 @@ namespace MixOverlays.Views
                     if (e.PropertyName == nameof(MainViewModel.SelectedMatch))
                     {
                         if (_vm.SelectedMatch != null)
+                        {
                             MatchDetailPanel.Visibility = Visibility.Visible;
+                            _matchDetailOpenTime = DateTime.UtcNow;
+                        }
                         else
                             MatchDetailPanel.Visibility = Visibility.Collapsed;
                     }
@@ -104,8 +107,17 @@ namespace MixOverlays.Views
             => _vm.SelectedMatch = null;
 
         // ─── Clic sur un participant ───────────────────────────────────────────
+        private DateTime _matchDetailOpenTime = DateTime.MinValue;
+
         private void MatchParticipant_Click(object sender, MouseButtonEventArgs e)
         {
+            // Bloquer si le panneau vient de s'ouvrir (clic "partagé" entre la ligne et le joueur)
+            if ((DateTime.UtcNow - _matchDetailOpenTime).TotalMilliseconds < 350)
+            {
+                e.Handled = true;
+                return;
+            }
+            // ... reste du code existant
             try
             {
                 if (sender is FrameworkElement fe && fe.DataContext is MatchParticipantViewModel p)
@@ -214,10 +226,11 @@ namespace MixOverlays.Views
 
         private void SetActiveNav(string page)
         {
-            if (page == "Search" && _currentPage != "Search" && !_vm.IsSearching)
+            if (page == "Search" && !_vm.IsSearching)
             {
-                _vm.SearchedPlayer = null;
-                _vm.SearchInput    = string.Empty;
+                _vm.SearchedPlayer         = null;
+                _vm.SearchInput            = string.Empty;
+                _vm.HasSearchedAtLeastOnce = false;   // ← AJOUTER cette ligne
             }
 
             _currentPage = page;

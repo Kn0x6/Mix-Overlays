@@ -292,6 +292,12 @@ namespace MixOverlays.ViewModels
                             MyAccountError = $"Erreur d'affichage: {ex.Message}";
                         }
                     });
+
+                    // ── Sauvegarde du profil pour rechargement hors-ligne ──
+                    _settings.Current.LastKnownGameName = fullData.GameName;
+                    _settings.Current.LastKnownTagLine  = fullData.TagLine;
+                    _settings.Current.LastKnownPuuid    = fullData.Puuid;
+                    _settings.Save();
                 }
                 else
                 {
@@ -762,6 +768,48 @@ namespace MixOverlays.ViewModels
             }
             FaceToFaceData = pairs;
             return Task.CompletedTask;
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        //  MÉTHODES — Mon Compte (hors-ligne)
+        // ══════════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// Charge le dernier profil connu sans LCU (client LoL fermé)
+        /// </summary>
+        public async Task LoadMyAccountFromCacheAsync()
+        {
+            if (!_settings.Current.HasLastKnownProfile) return;
+            if (MyAccount != null) return;                      // déjà chargé
+            if (string.IsNullOrEmpty(_settings.Current.RiotApiKey)) return;
+
+            try
+            {
+                IsLoadingMyAccount = true;
+                MyAccountError = string.Empty;
+
+                var fullData = await _riot.LoadFullPlayerDataAsync(
+                    _settings.Current.LastKnownPuuid,
+                    _settings.Current.LastKnownGameName,
+                    _settings.Current.LastKnownTagLine);
+
+                foreach (var m in fullData.TopMasteries)
+                    m.ChampionName = _champions.GetName(m.championId);
+
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    var placeholder = new PlayerData
+                    {
+                        Puuid    = fullData.Puuid,
+                        GameName = fullData.GameName,
+                        TagLine  = fullData.TagLine
+                    };
+                    MyAccount = new PlayerViewModel(placeholder);
+                    MyAccount.UpdateData(fullData);
+                });
+            }
+            catch (Exception ex) { MyAccountError = $"Erreur chargement hors-ligne : {ex.Message}"; }
+            finally { IsLoadingMyAccount = false; }
         }
     }
 }
