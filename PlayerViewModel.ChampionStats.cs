@@ -127,10 +127,10 @@ namespace MixOverlays.ViewModels
                             AvgKDA       = avgKda
                         };
                     })
-                    .OrderByDescending(c => c.Games)
-                    .ThenByDescending(c => c.WinRate)
-                    .Take(5)
-                    .ToList();
+.OrderByDescending(c => c.Games)
+.ThenByDescending(c => c.WinRate)
+.Take(3)   // ← était 5
+.ToList();
             }
         }
     }

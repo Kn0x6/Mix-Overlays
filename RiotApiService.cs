@@ -258,9 +258,9 @@ namespace MixOverlays.Services
                     // On garde les IDs en réserve pour la pagination
                     player.MatchIdBuffer = matchIds;
 
-                    var first10 = matchIds.Take(10).ToList();
-                    player.RecentMatches = await LoadMatchSummariesAsync(puuid, first10, errors);
-                    player.MatchesOffset = 10;
+            var first20 = matchIds.Take(20).ToList();
+            player.RecentMatches = await LoadMatchSummariesAsync(puuid, first20, errors);
+            player.MatchesOffset = 20;
                 }
                 else errors.Append("[matches:null] ");
 
@@ -347,7 +347,7 @@ namespace MixOverlays.Services
                 try
                 {
                     var match = await GetMatchByIdAsync(id);
-                    if (match == null) return;
+                    if (match?.info?.participants == null) return;
 
                     var participant = match.info.participants.Find(p => p.puuid == puuid);
                     if (participant == null) return;

@@ -1,6 +1,9 @@
+using System;
 using System.Collections.ObjectModel;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Interop;
 using MixOverlays.ViewModels;
 
 namespace MixOverlays.Views
@@ -8,30 +11,47 @@ namespace MixOverlays.Views
     /// <summary>
     /// Fenêtre overlay in-game : transparente, Topmost, togglable via Ctrl+X.
     ///
-    /// Le raccourci global Ctrl+X est enregistré dans MainWindow.xaml.cs via
-    /// RegisterHotKey (user32). Quand WM_HOTKEY arrive, MainWindow appelle
-    /// _overlay.Toggle(). Cette classe gère aussi le Ctrl+X local (si la
-    /// fenêtre a le focus) et le bouton ✕.
+    /// Fix plein écran : après Show(), on appelle SetWindowPos via P/Invoke avec
+    /// HWND_TOPMOST + SWP_NOACTIVATE pour forcer l'overlay au-dessus même en mode
+    /// plein écran fenêtré (LoL borderless windowed). En mode exclusif DirectX pur,
+    /// aucun overlay WPF ne peut apparaître — LoL utilise borderless par défaut.
+    ///
+    /// Fix propagation de clic : ShowActivated = false évite de voler le focus à LoL.
     /// </summary>
     public partial class OverlayWindow : Window
     {
+        // ─── Win32 P/Invoke ──────────────────────────────────────────────────
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool SetWindowPos(
+            IntPtr hWnd,
+            IntPtr hWndInsertAfter,
+            int x, int y, int cx, int cy,
+            uint uFlags);
+
+        private static readonly IntPtr HWND_TOPMOST   = new IntPtr(-1);
+        private const uint             SWP_NOSIZE     = 0x0001;
+        private const uint             SWP_NOMOVE     = 0x0002;
+        private const uint             SWP_NOACTIVATE = 0x0010;
+        private const uint             SWP_SHOWWINDOW = 0x0040;
+
+        // ─── Constructeur ─────────────────────────────────────────────────────
+
         public OverlayWindow()
         {
             InitializeComponent();
+
+            // Ne pas voler le focus à LoL au moment de Show()
+            ShowActivated = false;
         }
 
         // ─── Données ──────────────────────────────────────────────────────────
 
-        /// <summary>
-        /// Lie les collections alliés / ennemis aux deux ItemsControl de l'overlay.
-        /// Peut être appelé avant ou après Show() car ObservableCollection
-        /// met l'UI à jour automatiquement à l'arrivée des données.
-        /// </summary>
         public void SetTeamData(
             ObservableCollection<PlayerViewModel> allies,
             ObservableCollection<PlayerViewModel>? enemies = null)
         {
-            AllyList.ItemsSource  = allies;
+            AllyList.ItemsSource = allies;
 
             if (enemies != null)
                 EnemyList.ItemsSource = enemies;
@@ -39,19 +59,40 @@ namespace MixOverlays.Views
 
         // ─── Toggle ────────────────────────────────────────────────────────────
 
-        /// <summary>
-        /// Affiche ou masque l'overlay.
-        /// Appelé par MainWindow quand WM_HOTKEY Ctrl+X est reçu.
-        /// </summary>
         public void Toggle()
         {
             if (IsVisible)
+            {
                 Hide();
+            }
             else
             {
                 Show();
-                // Ne pas voler le focus à LoL
-                // On utilise ShowActivated = false dans le constructeur si nécessaire
+                ForceTopmost();
+            }
+        }
+
+        /// <summary>
+        /// Force la fenêtre au-dessus via Win32, sans l'activer.
+        /// Nécessaire pour les jeux en plein écran fenêtré (borderless) :
+        /// WPF Topmost=True seul peut être ignoré après un changement de focus.
+        /// </summary>
+        private void ForceTopmost()
+        {
+            try
+            {
+                var hwnd = new WindowInteropHelper(this).Handle;
+                if (hwnd == IntPtr.Zero) return;
+
+                SetWindowPos(
+                    hwnd,
+                    HWND_TOPMOST,
+                    0, 0, 0, 0,
+                    SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Overlay] ForceTopmost erreur: {ex.Message}");
             }
         }
 
@@ -63,9 +104,6 @@ namespace MixOverlays.Views
         private void CloseOverlay_Click(object sender, RoutedEventArgs e)
             => Hide();
 
-        /// <summary>
-        /// Ctrl+X local (au cas où la fenêtre a le focus).
-        /// </summary>
         private void Overlay_KeyDown(object sender, KeyEventArgs e)
         {
             bool ctrl = Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl);
