@@ -175,7 +175,7 @@
                             HorizontalAlignment="Right">
                     <StackPanel.Style>
                         <Style TargetType="StackPanel">
-                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Setter Property="Visibility" Value="Visible"/>
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding SoloRank}" Value="{x:Null}">
                                     <Setter Property="Visibility" Value="Collapsed"/>

@@ -175,10 +175,28 @@ namespace MixOverlays.ViewModels
 
     public class MatchDetailViewModel : BaseViewModel
     {
-        public string MatchId      { get; set; } = string.Empty;
-        public long   GameDuration { get; set; }
-        public long   GameCreation { get; set; }
-        public int    QueueId      { get; set; }
+        public string MatchId { get; set; } = string.Empty;
+
+        private long _gameDuration;
+        public long GameDuration
+        {
+            get => _gameDuration;
+            set { if (SetField(ref _gameDuration, value)) OnPropertyChanged(nameof(DurationDisplay)); }
+        }
+
+        private long _gameCreation;
+        public long GameCreation
+        {
+            get => _gameCreation;
+            set => SetField(ref _gameCreation, value);
+        }
+
+        private int _queueId;
+        public int QueueId
+        {
+            get => _queueId;
+            set { if (SetField(ref _queueId, value)) OnPropertyChanged(nameof(QueueName)); }
+        }
 
         private bool _isLoading;
         public bool IsLoading { get => _isLoading; set => SetField(ref _isLoading, value); }
