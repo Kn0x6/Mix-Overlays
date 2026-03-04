@@ -28,9 +28,11 @@ namespace MixOverlays.ViewModels
         {
             try
             {
+                System.Diagnostics.Debug.WriteLine($"[PlayerViewModel.UpdateData] {data?.GameName} | SoloRank={data?.SoloRank?.tier ?? "null"}");
                 _data = data ?? _data; // Ne pas remplacer par null
                 RefreshFromData();
                 UpdateLiveTimer();
+                System.Diagnostics.Debug.WriteLine($"[PlayerViewModel.UpdateData] RefreshFromData terminé | SoloRank exposé={SoloRank?.tier ?? "null"}");
             }
             catch (Exception ex)
             {
@@ -196,6 +198,20 @@ namespace MixOverlays.ViewModels
             OnPropertyChanged(nameof(RecentAvgDurationDisplay));
             OnPropertyChanged(nameof(CurrentStreakDisplay));
             OnPropertyChanged(nameof(CurrentStreakHex));
+        }
+
+        /// <summary>Rafraîchit uniquement les propriétés liées au rang et au statut de chargement.</summary>
+        public void RefreshRankAndStatus()
+        {
+            OnPropertyChanged(nameof(SoloRank));
+            OnPropertyChanged(nameof(FlexRank));
+            OnPropertyChanged(nameof(SoloWinRate));
+            OnPropertyChanged(nameof(SoloWins));
+            OnPropertyChanged(nameof(SoloLosses));
+            OnPropertyChanged(nameof(RankTierDisplay));
+            OnPropertyChanged(nameof(RankLpDisplay));
+            OnPropertyChanged(nameof(IsLoading));
+            OnPropertyChanged(nameof(IsLoaded));
         }
         public string ProfileIconUrl =>
             $"https://ddragon.leagueoflegends.com/cdn/{VersionHolder.Latest}/img/profileicon/{_data.ProfileIconId}.png";

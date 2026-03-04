@@ -738,6 +738,7 @@
                                                                     <ColumnDefinition Width="76"/>  <!-- KDA -->
                                                                     <ColumnDefinition Width="44"/>  <!-- CS -->
                                                                     <ColumnDefinition Width="46"/>  <!-- Champ name -->
+                                                                    <ColumnDefinition Width="44"/>  <!-- Score perf -->
                                                                 </Grid.ColumnDefinitions>
 
                                                                 <!-- Icône champion -->
@@ -800,6 +801,62 @@
                                                                            FontSize="10" VerticalAlignment="Center"
                                                                            HorizontalAlignment="Center"
                                                                            TextTrimming="CharacterEllipsis"/>
+
+                                                                <!-- Score de performance — BlueTeam -->
+                                                                <Grid Grid.Column="6" Width="38" Height="38"
+                                                                      VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                                    <Ellipse StrokeThickness="2.5" Fill="Transparent">
+                                                                        <Ellipse.Style>
+                                                                            <Style TargetType="Ellipse">
+                                                                                <Setter Property="Stroke" Value="#3B82F6"/>
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding PerformanceScore}" Value="100">
+                                                                                        <Setter Property="Stroke" Value="#F5A623"/>
+                                                                                    </DataTrigger>
+                                                                                    <DataTrigger Binding="{Binding PerformanceScore}" Value="99">
+                                                                                        <Setter Property="Stroke" Value="#10B981"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </Ellipse.Style>
+                                                                    </Ellipse>
+                                                                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                                        <TextBlock FontSize="10" FontWeight="Bold" HorizontalAlignment="Center">
+                                                                            <TextBlock.Style>
+                                                                                <Style TargetType="TextBlock">
+                                                                                    <Setter Property="Foreground" Value="#C9D1D9"/>
+                                                                                    <Style.Triggers>
+                                                                                        <DataTrigger Binding="{Binding PerformanceScore}" Value="100">
+                                                                                            <Setter Property="Foreground" Value="#F5A623"/>
+                                                                                        </DataTrigger>
+                                                                                        <DataTrigger Binding="{Binding PerformanceScore}" Value="99">
+                                                                                            <Setter Property="Foreground" Value="#10B981"/>
+                                                                                        </DataTrigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </TextBlock.Style>
+                                                                            <Run Text="{Binding PerformanceScore, Mode=OneWay}"/>
+                                                                        </TextBlock>
+                                                                        <TextBlock FontSize="7" FontWeight="Bold" HorizontalAlignment="Center">
+                                                                            <TextBlock.Style>
+                                                                                <Style TargetType="TextBlock">
+                                                                                    <Setter Property="Text" Value=""/>
+                                                                                    <Setter Property="Foreground" Value="#6B7280"/>
+                                                                                    <Style.Triggers>
+                                                                                        <DataTrigger Binding="{Binding PerformanceScore}" Value="100">
+                                                                                            <Setter Property="Text" Value="MVP"/>
+                                                                                            <Setter Property="Foreground" Value="#F5A623"/>
+                                                                                        </DataTrigger>
+                                                                                        <DataTrigger Binding="{Binding PerformanceScore}" Value="99">
+                                                                                            <Setter Property="Text" Value="ACE"/>
+                                                                                            <Setter Property="Foreground" Value="#10B981"/>
+                                                                                        </DataTrigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </TextBlock.Style>
+                                                                        </TextBlock>
+                                                                    </StackPanel>
+                                                                </Grid>
                                                             </Grid>
                                                         </Border>
                                                     </DataTemplate>
@@ -866,6 +923,7 @@
                                                                     <ColumnDefinition Width="*"/>   <!-- Nom -->
                                                                     <ColumnDefinition Width="22"/>  <!-- Sorts -->
                                                                     <ColumnDefinition Width="34"/>  <!-- Champion icon -->
+                                                                    <ColumnDefinition Width="44"/>  <!-- Score perf -->
                                                                 </Grid.ColumnDefinitions>
 
                                                                 <!-- Champion name -->
@@ -930,6 +988,62 @@
                                                                         VerticalAlignment="Center">
                                                                     <Image Source="{Binding ChampionName, Converter={StaticResource ChampImg}}"/>
                                                                 </Border>
+
+                                                                <!-- Score de performance — RedTeam -->
+                                                                <Grid Grid.Column="6" Width="38" Height="38"
+                                                                      VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                                    <Ellipse StrokeThickness="2.5" Fill="Transparent">
+                                                                        <Ellipse.Style>
+                                                                            <Style TargetType="Ellipse">
+                                                                                <Setter Property="Stroke" Value="#3B82F6"/>
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding PerformanceScore}" Value="100">
+                                                                                        <Setter Property="Stroke" Value="#F5A623"/>
+                                                                                    </DataTrigger>
+                                                                                    <DataTrigger Binding="{Binding PerformanceScore}" Value="99">
+                                                                                        <Setter Property="Stroke" Value="#10B981"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </Ellipse.Style>
+                                                                    </Ellipse>
+                                                                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                                        <TextBlock FontSize="10" FontWeight="Bold" HorizontalAlignment="Center">
+                                                                            <TextBlock.Style>
+                                                                                <Style TargetType="TextBlock">
+                                                                                    <Setter Property="Foreground" Value="#C9D1D9"/>
+                                                                                    <Style.Triggers>
+                                                                                        <DataTrigger Binding="{Binding PerformanceScore}" Value="100">
+                                                                                            <Setter Property="Foreground" Value="#F5A623"/>
+                                                                                        </DataTrigger>
+                                                                                        <DataTrigger Binding="{Binding PerformanceScore}" Value="99">
+                                                                                            <Setter Property="Foreground" Value="#10B981"/>
+                                                                                        </DataTrigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </TextBlock.Style>
+                                                                            <Run Text="{Binding PerformanceScore, Mode=OneWay}"/>
+                                                                        </TextBlock>
+                                                                        <TextBlock FontSize="7" FontWeight="Bold" HorizontalAlignment="Center">
+                                                                            <TextBlock.Style>
+                                                                                <Style TargetType="TextBlock">
+                                                                                    <Setter Property="Text" Value=""/>
+                                                                                    <Setter Property="Foreground" Value="#6B7280"/>
+                                                                                    <Style.Triggers>
+                                                                                        <DataTrigger Binding="{Binding PerformanceScore}" Value="100">
+                                                                                            <Setter Property="Text" Value="MVP"/>
+                                                                                            <Setter Property="Foreground" Value="#F5A623"/>
+                                                                                        </DataTrigger>
+                                                                                        <DataTrigger Binding="{Binding PerformanceScore}" Value="99">
+                                                                                            <Setter Property="Text" Value="ACE"/>
+                                                                                            <Setter Property="Foreground" Value="#10B981"/>
+                                                                                        </DataTrigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </TextBlock.Style>
+                                                                        </TextBlock>
+                                                                    </StackPanel>
+                                                                </Grid>
                                                             </Grid>
                                                         </Border>
                                                     </DataTemplate>

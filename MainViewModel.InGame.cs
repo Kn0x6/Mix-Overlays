@@ -83,63 +83,87 @@ namespace MixOverlays.ViewModels
 
         private async Task LoadChampSelectDataAsync(LcuChampSelectSession session)
         {
-            var allyData  = new List<PlayerData>();
-            var enemyData = new List<PlayerData>();
-
-            // ARAM : tous dans myTeam avec des teamIds différents, theirTeam vide
             bool isAram = !session.theirTeam.Any() && session.myTeam.Count > 5;
             System.Diagnostics.Debug.WriteLine($"[InGame|ChampSelect] my={session.myTeam.Count} their={session.theirTeam.Count} aram={isAram}");
 
             if (isAram)
             {
                 int localTeamId = session.myTeam.FirstOrDefault(m => m.summonerId > 0)?.teamId ?? 100;
-                foreach (var member in session.myTeam.Where(m => m.summonerId > 0))
+                var allMembers  = session.myTeam.Where(m => m.summonerId > 0).ToList();
+
+                // ── Résolution PARALLÈLE de tous les membres ARAM ──
+                var tasks   = allMembers.Select(m => ResolvePlayerFromLcuAsync(m.summonerId, m.puuid, m.teamId));
+                var results = await Task.WhenAll(tasks);
+
+                var allyData  = new List<PlayerData>();
+                var enemyData = new List<PlayerData>();
+
+                for (int i = 0; i < allMembers.Count; i++)
                 {
-                    var pd = await ResolvePlayerFromLcuAsync(member.summonerId, member.puuid, member.teamId);
+                    var pd = results[i];
                     if (pd == null) continue;
-                    pd.ChampionId = member.championId;
-                    if (member.teamId == localTeamId) allyData.Add(pd);
-                    else                              enemyData.Add(pd);
+                    pd.ChampionId = allMembers[i].championId;
+                    if (allMembers[i].teamId == localTeamId) allyData.Add(pd);
+                    else                                     enemyData.Add(pd);
                 }
+
+                Apply(allyData, enemyData);
             }
             else
             {
-                foreach (var member in session.myTeam.Where(m => m.summonerId > 0))
+                var myMembers    = session.myTeam.Where(m => m.summonerId > 0).ToList();
+                var theirMembers = session.isSpectating
+                    ? new List<LcuTheirTeam>()
+                    : session.theirTeam.Where(m => m.summonerId > 0).ToList();
+
+                // ── Résolution PARALLÈLE des deux équipes simultanément ──
+                var myTasks    = myMembers.Select(m => ResolvePlayerFromLcuAsync(m.summonerId, m.puuid, m.teamId));
+                var theirTasks = theirMembers.Select(m => ResolvePlayerFromLcuAsync(m.summonerId, m.puuid, m.teamId));
+
+                var allResults = await Task.WhenAll(myTasks.Concat(theirTasks));
+
+                var allyData  = new List<PlayerData>();
+                var enemyData = new List<PlayerData>();
+
+                for (int i = 0; i < myMembers.Count; i++)
                 {
-                    var pd = await ResolvePlayerFromLcuAsync(member.summonerId, member.puuid, member.teamId);
-                    if (pd != null) { pd.ChampionId = member.championId; allyData.Add(pd); }
+                    var pd = allResults[i];
+                    if (pd == null) continue;
+                    pd.ChampionId = myMembers[i].championId;
+                    allyData.Add(pd);
                 }
-                if (!session.isSpectating)
+                for (int i = 0; i < theirMembers.Count; i++)
                 {
-                    foreach (var member in session.theirTeam.Where(m => m.summonerId > 0))
-                    {
-                        var pd = await ResolvePlayerFromLcuAsync(member.summonerId, member.puuid, member.teamId);
-                        if (pd != null) { pd.ChampionId = member.championId; enemyData.Add(pd); }
-                    }
+                    var pd = allResults[myMembers.Count + i];
+                    if (pd == null) continue;
+                    pd.ChampionId = theirMembers[i].championId;
+                    enemyData.Add(pd);
                 }
+
+                Apply(allyData, enemyData);
             }
 
-            System.Diagnostics.Debug.WriteLine($"[InGame|ChampSelect] ally={allyData.Count} enemy={enemyData.Count}");
-
-            Application.Current.Dispatcher.Invoke(() =>
+            void Apply(List<PlayerData> allyData, List<PlayerData> enemyData)
             {
-                AllyTeam.Clear();
-                foreach (var pd in allyData)  AllyTeam.Add(new PlayerViewModel(pd));
-                EnemyTeam.Clear();
-                foreach (var pd in enemyData) EnemyTeam.Add(new PlayerViewModel(pd));
-            });
+                System.Diagnostics.Debug.WriteLine($"[InGame|ChampSelect] ally={allyData.Count} enemy={enemyData.Count}");
 
-            await Task.WhenAll(
-                allyData .Select(pd => LoadAndRefreshPlayerAsync(pd, AllyTeam))
-                .Concat(enemyData.Select(pd => LoadAndRefreshPlayerAsync(pd, EnemyTeam)))
-            );
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    AllyTeam.Clear();
+                    foreach (var pd in allyData)  AllyTeam.Add(new PlayerViewModel(pd));
+                    EnemyTeam.Clear();
+                    foreach (var pd in enemyData) EnemyTeam.Add(new PlayerViewModel(pd));
+                });
 
-            // ── Tri face-à-face par lane une fois toutes les données chargées ──
-            Application.Current.Dispatcher.Invoke(() =>
-            {
-                SortTeamByLane(AllyTeam);
-                SortTeamByLane(EnemyTeam);
-            });
+                _ = Task.WhenAll(
+                    allyData .Select(pd => LoadAndRefreshPlayerAsync(pd, AllyTeam))
+                    .Concat(enemyData.Select(pd => LoadAndRefreshPlayerAsync(pd, EnemyTeam)))
+                ).ContinueWith(_ => Application.Current.Dispatcher.Invoke(() =>
+                {
+                    SortTeamByLane(AllyTeam);
+                    SortTeamByLane(EnemyTeam);
+                }));
+            }
         }
 
         // ══════════════════════════════════════════════════════════════════════
@@ -442,92 +466,101 @@ namespace MixOverlays.ViewModels
         /// </summary>
         private async Task LoadAndRefreshPlayerAsync(PlayerData pd, ObservableCollection<PlayerViewModel> collection)
         {
-            System.Diagnostics.Debug.WriteLine($"[LOAD] Début pour {pd.GameName}#{pd.TagLine} | PUUID={pd.Puuid?.Substring(0, Math.Min(8, pd.Puuid?.Length ?? 0))}... | ApiKey={!string.IsNullOrEmpty(_settings.Current.RiotApiKey)}");
+            var tag = $"[RANK|{pd.GameName}#{pd.TagLine}]";
+            System.Diagnostics.Debug.WriteLine($"{tag} ══ DÉBUT LoadAndRefreshPlayer ══");
+            System.Diagnostics.Debug.WriteLine($"{tag} PUUID entrant = '{pd.Puuid?.Substring(0, Math.Min(8, pd.Puuid?.Length ?? 0))}...'");
+            System.Diagnostics.Debug.WriteLine($"{tag} ApiKey présente = {!string.IsNullOrEmpty(_settings.Current.RiotApiKey)}");
 
             if (string.IsNullOrEmpty(_settings.Current.RiotApiKey))
             {
-                System.Diagnostics.Debug.WriteLine($"[LOAD] SKIP - ApiKey vide");
+                System.Diagnostics.Debug.WriteLine($"{tag} ❌ SKIP — ApiKey vide");
                 return;
             }
 
-            // ── FIX : Valider le PUUID LCU en le convertissant en PUUID Riot ──
-            string? riotPuuid = pd.Puuid;
-            string  gameName  = pd.GameName;
-            string  tagLine   = pd.TagLine;
-
-            if (!string.IsNullOrEmpty(riotPuuid))
+            if (string.IsNullOrEmpty(pd.Puuid))
             {
-                // Tenter de valider le PUUID via l'Account API
-                var account = await _riot.GetAccountByPuuidAsync(riotPuuid);
-                if (account != null)
-                {
-                    // PUUID valide côté Riot — on met à jour gameName/tagLine si besoin
-                    riotPuuid = account.puuid; // normaliser
-                    if (!string.IsNullOrEmpty(account.gameName)) gameName = account.gameName;
-                    if (!string.IsNullOrEmpty(account.tagLine)) tagLine = account.tagLine;
-                    System.Diagnostics.Debug.WriteLine($"[LOAD] PUUID validé via Account API → {gameName}#{tagLine}");
-                }
-                else
-                {
-                    // PUUID LCU invalide côté Riot → fallback par RiotId
-                    System.Diagnostics.Debug.WriteLine($"[LOAD] PUUID invalide côté Riot, fallback par RiotId: {gameName}#{tagLine}");
-                    riotPuuid = null;
-                }
-            }
-
-            // Fallback : résoudre par GameName#TagLine si le PUUID est invalide
-            if (string.IsNullOrEmpty(riotPuuid) && !string.IsNullOrEmpty(gameName) && !string.IsNullOrEmpty(tagLine))
-            {
-                var accountByRiotId = await _riot.GetAccountByRiotIdAsync(gameName, tagLine);
-                if (accountByRiotId != null)
-                {
-                    riotPuuid = accountByRiotId.puuid;
-                    gameName = accountByRiotId.gameName;
-                    tagLine = accountByRiotId.tagLine;
-                    System.Diagnostics.Debug.WriteLine($"[LOAD] Résolu par RiotId → PUUID={riotPuuid?.Substring(0, 8)}...");
-                }
-            }
-
-            if (string.IsNullOrEmpty(riotPuuid))
-            {
-                System.Diagnostics.Debug.WriteLine($"[LOAD] SKIP - Impossible de résoudre le PUUID pour {gameName}#{tagLine}");
+                System.Diagnostics.Debug.WriteLine($"{tag} ❌ SKIP — PUUID vide");
                 return;
             }
 
-            // Mettre à jour le PUUID dans le PlayerData pour que le VM match
-            string originalPuuid = pd.Puuid;
-            pd.Puuid = riotPuuid!;
-            pd.GameName = gameName;
-            pd.TagLine = tagLine;
-
-            // Mettre à jour le PUUID dans le ViewModel si changé
-            if (originalPuuid != riotPuuid)
+            // ── Vérification que le VM est bien dans la collection ──
+            int collCount = 0;
+            string? vmPuuidInCollection = null;
+            Application.Current.Dispatcher.Invoke(() =>
             {
+                collCount = collection.Count;
+                vmPuuidInCollection = collection.FirstOrDefault(v => v.Data.Puuid == pd.Puuid)?.Data.Puuid;
+            });
+            System.Diagnostics.Debug.WriteLine($"{tag} Collection.Count={collCount} | VM trouvé avant chargement={vmPuuidInCollection != null}");
+            if (vmPuuidInCollection == null)
+            {
+                System.Diagnostics.Debug.WriteLine($"{tag} ⚠️ VM introuvable dans la collection ! PUUIDs présents :");
                 Application.Current.Dispatcher.Invoke(() =>
                 {
-                    var vm = collection.FirstOrDefault(v => v.Data.Puuid == originalPuuid);
-                    if (vm != null) vm.Data.Puuid = riotPuuid!;
+                    foreach (var v in collection)
+                        System.Diagnostics.Debug.WriteLine($"  → '{v.Data.Puuid?.Substring(0, Math.Min(8, v.Data.Puuid?.Length ?? 0))}...' ({v.Data.GameName})");
                 });
             }
 
-            var fullData = await _riot.LoadFullPlayerDataAsync(riotPuuid!, gameName, tagLine, matchCount: 5);
-            System.Diagnostics.Debug.WriteLine($"[LOAD] fullData pour {gameName}: SoloRank={fullData.SoloRank?.tier ?? "null"}, Icon={fullData.ProfileIconId}, Level={fullData.SummonerLevel}, Error={fullData.ErrorMessage ?? "none"}");
+            // ── Chargement données complètes ──
+            System.Diagnostics.Debug.WriteLine($"{tag} Appel LoadFullPlayerDataAsync...");
+            PlayerData fullData;
+            try
+            {
+                fullData = await _riot.LoadFullPlayerDataAsync(pd.Puuid, pd.GameName, pd.TagLine, matchCount: 5);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"{tag} ❌ EXCEPTION LoadFullPlayerDataAsync : {ex.Message}");
+                return;
+            }
 
-fullData.TeamId       = pd.TeamId;
-fullData.ChampionId   = pd.ChampionId;
-fullData.ChampionName = pd.ChampionId > 0
-    ? _champions.GetName(pd.ChampionId)
-    : pd.ChampionName;
-fullData.LiveSpell1Id = pd.LiveSpell1Id;
-fullData.LiveSpell2Id = pd.LiveSpell2Id;
-foreach (var m in fullData.TopMasteries) m.ChampionName = _champions.GetName(m.championId);
+            System.Diagnostics.Debug.WriteLine($"{tag} ── Résultat LoadFullPlayerDataAsync ──");
+            System.Diagnostics.Debug.WriteLine($"{tag}   SoloRank       = {(fullData.SoloRank != null ? $"{fullData.SoloRank.tier} {fullData.SoloRank.rank} {fullData.SoloRank.leaguePoints}LP" : "NULL")}");
+            System.Diagnostics.Debug.WriteLine($"{tag}   FlexRank       = {(fullData.FlexRank != null ? $"{fullData.FlexRank.tier} {fullData.FlexRank.rank}" : "NULL")}");
+            System.Diagnostics.Debug.WriteLine($"{tag}   ProfileIconId  = {fullData.ProfileIconId}");
+            System.Diagnostics.Debug.WriteLine($"{tag}   SummonerLevel  = {fullData.SummonerLevel}");
+            System.Diagnostics.Debug.WriteLine($"{tag}   IsLoaded       = {fullData.IsLoaded}");
+            System.Diagnostics.Debug.WriteLine($"{tag}   ErrorMessage   = '{fullData.ErrorMessage ?? "aucune"}'");
+            System.Diagnostics.Debug.WriteLine($"{tag}   TopMasteries   = {fullData.TopMasteries.Count}");
+            System.Diagnostics.Debug.WriteLine($"{tag}   RecentMatches  = {fullData.RecentMatches.Count}");
 
+            // ── Copie des champs live dans fullData ──
+            fullData.TeamId       = pd.TeamId;
+            fullData.ChampionId   = pd.ChampionId;
+            fullData.ChampionName = pd.ChampionId > 0 ? _champions.GetName(pd.ChampionId) : pd.ChampionName;
+            fullData.LiveSpell1Id = pd.LiveSpell1Id;
+            fullData.LiveSpell2Id = pd.LiveSpell2Id;
+            foreach (var m in fullData.TopMasteries) m.ChampionName = _champions.GetName(m.championId);
+
+            System.Diagnostics.Debug.WriteLine($"{tag} ChampionName résolu = '{fullData.ChampionName}'");
+
+            // ── Mise à jour du ViewModel sur le Dispatcher ──
             Application.Current.Dispatcher.Invoke(() =>
             {
-                var vm = collection.FirstOrDefault(v => v.Data.Puuid == riotPuuid);
-                System.Diagnostics.Debug.WriteLine($"[LOAD] VM trouvé={vm != null} pour {gameName} | Collection count={collection.Count}");
-                vm?.UpdateData(fullData);
+                var vm = collection.FirstOrDefault(v => v.Data.Puuid == pd.Puuid);
+                System.Diagnostics.Debug.WriteLine($"{tag} VM trouvé pour UpdateData = {vm != null}");
+
+                if (vm == null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"{tag} ❌ VM introuvable — recherche par GameName...");
+                    vm = collection.FirstOrDefault(v => v.Data.GameName == pd.GameName);
+                    System.Diagnostics.Debug.WriteLine($"{tag} VM par GameName = {vm != null}");
+                }
+
+                if (vm != null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"{tag} ✅ Appel UpdateData — SoloRank avant={vm.SoloRank?.tier ?? "null"}");
+                    vm.UpdateData(fullData);
+                    System.Diagnostics.Debug.WriteLine($"{tag} ✅ UpdateData terminé — SoloRank après={vm.SoloRank?.tier ?? "null"}");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"{tag} ❌ IMPOSSIBLE de trouver le VM, le rang ne sera pas affiché !");
+                }
             });
+
+            System.Diagnostics.Debug.WriteLine($"{tag} ══ FIN LoadAndRefreshPlayer ══");
         }
 
         // ══════════════════════════════════════════════════════════════════════

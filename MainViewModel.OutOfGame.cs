@@ -632,41 +632,78 @@ var participants = summary.AllParticipants.Select(p => new MatchParticipantViewM
             var allyParticipants  = focusInSide1 ? side1 : side2;
             var enemyParticipants = focusInSide1 ? side2 : side1;
 
-            void BuildSide(List<SpectatorParticipant> participants,
-                           ObservableCollection<PlayerViewModel> collection,
-                           int teamId)
-            {
-                foreach (var p in participants)
-                {
-                    // Tout vient directement de SpectatorGameInfo — 0 appel API
-                    var pd = new PlayerData
-                    {
-                        Puuid        = p.puuid,
-                        GameName     = p.summonerName, // déjà dans les données spectateur
-                        TagLine      = string.Empty,
-                        ChampionId   = p.championId,
-                        ChampionName = _champions.GetName(p.championId),
-                        TeamId       = teamId,
-                        LiveSpell1Id = p.spell1Id,
-                        LiveSpell2Id = p.spell2Id,
-                        IsLoading    = false,
-                        IsLoaded     = true,
-                    };
-                    collection.Add(new PlayerViewModel(pd));
-                }
-            }
-
-            // Tout sur le dispatcher, synchrone, instantané
+            // ── Étape 1 : affichage instantané (champion + sorts, sans rang) ──
             Application.Current.Dispatcher.Invoke(() =>
             {
                 detail.AllyTeam.Clear();
                 detail.EnemyTeam.Clear();
-                BuildSide(allyParticipants,  detail.AllyTeam,  focusInSide1 ? 100 : 200);
-                BuildSide(enemyParticipants, detail.EnemyTeam, focusInSide1 ? 200 : 100);
+
+                foreach (var p in allyParticipants)
+                    detail.AllyTeam.Add(new PlayerViewModel(new PlayerData
+                    {
+                        Puuid        = p.puuid,
+                        GameName     = p.summonerName,
+                        TagLine      = string.Empty,
+                        ChampionId   = p.championId,
+                        ChampionName = _champions.GetName(p.championId),
+                        TeamId       = focusInSide1 ? 100 : 200,
+                        LiveSpell1Id = p.spell1Id,
+                        LiveSpell2Id = p.spell2Id,
+                        IsLoading    = true,   // ← spinner actif pendant chargement du rang
+                        IsLoaded     = false,
+                    }));
+
+                foreach (var p in enemyParticipants)
+                    detail.EnemyTeam.Add(new PlayerViewModel(new PlayerData
+                    {
+                        Puuid        = p.puuid,
+                        GameName     = p.summonerName,
+                        TagLine      = string.Empty,
+                        ChampionId   = p.championId,
+                        ChampionName = _champions.GetName(p.championId),
+                        TeamId       = focusInSide1 ? 200 : 100,
+                        LiveSpell1Id = p.spell1Id,
+                        LiveSpell2Id = p.spell2Id,
+                        IsLoading    = true,
+                        IsLoaded     = false,
+                    }));
+
                 detail.IsLoading = false;
             });
 
-            await Task.CompletedTask; // méthode gardée async pour compatibilité
+            // ── Étape 2 : chargement des rangs en arrière-plan (parallèle) ──
+            if (string.IsNullOrEmpty(_settings.Current.RiotApiKey)) return;
+
+            var allParticipants = allyParticipants.Concat(enemyParticipants).ToList();
+
+            var rankTasks = allParticipants.Select(async p =>
+            {
+                if (string.IsNullOrEmpty(p.puuid)) return;
+                try
+                {
+                    var entries = await _riot.GetLeagueEntriesByPuuidAsync(p.puuid);
+                    var solo    = entries?.FirstOrDefault(e => e.queueType == "RANKED_SOLO_5x5");
+
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        // Cherche le VM dans les deux équipes
+                        var vm = detail.AllyTeam .FirstOrDefault(v => v.Data.Puuid == p.puuid)
+                              ?? detail.EnemyTeam.FirstOrDefault(v => v.Data.Puuid == p.puuid);
+                        if (vm == null) return;
+
+                        vm.Data.SoloRank  = solo;
+                        vm.Data.IsLoading = false;
+                        vm.Data.IsLoaded  = true;
+                        vm.RefreshRankAndStatus();
+                    });
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[LiveGame|Rank] Erreur pour {p.summonerName}: {ex.Message}");
+                }
+            }).ToList();
+
+            await Task.WhenAll(rankTasks);
         }
 
         // ══════════════════════════════════════════════════════════════════════
