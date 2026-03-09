@@ -605,6 +605,8 @@ namespace MixOverlays.Services
         }
 
         // ─── Public API ────────────────────────────────────────────────────────
+        public HttpClient? GetHttpClient() => _client;
+
         public async Task<T?> GetAsync<T>(string endpoint)
         {
             if (_client == null) return default;

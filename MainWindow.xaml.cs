@@ -160,7 +160,21 @@ namespace MixOverlays.Views
         }
 
         private void MinimizeButton_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
-        private void CloseButton_Click(object sender, RoutedEventArgs e)    => Close();
+        private void CloseButton_Click(object sender, RoutedEventArgs e)
+        {
+            Hide();
+        }
+
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        {
+            if (!App.IsReallyClosing)
+            {
+                e.Cancel = true;
+                Hide();
+                return;
+            }
+            base.OnClosing(e);
+        }
 
         private bool _isFullscreen;
         private double _prevLeft, _prevTop, _prevWidth, _prevHeight;
@@ -216,7 +230,7 @@ namespace MixOverlays.Views
         // ─── Navigation ───────────────────────────────────────────────────────
         private void NavButton_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is Button btn && btn.Tag is string page)
+            if (sender is System.Windows.Controls.Button btn && btn.Tag is string page)
             {
                 SetActiveNav(page);
                 if (page == "MyAccount" && _vm.MyAccount == null && _vm.IsConnected)
@@ -248,15 +262,15 @@ namespace MixOverlays.Views
             if (_vm != null) _vm.SelectedMatch = null;
         }
 
-        private static void HighlightNavButton(Button btn, bool active)
+        private static void HighlightNavButton(System.Windows.Controls.Button btn, bool active)
         {
-            btn.Background = active ? new SolidColorBrush(Color.FromArgb(30, 31, 111, 235)) : Brushes.Transparent;
+            btn.Background = active ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(30, 31, 111, 235)) : System.Windows.Media.Brushes.Transparent;
             btn.Foreground = active
-                ? new SolidColorBrush(Color.FromRgb(56, 139, 253))
-                : new SolidColorBrush(Color.FromRgb(139, 148, 158));
+                ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(56, 139, 253))
+                : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(139, 148, 158));
         }
 
-        private void SearchBox_KeyDown(object sender, KeyEventArgs e)
+        private void SearchBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
             if (e.Key == Key.Return && _vm.SearchPlayerCommand.CanExecute(null))
                 _vm.SearchPlayerCommand.Execute(null);
@@ -284,4 +298,5 @@ namespace MixOverlays.Views
             }
         }
     }
+
 }
