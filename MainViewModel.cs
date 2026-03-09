@@ -19,6 +19,7 @@ namespace MixOverlays.ViewModels
         private readonly RiotApiService      _riot;
         private readonly SettingsService     _settings;
         private readonly ChampionDataService _champions = new();
+        private readonly LpTrackerService    _lpTracker = new();
 
         // ─── Déclarations des méthodes partielles ─────────────────────────────
         //  Chaque fichier partiel implémente sa propre initialisation.
@@ -105,6 +106,30 @@ namespace MixOverlays.ViewModels
             // ── Événements LCU (état de connexion) ──
             _lcu.StateChanged += OnLcuStateChanged;
 
+            // ── Événements LCU pour le tracker LP ──
+            _lcu.StateChanged += (_, e) =>
+            {
+                var client = _lcu.GetHttpClient();
+                if (client != null)
+                    _lpTracker.SetLcuClient(client);
+            };
+
+            _lcu.GameflowSessionUpdated += async (_, session) =>
+                await _lpTracker.OnGameflowPhaseChanged(session.phase);
+
+            _lpTracker.HistoryUpdated += (_, __) =>
+            {
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    MyAccount?.SetLpHistory(_lpTracker.LpHistory);
+                    RefreshLpChart();
+                });
+            };
+
+            // Charger l'historique existant au démarrage
+            if (MyAccount != null)
+                MyAccount.SetLpHistory(_lpTracker.LpHistory);
+
             _ = _champions.EnsureLoadedAsync();
 
             // Pré-charger le dernier profil connu au démarrage si le client LoL est fermé
@@ -147,6 +172,13 @@ namespace MixOverlays.ViewModels
         // ─── Hook partiel pour InGame ─────────────────────────────────────────
         //  Appelé par OnLcuStateChanged pour que InGame nettoie ses équipes.
         partial void OnLcuStateChangedInGame(LcuState state);
+
+        // ─── Méthode pour rafraîchir le graphique LP ──────────────────────────
+        private void RefreshLpChart()
+        {
+            // Cette méthode sera implémentée dans les fichiers partiels selon le besoin
+            // Par exemple, dans MainWindow.xaml.cs ou PlayerCard.xaml.cs
+        }
     }
 
     // ══════════════════════════════════════════════════════════════════════════

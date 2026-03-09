@@ -1,0 +1,10 @@
+<UserControl x:Class="MixOverlays.Views.LpChartControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Name="Root">
+
+    <!-- Canvas principal — tout est dessiné en code-behind -->
+    <Canvas x:Name="ChartCanvas" Background="Transparent"
+            SizeChanged="ChartCanvas_SizeChanged"/>
+
+</UserControl>

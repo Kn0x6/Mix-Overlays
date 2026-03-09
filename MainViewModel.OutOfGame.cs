@@ -279,12 +279,18 @@ namespace MixOverlays.ViewModels
                         }
                     }
 
-                    Application.Current.Dispatcher.Invoke(() =>
+                    System.Windows.Application.Current.Dispatcher.Invoke(() =>
                     {
                         try
                         {
                             MyAccount?.UpdateData(fullData);
                             StatusMessage = $"Données chargées pour {account.gameName}#{account.tagLine}";
+                            
+                            // Seed LP depuis l'historique déjà chargé
+                            if (MyAccount?.Data?.RecentMatches != null)
+                                _lpTracker.SeedFromMatchHistory(
+                                    MyAccount.Data.RecentMatches,
+                                    MyAccount.Data.SoloRank);
                         }
                         catch (Exception ex)
                         {
@@ -367,7 +373,7 @@ namespace MixOverlays.ViewModels
                 var fullData = await _riot.LoadFullPlayerDataAsync(account.puuid, account.gameName, account.tagLine);
                 foreach (var m in fullData.TopMasteries) m.ChampionName = _champions.GetName(m.championId);
 
-                Application.Current.Dispatcher.Invoke(() =>
+                System.Windows.Application.Current.Dispatcher.Invoke(() =>
                 {
                     SearchedPlayer.UpdateData(fullData);
                     StatusMessage = $"Données chargées pour {account.gameName}#{account.tagLine}";
@@ -405,7 +411,7 @@ namespace MixOverlays.ViewModels
                 pvm.IsLoadingMoreMatches = true;
                 var newMatches = await _riot.LoadMoreMatchesAsync(pvm.Data);
 
-                Application.Current.Dispatcher.Invoke(() =>
+                System.Windows.Application.Current.Dispatcher.Invoke(() =>
                 {
                     pvm.RefreshMatchesAndPagination();
                 });
@@ -587,7 +593,7 @@ var participants = summary.AllParticipants.Select(p => new MatchParticipantViewM
                     var solo    = entries?.FirstOrDefault(e => e.queueType == "RANKED_SOLO_5x5");
                     if (solo != null)
                     {
-                        Application.Current.Dispatcher.Invoke(() =>
+                        System.Windows.Application.Current.Dispatcher.Invoke(() =>
                         {
                             participant.Tier         = solo.tier;
                             participant.Rank         = solo.rank;
@@ -601,7 +607,7 @@ var participants = summary.AllParticipants.Select(p => new MatchParticipantViewM
 
             await Task.WhenAll(tasks);
 
-            Application.Current.Dispatcher.Invoke(() =>
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
                 detail.PlayerRows = BuildPlayerRows(
                     detail.BlueTeam.ToList(),
@@ -616,7 +622,7 @@ var participants = summary.AllParticipants.Select(p => new MatchParticipantViewM
         private async Task LoadLiveGameDetailAsync(SpectatorGameInfo game, string focusPuuid)
         {
             var detail = new LiveGameDetailViewModel { IsLoading = true };
-            Application.Current.Dispatcher.Invoke(() => LiveGameDetail = detail);
+            System.Windows.Application.Current.Dispatcher.Invoke(() => LiveGameDetail = detail);
 
             if (game.participants == null || game.participants.Count == 0)
             {
@@ -633,7 +639,7 @@ var participants = summary.AllParticipants.Select(p => new MatchParticipantViewM
             var enemyParticipants = focusInSide1 ? side2 : side1;
 
             // ── Étape 1 : affichage instantané (champion + sorts, sans rang) ──
-            Application.Current.Dispatcher.Invoke(() =>
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
                 detail.AllyTeam.Clear();
                 detail.EnemyTeam.Clear();
@@ -684,7 +690,7 @@ var participants = summary.AllParticipants.Select(p => new MatchParticipantViewM
                     var entries = await _riot.GetLeagueEntriesByPuuidAsync(p.puuid);
                     var solo    = entries?.FirstOrDefault(e => e.queueType == "RANKED_SOLO_5x5");
 
-                    Application.Current.Dispatcher.Invoke(() =>
+                    System.Windows.Application.Current.Dispatcher.Invoke(() =>
                     {
                         // Cherche le VM dans les deux équipes
                         var vm = detail.AllyTeam .FirstOrDefault(v => v.Data.Puuid == p.puuid)
@@ -815,7 +821,7 @@ if (me != null && !string.IsNullOrEmpty(me.gameName))
                 foreach (var m in fullData.TopMasteries)
                     m.ChampionName = _champions.GetName(m.championId);
 
-                Application.Current.Dispatcher.Invoke(() =>
+                System.Windows.Application.Current.Dispatcher.Invoke(() =>
                 {
                     var placeholder = new PlayerData
                     {

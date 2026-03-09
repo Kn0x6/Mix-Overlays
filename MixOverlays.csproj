@@ -13,6 +13,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="H.NotifyIcon.Wpf" Version="2.1.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
     <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
@@ -20,8 +21,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Icone.ico doit être une Resource WPF pour que TaskbarIcon puisse le charger -->
+    <Resource Include="Icone.ico" />
     <Resource Include="Icone.jpeg" />
   </ItemGroup>
-
 
 </Project>
