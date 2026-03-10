@@ -8,6 +8,7 @@
         MinWidth="860" MinHeight="600"
         Background="{StaticResource BgDeepBrush}"
         WindowStyle="None" AllowsTransparency="True"
+        ShowInTaskbar="True"
         ResizeMode="CanResizeWithGrip">
 
     <Window.Resources>
