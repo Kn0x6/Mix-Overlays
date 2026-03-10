@@ -119,16 +119,28 @@ namespace MixOverlays.ViewModels
 
             _lpTracker.HistoryUpdated += (_, __) =>
             {
+                App.Log($"[VM] HistoryUpdated fired — {_lpTracker.LpHistory.Count} snapshots, MyAccount={MyAccount?.Data?.GameName ?? "NULL"}");
                 Application.Current.Dispatcher.Invoke(() =>
                 {
-                    MyAccount?.SetLpHistory(_lpTracker.LpHistory);
+                    if (MyAccount != null)
+                    {
+                        App.Log($"[VM] → SetLpHistory sur MyAccount");
+                        MyAccount.SetLpHistory(_lpTracker.LpHistory);
+                    }
+                    else
+                    {
+                        App.Log($"[VM] → MyAccount est NULL, SetLpHistory ignoré !");
+                    }
                     RefreshLpChart();
                 });
             };
 
             // Charger l'historique existant au démarrage
+            App.Log($"[VM] Démarrage — LpHistory déjà chargé : {_lpTracker.LpHistory.Count} snapshots, MyAccount={MyAccount?.Data?.GameName ?? "NULL"}");
             if (MyAccount != null)
                 MyAccount.SetLpHistory(_lpTracker.LpHistory);
+            else
+                App.Log("[VM] ⚠ MyAccount NULL au démarrage — SetLpHistory ignoré");
 
             _ = _champions.EnsureLoadedAsync();
 
@@ -176,8 +188,8 @@ namespace MixOverlays.ViewModels
         // ─── Méthode pour rafraîchir le graphique LP ──────────────────────────
         private void RefreshLpChart()
         {
-            // Cette méthode sera implémentée dans les fichiers partiels selon le besoin
-            // Par exemple, dans MainWindow.xaml.cs ou PlayerCard.xaml.cs
+            App.Log($"[VM] RefreshLpChart — MyAccount={MyAccount?.Data?.GameName ?? "NULL"}, " +
+                    $"HasLpData={MyAccount?.HasLpData}, Snapshots={MyAccount?.LpSnapshots?.Count ?? 0}");
         }
     }
 

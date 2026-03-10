@@ -285,12 +285,24 @@ namespace MixOverlays.ViewModels
                         {
                             MyAccount?.UpdateData(fullData);
                             StatusMessage = $"Données chargées pour {account.gameName}#{account.tagLine}";
-                            
-                            // Seed LP depuis l'historique déjà chargé
+
+                            // ── LP : seed puis injection directe (même si Seed ignoré) ──
                             if (MyAccount?.Data?.RecentMatches != null)
+                            {
+                                App.Log($"[OutOfGame] Appel SeedFromMatchHistory — {MyAccount.Data.RecentMatches.Count} parties, SoloRank={MyAccount.Data.SoloRank?.tier ?? "null"}");
                                 _lpTracker.SeedFromMatchHistory(
                                     MyAccount.Data.RecentMatches,
                                     MyAccount.Data.SoloRank);
+                            }
+                            else
+                            {
+                                App.Log("[OutOfGame] ⚠ RecentMatches null — Seed ignoré");
+                            }
+
+                            // Toujours appeler SetLpHistory directement :
+                            // HistoryUpdated ne fire PAS si le seed est ignoré (historique existant)
+                            App.Log($"[OutOfGame] SetLpHistory direct — {_lpTracker.LpHistory.Count} snapshots");
+                            MyAccount?.SetLpHistory(_lpTracker.LpHistory);
                         }
                         catch (Exception ex)
                         {
@@ -805,7 +817,7 @@ if (me != null && !string.IsNullOrEmpty(me.gameName))
         public async Task LoadMyAccountFromCacheAsync()
         {
             if (!_settings.Current.HasLastKnownProfile) return;
-            if (MyAccount != null) return;                      // déjà chargé
+            if (MyAccount != null) return;
             if (string.IsNullOrEmpty(_settings.Current.RiotApiKey)) return;
 
             try
@@ -821,7 +833,7 @@ if (me != null && !string.IsNullOrEmpty(me.gameName))
                 foreach (var m in fullData.TopMasteries)
                     m.ChampionName = _champions.GetName(m.championId);
 
-                System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                Application.Current.Dispatcher.Invoke(() =>
                 {
                     var placeholder = new PlayerData
                     {
@@ -831,10 +843,25 @@ if (me != null && !string.IsNullOrEmpty(me.gameName))
                     };
                     MyAccount = new PlayerViewModel(placeholder);
                     MyAccount.UpdateData(fullData);
+
+                    // ── LP Seed + injection (manquait ici) ──────────────────────────
+                    App.Log($"[Cache] SeedFromMatchHistory — {fullData.RecentMatches?.Count ?? 0} parties, SoloRank={fullData.SoloRank?.tier ?? "null"}");
+                    if (fullData.RecentMatches != null)
+                        _lpTracker.SeedFromMatchHistory(fullData.RecentMatches, fullData.SoloRank);
+
+                    App.Log($"[Cache] SetLpHistory direct — {_lpTracker.LpHistory.Count} snapshots");
+                    MyAccount.SetLpHistory(_lpTracker.LpHistory);
                 });
             }
-            catch (Exception ex) { MyAccountError = $"Erreur chargement hors-ligne : {ex.Message}"; }
-            finally { IsLoadingMyAccount = false; }
+            catch (Exception ex)
+            {
+                MyAccountError = $"Erreur chargement hors-ligne : {ex.Message}";
+                App.Log($"[Cache] Exception : {ex.Message}");
+            }
+            finally
+            {
+                IsLoadingMyAccount = false;
+            }
         }
     }
 }

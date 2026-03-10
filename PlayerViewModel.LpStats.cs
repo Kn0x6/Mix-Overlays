@@ -28,6 +28,7 @@ namespace MixOverlays.ViewModels
         public void SetLpHistory(IEnumerable<LpSnapshot> history)
         {
             _lpHistory = history.ToList();
+            App.Log($"[PlayerVM] SetLpHistory — {_lpHistory.Count} snapshots, HasLpData={HasLpData}");
             RefreshLpStats();
         }
 
@@ -86,6 +87,7 @@ namespace MixOverlays.ViewModels
 
         private void RefreshLpStats()
         {
+            App.Log($"[PlayerVM] RefreshLpStats — firing PropertyChanged(LpSnapshots), count={_lpHistory.Count}");
             OnPropertyChanged(nameof(LpSnapshots));
             OnPropertyChanged(nameof(HasLpData));
             OnPropertyChanged(nameof(LpDelta7d));

@@ -681,10 +681,10 @@
                             </Grid>
 
                             <!-- Courbe LP -->
-                            <views:LpChartControl x:Name="LpChart"
-                                Height="72"
-                                Margin="0,0,0,4"
-                                Visibility="{Binding HasLpData, Converter={StaticResource BoolVis}}"/>
+<views:LpChartControl x:Name="LpChart"
+    Height="90"
+    Margin="0,0,0,4"
+    Visibility="{Binding HasLpData, Converter={StaticResource BoolVis}}"/>
 
                             <!-- Placeholder si pas de données -->
                             <Border CornerRadius="6" Background="#0F172A" Padding="8,10" Margin="0,0,0,4">
