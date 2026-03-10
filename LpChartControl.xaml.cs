@@ -40,7 +40,119 @@ namespace MixOverlays.Views
             Redraw();
         }
 
+        // ── Padding (identique à Redraw) ──────────────────────────────────────────
+        private const double PadLeft   = 24;
+        private const double PadRight  = 6;
+        private const double PadTop    = 4;
+        private const double PadBottom = 13;
+
         private void ChartCanvas_SizeChanged(object sender, SizeChangedEventArgs e) => Redraw();
+
+        private void ChartCanvas_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            if (_snapshots.Count < 2) { TooltipBorder.Visibility = Visibility.Collapsed; return; }
+
+            var pos = e.GetPosition(ChartCanvas);
+            double w  = ChartCanvas.ActualWidth;
+            double h  = ChartCanvas.ActualHeight;
+            double cW = w - PadLeft - PadRight;
+            double cH = h - PadTop  - PadBottom;
+            int    n  = _snapshots.Count;
+
+            int idx = Math.Max(0, Math.Min(n - 1, (int)Math.Round((pos.X - PadLeft) / cW * (n - 1))));
+
+            var    values      = BuildCumulative(_snapshots);
+            double minGrid     = Math.Floor(values.Min() / 25.0) * 25.0;
+            double maxGrid     = Math.Ceiling(values.Max() / 25.0) * 25.0;
+            if (maxGrid <= minGrid) maxGrid = minGrid + 25;
+            double range       = maxGrid - minGrid;
+
+            // ── Rang calculé via ComputeRankLabel (déjà correct dans le code) ────────
+            double deltaFromBase = values[idx] - values[0];
+            string rankLabel     = ComputeRankLabel(_snapshots[0], deltaFromBase);
+
+            // ── Remplir le tooltip (date + rang/LP seulement, pas de gain) ────────────
+            var snap = _snapshots[idx];
+            TipDate.Text = snap.Timestamp.ToLocalTime().ToString("dd/MM");
+            TipRank.Text = $"{rankLabel} — {(int)values[idx] % 100} LP";
+
+            // ── Position du tooltip ───────────────────────────────────────────────────
+            double cx  = PadLeft + idx * cW / Math.Max(n - 1, 1);
+            double cy  = PadTop  + cH - (values[idx] - minGrid) / range * cH;
+            double tx  = cx + 10;
+            double ty  = cy - 42;
+            if (tx + 100 > w) tx = cx - 108;
+            if (ty < 0)       ty = cy + 6;
+
+            TooltipBorder.Margin     = new Thickness(tx, ty, 0, 0);
+            TooltipBorder.Visibility = Visibility.Visible;
+
+            // ── Ligne verticale + point de survol ─────────────────────────────────────
+            Redraw();
+            ChartCanvas.Children.Add(new Line
+            {
+                X1 = cx, X2 = cx, Y1 = PadTop, Y2 = PadTop + cH,
+                Stroke = new SolidColorBrush(Color.FromArgb(0x50, 0xFF, 0xFF, 0xFF)),
+                StrokeThickness = 1,
+                StrokeDashArray = new DoubleCollection { 3, 2 }
+            });
+            var dot = new Ellipse { Width = 7, Height = 7, Fill = LineBrush };
+            Canvas.SetLeft(dot, cx - 3.5);
+            Canvas.SetTop(dot,  cy - 3.5);
+            ChartCanvas.Children.Add(dot);
+        }
+
+        private void ChartCanvas_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            TooltipBorder.Visibility = Visibility.Collapsed;
+            Redraw();
+        }
+
+        // ── Calcule le rang correct depuis la valeur LP cumulée ──────────────────
+        // Le snapshot[0] est le plus récent (position de référence réelle)
+        private static string ComputeRankDisplay(LpSnapshot reference, double cumulativeValue)
+        {
+            // LP absolu = LP du snap[0] + delta cumulé par rapport à snap[0]
+            // Attention : _snapshots est ordonné récent→ancien, values[0]=snap[0].LP
+            // donc cumulativeValue est déjà l'absolu LP relatif
+            double absoluteLp = cumulativeValue;
+
+            string[] tiers = { "Iron", "Bronze", "Silver", "Gold", "Platinum", "Emerald", "Diamond" };
+            string[] divs  = { "IV", "III", "II", "I" };
+
+            int baseTier = TierVal(reference.Tier);
+            int baseDiv  = RankVal(reference.Rank);
+            int baseLp   = reference.LeaguePoints;
+
+            // LP total absolu depuis Iron IV 0
+            int baseAbsolute = baseTier * 400 + baseDiv * 100 + baseLp;
+            int absTotal     = (int)Math.Round(baseAbsolute + (absoluteLp - baseLp));
+
+            // Clamp
+            absTotal = Math.Max(0, absTotal);
+
+            int tier = Math.Min(absTotal / 400, tiers.Length - 1);
+            int rem  = absTotal % 400;
+            int div  = Math.Min(rem / 100, 3);
+            int lp   = rem % 100;
+
+            string tierAbbr = tier switch
+            {
+                0 => "F", 1 => "B", 2 => "S", 3 => "G", 4 => "P", 5 => "E", 6 => "D", _ => "?"
+            };
+
+            return $"{tierAbbr}{div + 1} — {lp} LP";
+        }
+
+        private static double BuildMinGrid(List<double> values)
+            => Math.Floor(values.Min() / 25.0) * 25.0;
+
+        private static double BuildRange(List<double> values)
+        {
+            double min = BuildMinGrid(values);
+            double max = Math.Ceiling(values.Max() / 25.0) * 25.0;
+            return Math.Max(max - min, 25);
+        }
 
         // ═════════════════════════════════════════════════════════════════════
         //  RENDU PRINCIPAL

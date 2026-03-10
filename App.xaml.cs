@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 using H.NotifyIcon;
 using MixOverlays.Services;
 using MixOverlays.Views;
@@ -49,15 +50,45 @@ namespace MixOverlays
             AppDomain.CurrentDomain.UnhandledException +=
                 (s, ex) => Log($"[CRASH] {ex.ExceptionObject}");
 
-            // Initialiser le tray (TaskbarIcon déclaré dans App.xaml)
+            // Créer le tray en code-behind (évite l'erreur pack URI en XAML)
             try
             {
-                _trayIcon = (TaskbarIcon)FindResource("TrayIcon");
+                var iconUri = new Uri("pack://application:,,,/Icone.ico");
+                var iconStream = GetResourceStream(iconUri)?.Stream;
+
+                _trayIcon = new TaskbarIcon();
+
+                if (iconStream != null)
+                    _trayIcon.Icon = new System.Drawing.Icon(iconStream);
+
+                _trayIcon.ToolTipText = "MixOverlays — en arrière-plan";
+                _trayIcon.Visibility = Visibility.Visible;
+                _trayIcon.ForceCreate(); // ← AJOUTER cette ligne
+
+                // Menu contextuel
+                var menu = new ContextMenu();
+
+                var showItem = new MenuItem { Header = "📂  Afficher MixOverlays" };
+                showItem.Click += TrayShow_Click;
+
+                var separator = new Separator();
+
+                var exitItem = new MenuItem { Header = "✖  Quitter MixOverlays", FontWeight = FontWeights.Bold };
+                exitItem.Click += TrayExit_Click;
+
+                menu.Items.Add(showItem);
+                menu.Items.Add(separator);
+                menu.Items.Add(exitItem);
+
+                _trayIcon.ContextMenu = menu;
+
+                // Double-clic pour rouvrir
+                _trayIcon.TrayMouseDoubleClick += TrayShow_Click;
+
                 Log("[Tray] TaskbarIcon initialisé.");
             }
             catch (Exception ex)
             {
-                // Ne pas planter l'appli si l'icône est introuvable
                 Log($"[Tray] Échec init TaskbarIcon : {ex.Message}");
             }
 
@@ -74,6 +105,7 @@ namespace MixOverlays
             Current.Dispatcher.Invoke(() =>
             {
                 if (Current.MainWindow == null) return;
+                Current.MainWindow.ShowInTaskbar = true;
                 Current.MainWindow.Show();
                 Current.MainWindow.WindowState = WindowState.Normal;
                 Current.MainWindow.Activate();

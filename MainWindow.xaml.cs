@@ -162,7 +162,7 @@ namespace MixOverlays.Views
         private void MinimizeButton_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
-            Hide();
+            HideToTray();
         }
 
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
@@ -170,10 +170,24 @@ namespace MixOverlays.Views
             if (!App.IsReallyClosing)
             {
                 e.Cancel = true;
-                Hide();
+                HideToTray();
                 return;
             }
             base.OnClosing(e);
+        }
+
+        private void HideToTray()
+        {
+            try
+            {
+                ShowInTaskbar = false;
+                Hide();
+                App.Log("[Tray] Fenêtre masquée dans le tray.");
+            }
+            catch (Exception ex)
+            {
+                App.Log($"[Tray] Erreur HideToTray : {ex.Message}");
+            }
         }
 
         private bool _isFullscreen;
