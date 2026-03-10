@@ -1,7 +1,6 @@
 <Application x:Class="MixOverlays.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:tb="http://www.hardcodet.net/taskbar"
              Startup="Application_Startup"
              ShutdownMode="OnExplicitShutdown">
 
@@ -10,30 +9,6 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="DarkTheme.xaml"/>
             </ResourceDictionary.MergedDictionaries>
-
-            <!--
-                TaskbarIcon : icône barre des tâches (système).
-                IconSource  : URI pack avec casse EXACTE du fichier (Icone.ico, I majuscule).
-                              Le fichier doit être listé comme <Resource> dans le .csproj.
-            -->
-            <tb:TaskbarIcon x:Key="TrayIcon"
-                            IconSource="pack://application:,,,/Icone.ico"
-                            ToolTipText="MixOverlays — en arrière-plan"
-                            Visibility="Visible">
-
-                <tb:TaskbarIcon.ContextMenu>
-                    <ContextMenu>
-                        <MenuItem Header="📂  Afficher MixOverlays"
-                                  Click="TrayShow_Click"/>
-                        <Separator/>
-                        <MenuItem Header="✖  Quitter MixOverlays"
-                                  FontWeight="Bold"
-                                  Click="TrayExit_Click"/>
-                    </ContextMenu>
-                </tb:TaskbarIcon.ContextMenu>
-
-            </tb:TaskbarIcon>
-
         </ResourceDictionary>
     </Application.Resources>
 </Application>

@@ -62,175 +62,207 @@
             <!-- ══════════════════════════════════════════════════════════════ -->
             <!-- HEADER                                                         -->
             <!-- ══════════════════════════════════════════════════════════════ -->
-            <Border Grid.Row="1" Padding="16,14,16,10">
+            <Border Grid.Row="1" ClipToBounds="True" Height="150">
                 <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
+                    <!-- ── Splash art en fond ── -->
+                    <Image Source="{Binding TopChampionName, Converter={StaticResource ChampSplash}}"
+                           Stretch="UniformToFill"
+                           Opacity="0.30"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Top"/>
 
-                    <StackPanel Grid.Column="0">
-                        <!-- Solo/Duo badge -->
-                        <Border CornerRadius="4" Padding="6,2" HorizontalAlignment="Left" Margin="0,0,0,4"
-                                Background="#1A3B82F6" BorderBrush="#303B82F6" BorderThickness="1">
-                            <TextBlock Text="Solo/Duo" Foreground="#3B82F6" FontSize="10" FontWeight="SemiBold"/>
-                        </Border>
+                    <!-- ── Dégradé gauche plus fort ── -->
+                    <Border>
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                <GradientStop Color="#F012151E" Offset="0.0"/>
+                                <GradientStop Color="#CC12151E" Offset="0.35"/>
+                                <GradientStop Color="#6612151E" Offset="0.65"/>
+                                <GradientStop Color="#1012151E" Offset="1.0"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                    </Border>
 
-                        <!-- Tier + Rank -->
-                        <TextBlock FontSize="22" FontWeight="Bold"
-                                   Foreground="{Binding SoloRank.tier, Converter={StaticResource RankBrush}}">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Visibility" Value="Visible"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding SoloRank}" Value="{x:Null}">
-                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                            <Run Text="{Binding SoloRank.tier, Mode=OneWay}"/>
-                            <Run Text=" "/>
-                            <Run Text="{Binding SoloRank.rank, Mode=OneWay}"/>
-                        </TextBlock>
-                        <TextBlock Text="Non classé" FontSize="22" FontWeight="Bold" Foreground="#6B7280">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding SoloRank}" Value="{x:Null}">
+                    <!-- ── Dégradé bas (fondu vers le contenu dessous) ── -->
+                    <Border VerticalAlignment="Bottom" Height="50">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#0012151E" Offset="0"/>
+                                <GradientStop Color="#FF12151E" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                    </Border>
+
+                    <!-- ── Contenu original (une seule fois, par-dessus le splash) ── -->
+                    <Grid Margin="16,14,16,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0">
+                            <!-- Solo/Duo badge -->
+                            <Border CornerRadius="4" Padding="6,2" HorizontalAlignment="Left" Margin="0,0,0,4"
+                                    Background="#1A3B82F6" BorderBrush="#303B82F6" BorderThickness="1">
+                                <TextBlock Text="Solo/Duo" Foreground="#3B82F6" FontSize="10" FontWeight="SemiBold"/>
+                            </Border>
+
+                            <!-- Tier + Rank -->
+                            <TextBlock FontSize="22" FontWeight="Bold"
+                                       Foreground="{Binding SoloRank.tier, Converter={StaticResource RankBrush}}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding SoloRank}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                                <Run Text="{Binding SoloRank.tier, Mode=OneWay}"/>
+                                <Run Text=" "/>
+                                <Run Text="{Binding SoloRank.rank, Mode=OneWay}"/>
+                            </TextBlock>
+                            <TextBlock Text="Non classé" FontSize="22" FontWeight="Bold" Foreground="#6B7280">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding SoloRank}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+
+                            <!-- LP · W · L · WinRate -->
+                            <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                <TextBlock FontSize="12" FontWeight="SemiBold">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
                                             <Setter Property="Visibility" Value="Visible"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-
-                        <!-- LP · W-L WinRate -->
-                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                            <TextBlock FontSize="12" FontWeight="SemiBold">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Visibility" Value="Visible"/>
-                                        <Setter Property="Foreground" Value="#C9D1D9"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding SoloRank}" Value="{x:Null}">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                                <Run Text="{Binding SoloRank.leaguePoints, Mode=OneWay}"/>
-                                <Run Text=" LP" Foreground="#6B7280"/>
-                            </TextBlock>
-                            <TextBlock Text=" · " Foreground="#30FFFFFF" FontSize="12">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Visibility" Value="Visible"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding SoloRank}" Value="{x:Null}">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-                            <TextBlock FontSize="12">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Visibility" Value="Visible"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding SoloRank}" Value="{x:Null}">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                                <Run Text="{Binding SoloWins, Mode=OneWay}" Foreground="#C9D1D9" FontWeight="SemiBold"/>
-                                <Run Text="W" Foreground="#3FB950"/>
-                                <Run Text=" - " Foreground="#6B7280"/>
-                                <Run Text="{Binding SoloLosses, Mode=OneWay}" Foreground="#C9D1D9" FontWeight="SemiBold"/>
-                                <Run Text="L" Foreground="#F85149"/>
-                                <Run Text="  "/>
-                                <Run Text="{Binding SoloWinRate, Converter={StaticResource PctFmt}, Mode=OneWay}"
-                                     Foreground="{Binding SoloWinRate, Converter={StaticResource WinRateBrush}}"/>
-                            </TextBlock>
-                        </StackPanel>
-
-                        <!-- Summoner name -->
-                        <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
-                            <TextBlock Text="{Binding GameName}" Foreground="#C9D1D9" FontWeight="SemiBold" FontSize="14"/>
-                            <TextBlock Text=" #" Foreground="#6B7280" FontSize="12" Margin="0,2,0,0"/>
-                            <TextBlock Text="{Binding TagLine}" Foreground="#6B7280" FontSize="12" Margin="0,2,0,0"/>
-                        </StackPanel>
-
-                        <!-- Lanes -->
-                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0"
-                                    Visibility="{Binding HasLaneData, Converter={StaticResource BoolVis}}">
-                            <Border CornerRadius="4" Padding="7,2" Margin="0,0,5,0"
-                                    Background="#20388BFD" BorderBrush="#40388BFD" BorderThickness="1">
-                                <TextBlock Text="{Binding PrimaryLane}" FontSize="11" FontWeight="SemiBold" Foreground="#388BFD"/>
-                            </Border>
-                            <Border CornerRadius="4" Padding="7,2"
-                                    Background="#15AAAAAA" BorderBrush="#30AAAAAA" BorderThickness="1">
-                                <Border.Style>
-                                    <Style TargetType="Border">
-                                        <Setter Property="Visibility" Value="Visible"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding SecondaryLane}" Value="">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Border.Style>
-                                <TextBlock Text="{Binding SecondaryLane}" FontSize="11" Foreground="#8B949E"/>
-                            </Border>
-                        </StackPanel>
-                    </StackPanel>
-
-                    <!-- Live badge + voir partie -->
-                    <StackPanel Grid.Column="1" VerticalAlignment="Top" HorizontalAlignment="Right">
-                        <Border CornerRadius="6" Padding="8,3" HorizontalAlignment="Right"
-                                Background="#1A8B5CF6" BorderBrush="#408B5CF6" BorderThickness="1"
-                                Visibility="{Binding IsInGame, Converter={StaticResource BoolVis}}">
-                            <StackPanel Orientation="Horizontal">
-                                <Ellipse Width="6" Height="6" Fill="#8B5CF6" Margin="0,0,5,0" VerticalAlignment="Center"/>
-                                <TextBlock FontSize="11" FontWeight="Bold" Foreground="#8B5CF6">
-                                    <Run Text="EN PARTIE · "/>
-                                    <Run Text="{Binding LiveTimerDisplay, Mode=OneWay}" FontFamily="Consolas"/>
+                                            <Setter Property="Foreground" Value="#C9D1D9"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SoloRank}" Value="{x:Null}">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                    <Run Text="{Binding SoloRank.leaguePoints, Mode=OneWay}"/>
+                                    <Run Text=" LP" Foreground="#6B7280"/>
+                                </TextBlock>
+                                <TextBlock Text=" · " Foreground="#30FFFFFF" FontSize="12">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SoloRank}" Value="{x:Null}">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock FontSize="12">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SoloRank}" Value="{x:Null}">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                    <Run Text="{Binding SoloWins, Mode=OneWay}" Foreground="#C9D1D9" FontWeight="SemiBold"/>
+                                    <Run Text="W" Foreground="#3FB950"/>
+                                    <Run Text=" - " Foreground="#6B7280"/>
+                                    <Run Text="{Binding SoloLosses, Mode=OneWay}" Foreground="#C9D1D9" FontWeight="SemiBold"/>
+                                    <Run Text="L" Foreground="#F85149"/>
+                                    <Run Text="  "/>
+                                    <Run Text="{Binding SoloWinRate, Converter={StaticResource PctFmt}, Mode=OneWay}"
+                                         Foreground="{Binding SoloWinRate, Converter={StaticResource WinRateBrush}}"/>
                                 </TextBlock>
                             </StackPanel>
-                        </Border>
-                        <Button HorizontalAlignment="Right" Margin="0,5,0,0" Padding="8,4" FontSize="11" Cursor="Hand"
-                                Visibility="{Binding IsInGame, Converter={StaticResource BoolVis}}"
-                                Command="{Binding DataContext.ViewLiveGameCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                CommandParameter="{Binding}">
-                            <Button.Style>
-                                <Style TargetType="Button">
-                                    <Setter Property="Background" Value="#1A8B5CF6"/>
-                                    <Setter Property="Foreground" Value="#8B5CF6"/>
-                                    <Setter Property="BorderBrush" Value="#408B5CF6"/>
-                                    <Setter Property="BorderThickness" Value="1"/>
-                                    <Setter Property="Template">
-                                        <Setter.Value>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                                                        BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}">
-                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                </Border>
-                                                <ControlTemplate.Triggers>
-                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter Property="Background" Value="#308B5CF6"/>
-                                                    </Trigger>
-                                                </ControlTemplate.Triggers>
-                                            </ControlTemplate>
-                                        </Setter.Value>
-                                    </Setter>
-                                </Style>
-                            </Button.Style>
-                            <TextBlock Text="👁 Voir la partie" FontSize="11"/>
-                        </Button>
-                    </StackPanel>
+
+                            <!-- Summoner name -->
+                            <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                                <TextBlock Text="{Binding GameName}" Foreground="#C9D1D9" FontWeight="SemiBold" FontSize="14"/>
+                                <TextBlock Text=" #" Foreground="#6B7280" FontSize="12" Margin="0,2,0,0"/>
+                                <TextBlock Text="{Binding TagLine}" Foreground="#6B7280" FontSize="12" Margin="0,2,0,0"/>
+                            </StackPanel>
+
+                            <!-- Lanes -->
+                            <StackPanel Orientation="Horizontal" Margin="0,6,0,0"
+                                        Visibility="{Binding HasLaneData, Converter={StaticResource BoolVis}}">
+                                <Border CornerRadius="4" Padding="7,2" Margin="0,0,5,0"
+                                        Background="#20388BFD" BorderBrush="#40388BFD" BorderThickness="1">
+                                    <TextBlock Text="{Binding PrimaryLane}" FontSize="11" FontWeight="SemiBold" Foreground="#388BFD"/>
+                                </Border>
+                                <Border CornerRadius="4" Padding="7,2"
+                                        Background="#15AAAAAA" BorderBrush="#30AAAAAA" BorderThickness="1">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SecondaryLane}" Value="">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <TextBlock Text="{Binding SecondaryLane}" FontSize="11" Foreground="#8B949E"/>
+                                </Border>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Colonne droite (Live badge + voir partie) -->
+                        <StackPanel Grid.Column="1" VerticalAlignment="Top" HorizontalAlignment="Right">
+                            <Border CornerRadius="6" Padding="8,3" HorizontalAlignment="Right"
+                                    Background="#1A8B5CF6" BorderBrush="#408B5CF6" BorderThickness="1"
+                                    Visibility="{Binding IsInGame, Converter={StaticResource BoolVis}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="6" Height="6" Fill="#8B5CF6" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                    <TextBlock FontSize="11" FontWeight="Bold" Foreground="#8B5CF6">
+                                        <Run Text="EN PARTIE · "/>
+                                        <Run Text="{Binding LiveTimerDisplay, Mode=OneWay}" FontFamily="Consolas"/>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+                            <Button HorizontalAlignment="Right" Margin="0,5,0,0" Padding="8,4" FontSize="11" Cursor="Hand"
+                                    Visibility="{Binding IsInGame, Converter={StaticResource BoolVis}}"
+                                    Command="{Binding DataContext.ViewLiveGameCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    CommandParameter="{Binding}">
+                                <Button.Style>
+                                    <Style TargetType="Button">
+                                        <Setter Property="Background" Value="#1A8B5CF6"/>
+                                        <Setter Property="Foreground" Value="#8B5CF6"/>
+                                        <Setter Property="BorderBrush" Value="#408B5CF6"/>
+                                        <Setter Property="BorderThickness" Value="1"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                                            BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter Property="Background" Value="#308B5CF6"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </Button.Style>
+                                <TextBlock Text="👁 Voir la partie" FontSize="11"/>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
                 </Grid>
             </Border>
 
