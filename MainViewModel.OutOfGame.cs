@@ -144,14 +144,14 @@ namespace MixOverlays.ViewModels
             set => SetField(ref _apiTestSuccess, value);
         }
 
-        // ─── Live Game Detail (depuis la page Recherche) ───────────────────────
-        private LiveGameDetailViewModel? _liveGameDetail;
-        public LiveGameDetailViewModel? LiveGameDetail
+        // ─── Live Game Detail — stub (panel masqué par défaut) ───────────────────
+        // HasLiveGameDetail contrôle la visibilité du panneau XAML "PARTIE EN COURS"
+        private bool _hasLiveGameDetail = false;
+        public bool HasLiveGameDetail
         {
-            get => _liveGameDetail;
-            set { SetField(ref _liveGameDetail, value); OnPropertyChanged(nameof(HasLiveGameDetail)); }
+            get => _hasLiveGameDetail;
+            private set { SetField(ref _hasLiveGameDetail, value); }
         }
-        public bool HasLiveGameDetail => _liveGameDetail != null;
 
         // ─── Commandes Hors-Jeu ────────────────────────────────────────────────
         public RelayCommand SearchPlayerCommand     { get; private set; } = null!;
@@ -160,10 +160,9 @@ namespace MixOverlays.ViewModels
         public RelayCommand OpenMatchDetailCommand  { get; private set; } = null!;
         public RelayCommand CloseMatchDetailCommand { get; private set; } = null!;
         public RelayCommand TestApiKeyCommand       { get; private set; } = null!;
-        public RelayCommand ViewLiveGameCommand     { get; private set; } = null!;
-        public RelayCommand CloseLiveGameCommand    { get; private set; } = null!;
         public RelayCommand LoadMoreMatchesCommand  { get; private set; } = null!;
         public RelayCommand ToggleFaceToFaceCommand { get; private set; } = null!;
+        public RelayCommand CloseLiveGameCommand    { get; private set; } = null!;
 
         // ─── Initialisation (appelée depuis le constructeur Core) ──────────────
         partial void InitializeOutOfGameCommands()
@@ -192,13 +191,11 @@ namespace MixOverlays.ViewModels
 
             TestApiKeyCommand = new RelayCommand(async _ => await TestApiKeyAsync());
 
-            ViewLiveGameCommand = new RelayCommand(async p =>
+            CloseLiveGameCommand = new RelayCommand(_ =>
             {
-                if (p is PlayerViewModel pvm && pvm.ActiveGame != null)
-                    await LoadLiveGameDetailAsync(pvm.ActiveGame, pvm.Data.Puuid);
+                _hasLiveGameDetail = false;
+                OnPropertyChanged(nameof(HasLiveGameDetail));
             });
-
-            CloseLiveGameCommand = new RelayCommand(_ => LiveGameDetail = null);
 
             LoadMoreMatchesCommand = new RelayCommand(async p =>
             {
@@ -627,102 +624,6 @@ var participants = summary.AllParticipants.Select(p => new MatchParticipantViewM
             });
         }
 
-        // ══════════════════════════════════════════════════════════════════════
-        //  MÉTHODES — Live Game Detail (depuis Recherche)
-        // ══════════════════════════════════════════════════════════════════════
-
-        private async Task LoadLiveGameDetailAsync(SpectatorGameInfo game, string focusPuuid)
-        {
-            var detail = new LiveGameDetailViewModel { IsLoading = true };
-            System.Windows.Application.Current.Dispatcher.Invoke(() => LiveGameDetail = detail);
-
-            if (game.participants == null || game.participants.Count == 0)
-            {
-                detail.IsLoading = false;
-                return;
-            }
-
-            var grp   = game.participants.GroupBy(p => p.teamId).ToList();
-            var side1 = grp.FirstOrDefault()?.ToList()         ?? new List<SpectatorParticipant>();
-            var side2 = grp.Skip(1).FirstOrDefault()?.ToList() ?? new List<SpectatorParticipant>();
-
-            bool focusInSide1     = side1.Any(p => p.puuid == focusPuuid);
-            var allyParticipants  = focusInSide1 ? side1 : side2;
-            var enemyParticipants = focusInSide1 ? side2 : side1;
-
-            // ── Étape 1 : affichage instantané (champion + sorts, sans rang) ──
-            System.Windows.Application.Current.Dispatcher.Invoke(() =>
-            {
-                detail.AllyTeam.Clear();
-                detail.EnemyTeam.Clear();
-
-                foreach (var p in allyParticipants)
-                    detail.AllyTeam.Add(new PlayerViewModel(new PlayerData
-                    {
-                        Puuid        = p.puuid,
-                        GameName     = p.summonerName,
-                        TagLine      = string.Empty,
-                        ChampionId   = p.championId,
-                        ChampionName = _champions.GetName(p.championId),
-                        TeamId       = focusInSide1 ? 100 : 200,
-                        LiveSpell1Id = p.spell1Id,
-                        LiveSpell2Id = p.spell2Id,
-                        IsLoading    = true,   // ← spinner actif pendant chargement du rang
-                        IsLoaded     = false,
-                    }));
-
-                foreach (var p in enemyParticipants)
-                    detail.EnemyTeam.Add(new PlayerViewModel(new PlayerData
-                    {
-                        Puuid        = p.puuid,
-                        GameName     = p.summonerName,
-                        TagLine      = string.Empty,
-                        ChampionId   = p.championId,
-                        ChampionName = _champions.GetName(p.championId),
-                        TeamId       = focusInSide1 ? 200 : 100,
-                        LiveSpell1Id = p.spell1Id,
-                        LiveSpell2Id = p.spell2Id,
-                        IsLoading    = true,
-                        IsLoaded     = false,
-                    }));
-
-                detail.IsLoading = false;
-            });
-
-            // ── Étape 2 : chargement des rangs en arrière-plan (parallèle) ──
-            if (string.IsNullOrEmpty(_settings.Current.RiotApiKey)) return;
-
-            var allParticipants = allyParticipants.Concat(enemyParticipants).ToList();
-
-            var rankTasks = allParticipants.Select(async p =>
-            {
-                if (string.IsNullOrEmpty(p.puuid)) return;
-                try
-                {
-                    var entries = await _riot.GetLeagueEntriesByPuuidAsync(p.puuid);
-                    var solo    = entries?.FirstOrDefault(e => e.queueType == "RANKED_SOLO_5x5");
-
-                    System.Windows.Application.Current.Dispatcher.Invoke(() =>
-                    {
-                        // Cherche le VM dans les deux équipes
-                        var vm = detail.AllyTeam .FirstOrDefault(v => v.Data.Puuid == p.puuid)
-                              ?? detail.EnemyTeam.FirstOrDefault(v => v.Data.Puuid == p.puuid);
-                        if (vm == null) return;
-
-                        vm.Data.SoloRank  = solo;
-                        vm.Data.IsLoading = false;
-                        vm.Data.IsLoaded  = true;
-                        vm.RefreshRankAndStatus();
-                    });
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[LiveGame|Rank] Erreur pour {p.summonerName}: {ex.Message}");
-                }
-            }).ToList();
-
-            await Task.WhenAll(rankTasks);
-        }
 
         // ══════════════════════════════════════════════════════════════════════
         //  MÉTHODES — Test clé API

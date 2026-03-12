@@ -98,7 +98,7 @@ namespace MixOverlays.Views
                 else
                 {
                     // Ouverture uniquement si LoL est en cours de partie
-                    if (_vm.ClientState == LcuService.LcuState.InGame)
+            if (_vm.ClientState == LcuState.InGame)
                     {
                         App.OverlayWindow.Show();
                     }
