@@ -37,6 +37,7 @@ namespace MixOverlays.Services
         public async Task EnsureLoadedAsync()
         {
             if (_loaded) return;
+            Instance = this; // ← déplacer ici pour être accessible dès le début
             try
             {
                 // 1️⃣ Get the latest patch version from Data Dragon
@@ -85,7 +86,6 @@ namespace MixOverlays.Services
                 await LoadRunesAsync(version);
 
                 _loaded = true;
-                Instance = this; // expose to static converters
             }
             catch
             {

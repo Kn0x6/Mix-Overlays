@@ -6,8 +6,10 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Interop;
 using MixOverlays.ViewModels;
 using MixOverlays.Models;
+using MixOverlays.Services;
 
 namespace MixOverlays.Views
 {
@@ -15,6 +17,7 @@ namespace MixOverlays.Views
     {
         private MainViewModel _vm = null!;
         private string _currentPage = "MyAccount";
+        private GlobalHotkeyService? _hotkey;
 
         public MainWindow()
         {
@@ -55,6 +58,53 @@ namespace MixOverlays.Views
         private void MainWindow_Closed(object? sender, EventArgs e)
         {
             DisposeGlobalHotkey();
+        }
+
+        /// <summary>
+        /// Appelé dans le constructeur de MainWindow, après InitializeComponent().
+        /// Remplace l'ancien bloc RegisterHotKey / SourceInitialized.
+        /// </summary>
+        private void InitGlobalHotkey()
+        {
+            _hotkey = new GlobalHotkeyService();
+            _hotkey.CtrlXPressed += (_, _) => ToggleOverlay();
+        }
+
+        /// <summary>
+        /// Appelé dans MainWindow_Closed.
+        /// Remplace UnregisterHotKey.
+        /// </summary>
+        private void DisposeGlobalHotkey()
+        {
+            _hotkey?.Dispose();
+            _hotkey = null;
+        }
+
+        // ─── Nouveau ToggleOverlay — conditionné à LcuState.InGame ────────────
+        private void ToggleOverlay()
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                if (App.OverlayWindow == null)
+                    App.OverlayWindow = new OverlayWindow();
+
+                App.OverlayWindow.SetTeamData(_vm.AllyTeam, _vm.EnemyTeam);
+
+                if (App.OverlayWindow.IsVisible)
+                {
+                    // Fermeture toujours autorisée
+                    App.OverlayWindow.Hide();
+                }
+                else
+                {
+                    // Ouverture uniquement si LoL est en cours de partie
+                    if (_vm.ClientState == LcuService.LcuState.InGame)
+                    {
+                        App.OverlayWindow.Show();
+                    }
+                    // Silencieux hors-jeu : pas de message parasite
+                }
+            });
         }
 
         // ─── Hotkey local (MixOverlays au premier plan) ───────────────────────
@@ -98,14 +148,10 @@ namespace MixOverlays.Views
                     SetActiveNav("Search");
                     _vm.SearchInput = $"{p.GameName}#{p.TagLine}";
 
-                    _ = Task.Run(async () =>
+                    Application.Current.Dispatcher.Invoke(() =>
                     {
-                        await Task.Delay(50);
-                        Application.Current.Dispatcher.Invoke(() =>
-                        {
-                            if (_vm.SearchPlayerCommand.CanExecute(null))
-                                _vm.SearchPlayerCommand.Execute(null);
-                        });
+                        if (_vm.SearchPlayerCommand.CanExecute(null))
+                            _vm.SearchPlayerCommand.Execute(null);
                     });
                 }
             }

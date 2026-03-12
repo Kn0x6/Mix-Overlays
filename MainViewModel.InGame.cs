@@ -84,7 +84,7 @@ namespace MixOverlays.ViewModels
         private async Task LoadChampSelectDataAsync(LcuChampSelectSession session)
         {
             bool isAram = !session.theirTeam.Any() && session.myTeam.Count > 5;
-            System.Diagnostics.Debug.WriteLine($"[InGame|ChampSelect] my={session.myTeam.Count} their={session.theirTeam.Count} aram={isAram}");
+            App.Log($"[InGame|ChampSelect] my={session.myTeam.Count} their={session.theirTeam.Count} aram={isAram}");
 
             if (isAram)
             {
@@ -145,7 +145,7 @@ namespace MixOverlays.ViewModels
 
             void Apply(List<PlayerData> allyData, List<PlayerData> enemyData)
             {
-                System.Diagnostics.Debug.WriteLine($"[InGame|ChampSelect] ally={allyData.Count} enemy={enemyData.Count}");
+                App.Log($"[InGame|ChampSelect] ally={allyData.Count} enemy={enemyData.Count}");
 
                 Application.Current.Dispatcher.Invoke(() =>
                 {
@@ -172,7 +172,7 @@ namespace MixOverlays.ViewModels
 
         private async Task LoadInGameDataAsync(LcuGameData gameData)
         {
-            System.Diagnostics.Debug.WriteLine($"[InGame|InGame] t1={gameData.teamOne.Count} t2={gameData.teamTwo.Count}");
+            App.Log($"[InGame|InGame] t1={gameData.teamOne.Count} t2={gameData.teamTwo.Count}");
 
             // Résolution inline des PUUIDs manquants (filet de sécurité)
             async Task ResolvePuuids(List<LcuTeamMember> members)
@@ -207,7 +207,7 @@ namespace MixOverlays.ViewModels
             // Mode entraînement : aucun membre → ajouter le joueur courant seul
             if (!myTeam.Any() && !theirTeam.Any() && meSummoner != null)
             {
-                System.Diagnostics.Debug.WriteLine("[InGame|InGame] équipes vides, ajout joueur courant");
+                App.Log("[InGame|InGame] équipes vides, ajout joueur courant");
                 myTeam = new List<LcuTeamMember>
                 {
                     new() { puuid = meSummoner.puuid, summonerName = meSummoner.displayName, summonerId = meSummoner.summonerId }
@@ -217,7 +217,7 @@ namespace MixOverlays.ViewModels
             // Mode custom/pratique : si playerChampionSelections est vide mais que le joueur est en jeu
             if (gameData.playerChampionSelections == null || !gameData.playerChampionSelections.Any())
             {
-                System.Diagnostics.Debug.WriteLine("[InGame|InGame] playerChampionSelections vide, fallback sur LCU session");
+                App.Log("[InGame|InGame] playerChampionSelections vide, fallback sur LCU session");
                 // Utiliser les données de la session LCU pour remplir les spells
                 foreach (var member in myTeam.Concat(theirTeam))
                 {
@@ -276,9 +276,6 @@ namespace MixOverlays.ViewModels
                     if (champSel.spell2Id > 0) spell2 = champSel.spell2Id;
                 }
 
-                // DEBUG: Log resolution details
-                System.Diagnostics.Debug.WriteLine($"[DEBUG Resolve] puuid={m.puuid?[..Math.Min(8, m.puuid?.Length ?? 0)]}... champName={championName} spell1={spell1} spell2={spell2} champSel={(champSel != null ? "FOUND" : "NULL")}");
-
                 return new PlayerData
                 {
                     Puuid             = m.puuid ?? string.Empty,
@@ -302,7 +299,7 @@ namespace MixOverlays.ViewModels
             var allyData  = aRes.Where(p => p != null).Select(p => p!).ToList();
             var enemyData = eRes.Where(p => p != null).Select(p => p!).ToList();
 
-            System.Diagnostics.Debug.WriteLine($"[InGame|InGame] ally={allyData.Count} enemy={enemyData.Count}");
+            App.Log($"[InGame|InGame] ally={allyData.Count} enemy={enemyData.Count}");
 
             Application.Current.Dispatcher.Invoke(() =>
             {
@@ -408,9 +405,6 @@ namespace MixOverlays.ViewModels
 
 
         /// <summary>
-        /// Charge les données complètes d'un joueur et met à jour le ViewModel correspondant.
-        /// </summary>
-        /// <summary>
         /// Convertit un championId en nom via le dictionnaire DDragon chargé.
         /// Retourne string.Empty si non trouvé.
         /// </summary>
@@ -467,19 +461,19 @@ namespace MixOverlays.ViewModels
         private async Task LoadAndRefreshPlayerAsync(PlayerData pd, ObservableCollection<PlayerViewModel> collection)
         {
             var tag = $"[RANK|{pd.GameName}#{pd.TagLine}]";
-            System.Diagnostics.Debug.WriteLine($"{tag} ══ DÉBUT LoadAndRefreshPlayer ══");
-            System.Diagnostics.Debug.WriteLine($"{tag} PUUID entrant = '{pd.Puuid?.Substring(0, Math.Min(8, pd.Puuid?.Length ?? 0))}...'");
-            System.Diagnostics.Debug.WriteLine($"{tag} ApiKey présente = {!string.IsNullOrEmpty(_settings.Current.RiotApiKey)}");
+            App.Log($"{tag} ══ DÉBUT LoadAndRefreshPlayer ══");
+            App.Log($"{tag} PUUID entrant = '{pd.Puuid?.Substring(0, Math.Min(8, pd.Puuid?.Length ?? 0))}...'");
+            App.Log($"{tag} ApiKey présente = {!string.IsNullOrEmpty(_settings.Current.RiotApiKey)}");
 
             if (string.IsNullOrEmpty(_settings.Current.RiotApiKey))
             {
-                System.Diagnostics.Debug.WriteLine($"{tag} ❌ SKIP — ApiKey vide");
+                App.Log($"{tag} ❌ SKIP — ApiKey vide");
                 return;
             }
 
             if (string.IsNullOrEmpty(pd.Puuid))
             {
-                System.Diagnostics.Debug.WriteLine($"{tag} ❌ SKIP — PUUID vide");
+                App.Log($"{tag} ❌ SKIP — PUUID vide");
                 return;
             }
 
@@ -491,19 +485,19 @@ namespace MixOverlays.ViewModels
                 collCount = collection.Count;
                 vmPuuidInCollection = collection.FirstOrDefault(v => v.Data.Puuid == pd.Puuid)?.Data.Puuid;
             });
-            System.Diagnostics.Debug.WriteLine($"{tag} Collection.Count={collCount} | VM trouvé avant chargement={vmPuuidInCollection != null}");
+            App.Log($"{tag} Collection.Count={collCount} | VM trouvé avant chargement={vmPuuidInCollection != null}");
             if (vmPuuidInCollection == null)
             {
-                System.Diagnostics.Debug.WriteLine($"{tag} ⚠️ VM introuvable dans la collection ! PUUIDs présents :");
+                App.Log($"{tag} ⚠️ VM introuvable dans la collection ! PUUIDs présents :");
                 Application.Current.Dispatcher.Invoke(() =>
                 {
                     foreach (var v in collection)
-                        System.Diagnostics.Debug.WriteLine($"  → '{v.Data.Puuid?.Substring(0, Math.Min(8, v.Data.Puuid?.Length ?? 0))}...' ({v.Data.GameName})");
+                        App.Log($"  → '{v.Data.Puuid?.Substring(0, Math.Min(8, v.Data.Puuid?.Length ?? 0))}...' ({v.Data.GameName})");
                 });
             }
 
             // ── Chargement données complètes ──
-            System.Diagnostics.Debug.WriteLine($"{tag} Appel LoadFullPlayerDataAsync...");
+            App.Log($"{tag} Appel LoadFullPlayerDataAsync...");
             PlayerData fullData;
             try
             {
@@ -511,19 +505,19 @@ namespace MixOverlays.ViewModels
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"{tag} ❌ EXCEPTION LoadFullPlayerDataAsync : {ex.Message}");
+                App.Log($"{tag} ❌ EXCEPTION LoadFullPlayerDataAsync : {ex.Message}");
                 return;
             }
 
-            System.Diagnostics.Debug.WriteLine($"{tag} ── Résultat LoadFullPlayerDataAsync ──");
-            System.Diagnostics.Debug.WriteLine($"{tag}   SoloRank       = {(fullData.SoloRank != null ? $"{fullData.SoloRank.tier} {fullData.SoloRank.rank} {fullData.SoloRank.leaguePoints}LP" : "NULL")}");
-            System.Diagnostics.Debug.WriteLine($"{tag}   FlexRank       = {(fullData.FlexRank != null ? $"{fullData.FlexRank.tier} {fullData.FlexRank.rank}" : "NULL")}");
-            System.Diagnostics.Debug.WriteLine($"{tag}   ProfileIconId  = {fullData.ProfileIconId}");
-            System.Diagnostics.Debug.WriteLine($"{tag}   SummonerLevel  = {fullData.SummonerLevel}");
-            System.Diagnostics.Debug.WriteLine($"{tag}   IsLoaded       = {fullData.IsLoaded}");
-            System.Diagnostics.Debug.WriteLine($"{tag}   ErrorMessage   = '{fullData.ErrorMessage ?? "aucune"}'");
-            System.Diagnostics.Debug.WriteLine($"{tag}   TopMasteries   = {fullData.TopMasteries.Count}");
-            System.Diagnostics.Debug.WriteLine($"{tag}   RecentMatches  = {fullData.RecentMatches.Count}");
+            App.Log($"{tag} ── Résultat LoadFullPlayerDataAsync ──");
+            App.Log($"{tag}   SoloRank       = {(fullData.SoloRank != null ? $"{fullData.SoloRank.tier} {fullData.SoloRank.rank} {fullData.SoloRank.leaguePoints}LP" : "NULL")}");
+            App.Log($"{tag}   FlexRank       = {(fullData.FlexRank != null ? $"{fullData.FlexRank.tier} {fullData.FlexRank.rank}" : "NULL")}");
+            App.Log($"{tag}   ProfileIconId  = {fullData.ProfileIconId}");
+            App.Log($"{tag}   SummonerLevel  = {fullData.SummonerLevel}");
+            App.Log($"{tag}   IsLoaded       = {fullData.IsLoaded}");
+            App.Log($"{tag}   ErrorMessage   = '{fullData.ErrorMessage ?? "aucune"}'");
+            App.Log($"{tag}   TopMasteries   = {fullData.TopMasteries.Count}");
+            App.Log($"{tag}   RecentMatches  = {fullData.RecentMatches.Count}");
 
             // ── Copie des champs live dans fullData ──
             fullData.TeamId       = pd.TeamId;
@@ -533,34 +527,34 @@ namespace MixOverlays.ViewModels
             fullData.LiveSpell2Id = pd.LiveSpell2Id;
             foreach (var m in fullData.TopMasteries) m.ChampionName = _champions.GetName(m.championId);
 
-            System.Diagnostics.Debug.WriteLine($"{tag} ChampionName résolu = '{fullData.ChampionName}'");
+            App.Log($"{tag} ChampionName résolu = '{fullData.ChampionName}'");
 
             // ── Mise à jour du ViewModel sur le Dispatcher ──
             Application.Current.Dispatcher.Invoke(() =>
             {
                 var vm = collection.FirstOrDefault(v => v.Data.Puuid == pd.Puuid);
-                System.Diagnostics.Debug.WriteLine($"{tag} VM trouvé pour UpdateData = {vm != null}");
+                App.Log($"{tag} VM trouvé pour UpdateData = {vm != null}");
 
                 if (vm == null)
                 {
-                    System.Diagnostics.Debug.WriteLine($"{tag} ❌ VM introuvable — recherche par GameName...");
+                    App.Log($"{tag} ❌ VM introuvable — recherche par GameName...");
                     vm = collection.FirstOrDefault(v => v.Data.GameName == pd.GameName);
-                    System.Diagnostics.Debug.WriteLine($"{tag} VM par GameName = {vm != null}");
+                    App.Log($"{tag} VM par GameName = {vm != null}");
                 }
 
                 if (vm != null)
                 {
-                    System.Diagnostics.Debug.WriteLine($"{tag} ✅ Appel UpdateData — SoloRank avant={vm.SoloRank?.tier ?? "null"}");
+                    App.Log($"{tag} ✅ Appel UpdateData — SoloRank avant={vm.SoloRank?.tier ?? "null"}");
                     vm.UpdateData(fullData);
-                    System.Diagnostics.Debug.WriteLine($"{tag} ✅ UpdateData terminé — SoloRank après={vm.SoloRank?.tier ?? "null"}");
+                    App.Log($"{tag} ✅ UpdateData terminé — SoloRank après={vm.SoloRank?.tier ?? "null"}");
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine($"{tag} ❌ IMPOSSIBLE de trouver le VM, le rang ne sera pas affiché !");
+                    App.Log($"{tag} ❌ IMPOSSIBLE de trouver le VM, le rang ne sera pas affiché !");
                 }
             });
 
-            System.Diagnostics.Debug.WriteLine($"{tag} ══ FIN LoadAndRefreshPlayer ══");
+            App.Log($"{tag} ══ FIN LoadAndRefreshPlayer ══");
         }
 
         // ══════════════════════════════════════════════════════════════════════

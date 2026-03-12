@@ -11,15 +11,35 @@ using Newtonsoft.Json;
 
 namespace MixOverlays.Services
 {
-    public class RiotApiService
+    public class RiotApiService : IDisposable
     {
         private readonly SettingsService _settings;
-        private ChampionDataService _champions;
+        private readonly ChampionDataService _champions;
         private readonly HttpClient _client;
+        private bool _disposed;
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            _client?.Dispose();
+            _rateLimitGate?.Dispose();
+        }
 
         // ─── Cache simple (clé → (valeur sérialisée, expiration)) ────────────
         private readonly ConcurrentDictionary<string, (string Json, DateTime Expires)> _cache = new();
         private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(10); // 10min — les stats ne changent pas en live
+
+        /// <summary>
+        /// Nettoie les entrées expirées du cache. À appeler périodiquement.
+        /// </summary>
+        private void PurgeExpiredCache()
+        {
+            var now = DateTime.UtcNow;
+            foreach (var key in _cache.Keys.ToList())
+                if (_cache.TryGetValue(key, out var v) && v.Expires <= now)
+                    _cache.TryRemove(key, out _);
+        }
 
         // ─── Token Bucket — respecte les limites Riot API dev key ────────────────
         // Riot dev key : 20 req/s + 100 req/2min → on vise ~15/s + 80/2min pour avoir de la marge
@@ -496,23 +516,13 @@ summary.AllParticipants = match.info.participants
 
             try
             {
-                // ─── DEBUG TEMPORAIRE ───
-                System.Diagnostics.Debug.WriteLine($"[HTTP] GET {url}");
-                System.Diagnostics.Debug.WriteLine($"[HTTP] X-Riot-Token present={_client.DefaultRequestHeaders.Contains("X-Riot-Token")}, Region={_settings.Current.Region}");
-                
                 var resp = await _client.GetAsync(url);
                 
                 if (!resp.IsSuccessStatusCode)
                 {
-                    var body = await resp.Content.ReadAsStringAsync();
-                    System.Diagnostics.Debug.WriteLine($"[HTTP] {(int)resp.StatusCode} {resp.StatusCode} → {url}");
-                    System.Diagnostics.Debug.WriteLine($"[HTTP] Response body: {body}");
-                    
                     var uri     = new Uri(url);
                     var segment = uri.AbsolutePath.Split('/').LastOrDefault(s => !string.IsNullOrEmpty(s) && s.Length < 30) ?? uri.AbsolutePath;
                     LastHttpError = $"HTTP {(int)resp.StatusCode} {resp.StatusCode} sur /{segment}";
-                    if (segment.Contains("ids"))
-                        LastHttpError += $" | URL: {url}";
                     
                     // Si c'est une erreur 429, on attend un peu plus longtemps
                     if (resp.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
@@ -534,7 +544,6 @@ summary.AllParticipants = match.info.participants
                     
                     return default;
                 }
-                // ─── FIN DEBUG ───
                 
                 var json = await resp.Content.ReadAsStringAsync();
                 if (useCache && !isSpectator)
