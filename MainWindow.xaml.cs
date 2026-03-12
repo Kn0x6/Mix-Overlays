@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Interop;
 using System.Windows.Media;
 using MixOverlays.ViewModels;
 using MixOverlays.Models;
@@ -16,16 +15,6 @@ namespace MixOverlays.Views
     {
         private MainViewModel _vm = null!;
         private string _currentPage = "MyAccount";
-
-        // ─── Global Hotkey Ctrl+X ─────────────────────────────────────────────
-        private const int  HOTKEY_ID    = 9000;
-        private const uint MOD_CONTROL  = 0x0002;
-        private const uint VK_X         = 0x58;
-
-        [DllImport("user32.dll")] private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
-        [DllImport("user32.dll")] private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
-
-        private HwndSource? _hwndSource;
 
         public MainWindow()
         {
@@ -63,33 +52,9 @@ namespace MixOverlays.Views
             SetActiveNav("MyAccount");
         }
 
-        // ─── Enregistrement du raccourci global ───────────────────────────────
-        private void MainWindow_SourceInitialized(object? sender, EventArgs e)
-        {
-            var handle = new WindowInteropHelper(this).Handle;
-            _hwndSource = HwndSource.FromHwnd(handle);
-            _hwndSource?.AddHook(WndProc);
-
-            if (!RegisterHotKey(handle, HOTKEY_ID, MOD_CONTROL, VK_X))
-                System.Diagnostics.Debug.WriteLine("[Hotkey] Echec enregistrement Ctrl+X.");
-            else
-                System.Diagnostics.Debug.WriteLine("[Hotkey] Ctrl+X enregistre globalement.");
-        }
-
         private void MainWindow_Closed(object? sender, EventArgs e)
         {
             DisposeGlobalHotkey();
-        }
-
-        private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
-        {
-            const int WM_HOTKEY = 0x0312;
-            if (msg == WM_HOTKEY && wParam.ToInt32() == HOTKEY_ID)
-            {
-                ToggleOverlay();
-                handled = true;
-            }
-            return IntPtr.Zero;
         }
 
         // ─── Hotkey local (MixOverlays au premier plan) ───────────────────────
