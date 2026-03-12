@@ -131,7 +131,6 @@ namespace MixOverlays.ViewModels
                     {
                         App.Log($"[VM] → MyAccount est NULL, SetLpHistory ignoré !");
                     }
-                    RefreshLpChart();
                 });
             };
 
@@ -144,16 +143,12 @@ namespace MixOverlays.ViewModels
 
             _ = _champions.EnsureLoadedAsync();
 
-            // Pré-charger le dernier profil connu au démarrage si le client LoL est fermé
-            _ = Task.Run(async () =>
+            // Écouter les changements d'état LCU pour charger le cache si déconnecté
+            _lcu.StateChanged += (_, e) =>
             {
-                await Task.Delay(1500); // laisser le temps à LCU de tenter la connexion
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    if (MyAccount == null && _clientState == LcuState.Disconnected)
-                        _ = LoadMyAccountFromCacheAsync();
-                });
-            });
+                if (e.State == LcuState.Disconnected && MyAccount == null)
+                    _ = LoadMyAccountFromCacheAsync();
+            };
         }
 
         // ─── Changement d'état LCU (core : gère la connexion et le compte) ───
@@ -185,37 +180,8 @@ namespace MixOverlays.ViewModels
         //  Appelé par OnLcuStateChanged pour que InGame nettoie ses équipes.
         partial void OnLcuStateChangedInGame(LcuState state);
 
-        // ─── Méthode pour rafraîchir le graphique LP ──────────────────────────
-        private void RefreshLpChart()
-        {
-            App.Log($"[VM] RefreshLpChart — MyAccount={MyAccount?.Data?.GameName ?? "NULL"}, " +
-                    $"HasLpData={MyAccount?.HasLpData}, Snapshots={MyAccount?.LpSnapshots?.Count ?? 0}");
-        }
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    //  ViewModels secondaires (partagés entre les deux sections)
-    // ══════════════════════════════════════════════════════════════════════════
-
-    public class LiveGameDetailViewModel : BaseViewModel
-    {
-        private bool _isLoading;
-        public bool IsLoading { get => _isLoading; set => SetField(ref _isLoading, value); }
-
-        private System.Collections.ObjectModel.ObservableCollection<PlayerViewModel> _allyTeam = new();
-        public System.Collections.ObjectModel.ObservableCollection<PlayerViewModel> AllyTeam
-        {
-            get => _allyTeam;
-            set => SetField(ref _allyTeam, value);
-        }
-
-        private System.Collections.ObjectModel.ObservableCollection<PlayerViewModel> _enemyTeam = new();
-        public System.Collections.ObjectModel.ObservableCollection<PlayerViewModel> EnemyTeam
-        {
-            get => _enemyTeam;
-            set => SetField(ref _enemyTeam, value);
-        }
-    }
 
     public class MatchDetailViewModel : BaseViewModel
     {

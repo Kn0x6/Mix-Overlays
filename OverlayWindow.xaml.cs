@@ -57,20 +57,6 @@ namespace MixOverlays.Views
                 EnemyList.ItemsSource = enemies;
         }
 
-        // ─── Toggle ────────────────────────────────────────────────────────────
-
-        public void Toggle()
-        {
-            if (IsVisible)
-            {
-                Hide();
-            }
-            else
-            {
-                Show();
-                ForceTopmost();
-            }
-        }
 
         /// <summary>
         /// Force la fenêtre au-dessus via Win32, sans l'activer.

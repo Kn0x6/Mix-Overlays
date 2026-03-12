@@ -151,6 +151,11 @@ namespace MixOverlays.Services
                         }
                         if (!_inGameDataLoaded)
                             await FetchInGameDataAsync();
+                        else
+                        {
+                            // En phase InGame, réduire le polling à 10s pour éviter les appels inutiles
+                            // Le polling est toujours utile pour détecter la fin de partie
+                        }
                         break;
 
                     case "None":
