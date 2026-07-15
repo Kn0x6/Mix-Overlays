@@ -61,7 +61,14 @@ namespace MixOverlays.ViewModels
         public PlayerViewModel? SearchedPlayer
         {
             get => _searchedPlayer;
-            set { SetField(ref _searchedPlayer, value); OnPropertyChanged(nameof(HasSearchResult)); }
+            set
+            {
+                if (SetField(ref _searchedPlayer, value))
+                {
+                    OnPropertyChanged(nameof(HasSearchResult));
+                    OnPropertyChanged(nameof(ShowSearchEmptyState));
+                }
+            }
         }
         public bool HasSearchResult => _searchedPlayer != null;
 
@@ -69,8 +76,14 @@ namespace MixOverlays.ViewModels
         public bool IsSearching
         {
             get => _isSearching;
-            set => SetField(ref _isSearching, value);
+            set
+            {
+                if (SetField(ref _isSearching, value))
+                    OnPropertyChanged(nameof(ShowSearchEmptyState));
+            }
         }
+
+        public bool ShowSearchEmptyState => !HasSearchResult && !IsSearching && !HasSearchHistory;
 
         // ─── Historique des recherches ─────────────────────────────────────────
         private ObservableCollection<PlayerViewModel> _searchHistory = new();
@@ -89,7 +102,7 @@ namespace MixOverlays.ViewModels
             set => SetField(ref _hasSearchedAtLeastOnce, value);
         }
 
-        public bool ShowSearchHistory => HasSearchedAtLeastOnce && HasSearchHistory;
+        public bool ShowSearchHistory => HasSearchHistory;
 
         private PlayerViewModel? _selectedHistoryPlayer;
         public PlayerViewModel? SelectedHistoryPlayer
@@ -153,12 +166,20 @@ namespace MixOverlays.ViewModels
             private set { SetField(ref _hasLiveGameDetail, value); }
         }
 
+        private LiveGameDetailViewModel? _liveGameDetail;
+        public LiveGameDetailViewModel? LiveGameDetail
+        {
+            get => _liveGameDetail;
+            private set => SetField(ref _liveGameDetail, value);
+        }
+
         // ─── Commandes Hors-Jeu ────────────────────────────────────────────────
         public RelayCommand SearchPlayerCommand     { get; private set; } = null!;
         public RelayCommand ClearSearchCommand      { get; private set; } = null!;
         public RelayCommand RefreshMyAccountCommand { get; private set; } = null!;
         public RelayCommand OpenMatchDetailCommand  { get; private set; } = null!;
         public RelayCommand CloseMatchDetailCommand { get; private set; } = null!;
+        public RelayCommand ViewLiveGameCommand     { get; private set; } = null!;
         public RelayCommand TestApiKeyCommand       { get; private set; } = null!;
         public RelayCommand LoadMoreMatchesCommand  { get; private set; } = null!;
         public RelayCommand ToggleFaceToFaceCommand { get; private set; } = null!;
@@ -173,8 +194,10 @@ namespace MixOverlays.ViewModels
 
             ClearSearchCommand = new RelayCommand(_ =>
             {
-                SearchedPlayer = null;
-                SearchInput    = string.Empty;
+                SearchedPlayer         = null;
+                SearchInput            = string.Empty;
+                HasSearchedAtLeastOnce = false;
+                OnPropertyChanged(nameof(ShowSearchHistory));
             });
 
             RefreshMyAccountCommand = new RelayCommand(
@@ -189,12 +212,18 @@ namespace MixOverlays.ViewModels
 
             CloseMatchDetailCommand = new RelayCommand(_ => SelectedMatch = null);
 
+            ViewLiveGameCommand = new RelayCommand(async p =>
+            {
+                if (p is PlayerViewModel pvm)
+                    await OpenLiveGameDetailAsync(pvm);
+            });
+
             TestApiKeyCommand = new RelayCommand(async _ => await TestApiKeyAsync());
 
             CloseLiveGameCommand = new RelayCommand(_ =>
             {
-                _hasLiveGameDetail = false;
-                OnPropertyChanged(nameof(HasLiveGameDetail));
+                HasLiveGameDetail = false;
+                LiveGameDetail = null;
             });
 
             LoadMoreMatchesCommand = new RelayCommand(async p =>
@@ -252,6 +281,8 @@ namespace MixOverlays.ViewModels
                     }
                 }
 
+                _lpTracker.SetActivePlayer(account.puuid, account.gameName, account.tagLine);
+
                 var placeholder = new PlayerData
                 {
                     Puuid     = account.puuid,
@@ -266,6 +297,7 @@ namespace MixOverlays.ViewModels
 
                 if (fullData != null)
                 {
+                    await _champions.EnsureLoadedAsync();
                     foreach (var m in fullData.TopMasteries)
                     {
                         try { m.ChampionName = _champions.GetName(m.championId); }
@@ -380,6 +412,7 @@ namespace MixOverlays.ViewModels
                 StatusMessage  = $"Chargement de {account.gameName}#{account.tagLine}...";
 
                 var fullData = await _riot.LoadFullPlayerDataAsync(account.puuid, account.gameName, account.tagLine);
+                await _champions.EnsureLoadedAsync();
                 foreach (var m in fullData.TopMasteries) m.ChampionName = _champions.GetName(m.championId);
 
                 System.Windows.Application.Current.Dispatcher.Invoke(() =>
@@ -434,6 +467,125 @@ namespace MixOverlays.ViewModels
             finally
             {
                 pvm.IsLoadingMoreMatches = false;
+            }
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        //  MÉTHODES — Partie live d'un joueur recherché
+        // ══════════════════════════════════════════════════════════════════════
+
+        private async Task OpenLiveGameDetailAsync(PlayerViewModel pvm)
+        {
+            if (pvm == null) return;
+
+            var detail = new LiveGameDetailViewModel { IsLoading = true };
+            LiveGameDetail   = detail;
+            HasLiveGameDetail = true;
+            SelectedMatch     = null;
+
+            try
+            {
+                var activeGame = pvm.ActiveGame;
+                if (activeGame == null && !string.IsNullOrWhiteSpace(pvm.Puuid))
+                    activeGame = await _riot.GetActiveGameByPuuidAsync(pvm.Puuid);
+
+                if (activeGame?.participants == null || activeGame.participants.Count == 0)
+                {
+                    detail.ErrorMessage = "Partie en cours introuvable.";
+                    return;
+                }
+
+                await _champions.EnsureLoadedAsync();
+
+                var clickedParticipant = activeGame.participants.FirstOrDefault(p => p.puuid == pvm.Puuid)
+                                      ?? activeGame.participants.FirstOrDefault(p =>
+                                             string.Equals(p.summonerName, pvm.DisplayName, StringComparison.OrdinalIgnoreCase)
+                                          || string.Equals(p.summonerName, pvm.GameName, StringComparison.OrdinalIgnoreCase));
+
+                var localTeamId = clickedParticipant?.teamId ?? activeGame.participants[0].teamId;
+
+                async Task<PlayerData> ToPlayerDataAsync(SpectatorParticipant participant)
+                {
+                    string puuid    = participant.puuid ?? string.Empty;
+                    string gameName = participant.summonerName ?? string.Empty;
+                    string tagLine  = string.Empty;
+
+                    if (!string.IsNullOrWhiteSpace(puuid))
+                    {
+                        try
+                        {
+                            var account = await _riot.GetAccountByPuuidAsync(puuid);
+                            if (account != null)
+                            {
+                                puuid    = account.puuid;
+                                gameName = account.gameName;
+                                tagLine  = account.tagLine;
+                            }
+                        }
+                        catch { /* non critique : fallback sur summonerName */ }
+                    }
+
+                    if (gameName.Contains('#'))
+                    {
+                        var parts = gameName.Split('#', 2);
+                        gameName = parts[0];
+                        if (string.IsNullOrWhiteSpace(tagLine) && parts.Length > 1)
+                            tagLine = parts[1];
+                    }
+
+                    var championName = participant.championId > 0
+                        ? _champions.GetName(participant.championId)
+                        : string.Empty;
+
+                    return new PlayerData
+                    {
+                        Puuid             = puuid,
+                        GameName          = gameName,
+                        TagLine           = tagLine,
+                        TeamId            = participant.teamId,
+                        ChampionId        = participant.championId,
+                        ChampionName      = championName,
+                        CurrentChampionName = championName,
+                        LiveSpell1Id      = participant.spell1Id,
+                        LiveSpell2Id      = participant.spell2Id,
+                        ActiveGame        = activeGame,
+                        LiveGameStartTime = activeGame.gameStartTime,
+                        IsInGame          = true,
+                        IsLoading         = true,
+                        IsLoaded          = false
+                    };
+                }
+
+                var playerData = await Task.WhenAll(activeGame.participants.Select(ToPlayerDataAsync));
+                var allyData   = playerData.Where(p => p.TeamId == localTeamId).ToList();
+                var enemyData  = playerData.Where(p => p.TeamId != localTeamId).ToList();
+
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    detail.AllyTeam.Clear();
+                    foreach (var player in allyData) detail.AllyTeam.Add(new PlayerViewModel(player));
+
+                    detail.EnemyTeam.Clear();
+                    foreach (var player in enemyData) detail.EnemyTeam.Add(new PlayerViewModel(player));
+                });
+
+                _ = Task.WhenAll(
+                    allyData.Select(pd => LoadAndRefreshPlayerAsync(pd, detail.AllyTeam))
+                            .Concat(enemyData.Select(pd => LoadAndRefreshPlayerAsync(pd, detail.EnemyTeam)))
+                ).ContinueWith(_ => Application.Current.Dispatcher.Invoke(() =>
+                {
+                    SortTeamByLane(detail.AllyTeam);
+                    SortTeamByLane(detail.EnemyTeam);
+                }));
+            }
+            catch (Exception ex)
+            {
+                detail.ErrorMessage = $"Erreur chargement partie live : {ex.Message}";
+                App.Log($"[LiveGameDetail] {ex}");
+            }
+            finally
+            {
+                detail.IsLoading = false;
             }
         }
 
@@ -719,28 +871,85 @@ if (me != null && !string.IsNullOrEmpty(me.gameName))
         {
             if (!_settings.Current.HasLastKnownProfile) return;
             if (MyAccount != null) return;
-            if (string.IsNullOrEmpty(_settings.Current.RiotApiKey)) return;
+            if (string.IsNullOrWhiteSpace(_settings.Current.LastKnownGameName) ||
+                string.IsNullOrWhiteSpace(_settings.Current.LastKnownTagLine))
+            {
+                MyAccountError = "Dernier profil connu incomplet. Lance le client LoL ou recherche ton compte manuellement.";
+                return;
+            }
+
+            var cachedProfile = new PlayerData
+            {
+                Puuid     = _settings.Current.LastKnownPuuid,
+                GameName  = _settings.Current.LastKnownGameName,
+                TagLine   = _settings.Current.LastKnownTagLine,
+                IsLoading = false,
+                IsLoaded  = true
+            };
+
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                if (!string.IsNullOrWhiteSpace(cachedProfile.Puuid))
+                    _lpTracker.SetActivePlayer(cachedProfile.Puuid, cachedProfile.GameName, cachedProfile.TagLine);
+
+                MyAccount = new PlayerViewModel(cachedProfile);
+                MyAccount.SetLpHistory(_lpTracker.LpHistory);
+            });
+
+            if (string.IsNullOrEmpty(_settings.Current.RiotApiKey))
+            {
+                MyAccountError = "Dernier compte affiché depuis la mémoire locale. Clé Riot API manquante : ajoute-la dans Paramètres pour actualiser les stats.";
+                return;
+            }
 
             try
             {
                 IsLoadingMyAccount = true;
                 MyAccountError = string.Empty;
 
-                var fullData = await _riot.LoadFullPlayerDataAsync(
-                    _settings.Current.LastKnownPuuid,
+                // Revalide le Riot ID sauvegardé avant d'utiliser le PUUID.
+                // Cela évite de charger Mon Compte avec un PUUID obsolète ou issu d'une autre région/identité.
+                var account = await _riot.GetAccountByRiotIdAsync(
                     _settings.Current.LastKnownGameName,
                     _settings.Current.LastKnownTagLine);
 
+                if (account == null || string.IsNullOrWhiteSpace(account.puuid))
+                {
+                    MyAccountError = _riot.LastHttpWasUnauthorized
+                        ? "Dernier compte affiché depuis la mémoire locale. Clé Riot API invalide ou expirée : mets-la à jour dans Paramètres pour actualiser les stats."
+                        : "Dernier compte affiché depuis la mémoire locale. Impossible d'actualiser ce profil via l'API Riot pour le moment.";
+                    App.Log($"[Cache] Profil introuvable via Account API : {_settings.Current.LastKnownGameName}#{_settings.Current.LastKnownTagLine} — {_riot.LastHttpError}");
+                    return;
+                }
+
+                var fullData = await _riot.LoadFullPlayerDataAsync(
+                    account.puuid,
+                    account.gameName,
+                    account.tagLine);
+
+                if (!string.IsNullOrWhiteSpace(fullData.ErrorMessage) &&
+                    (fullData.TopMasteries.Count == 0 || fullData.RecentMatches.Count == 0))
+                {
+                    MyAccountError = _riot.LastHttpWasUnauthorized
+                        ? "Dernier compte affiché depuis la mémoire locale. Clé Riot API invalide ou expirée : mets-la à jour dans Paramètres pour actualiser les stats."
+                        : $"Dernier compte affiché depuis la mémoire locale. Actualisation incomplète : {fullData.ErrorMessage}";
+                    App.Log($"[Cache] Chargement partiel refusé : {fullData.ErrorMessage}");
+                    return;
+                }
+
+                await _champions.EnsureLoadedAsync();
                 foreach (var m in fullData.TopMasteries)
                     m.ChampionName = _champions.GetName(m.championId);
 
                 Application.Current.Dispatcher.Invoke(() =>
                 {
+                    _lpTracker.SetActivePlayer(account.puuid, account.gameName, account.tagLine);
+
                     var placeholder = new PlayerData
                     {
-                        Puuid    = fullData.Puuid,
-                        GameName = fullData.GameName,
-                        TagLine  = fullData.TagLine
+                        Puuid    = account.puuid,
+                        GameName = account.gameName,
+                        TagLine  = account.tagLine
                     };
                     MyAccount = new PlayerViewModel(placeholder);
                     MyAccount.UpdateData(fullData);
@@ -753,6 +962,11 @@ if (me != null && !string.IsNullOrEmpty(me.gameName))
                     App.Log($"[Cache] SetLpHistory direct — {_lpTracker.LpHistory.Count} snapshots");
                     MyAccount.SetLpHistory(_lpTracker.LpHistory);
                 });
+
+                _settings.Current.LastKnownGameName = account.gameName;
+                _settings.Current.LastKnownTagLine  = account.tagLine;
+                _settings.Current.LastKnownPuuid    = account.puuid;
+                _settings.Save();
             }
             catch (Exception ex)
             {
@@ -764,5 +978,39 @@ if (me != null && !string.IsNullOrEmpty(me.gameName))
                 IsLoadingMyAccount = false;
             }
         }
+
+    }
+
+    public class LiveGameDetailViewModel : BaseViewModel
+    {
+        private bool _isLoading;
+        public bool IsLoading
+        {
+            get => _isLoading;
+            set => SetField(ref _isLoading, value);
+        }
+
+        private string? _errorMessage;
+        public string? ErrorMessage
+        {
+            get => _errorMessage;
+            set
+            {
+                if (SetField(ref _errorMessage, value))
+                    OnPropertyChanged(nameof(HasError));
+            }
+        }
+
+        public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
+
+        public ObservableCollection<PlayerViewModel> AllyTeam  { get; } = new();
+        public ObservableCollection<PlayerViewModel> EnemyTeam { get; } = new();
     }
 }
+
+
+
+
+
+
+

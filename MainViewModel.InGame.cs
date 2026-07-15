@@ -23,6 +23,9 @@ namespace MixOverlays.ViewModels
     // ════════════════════════════════════════════════════════════════════════════
     public partial class MainViewModel
     {
+        // Limite le nombre de joueurs chargés en parallèle (évite le quota 80/2min Riot)
+        private readonly SemaphoreSlim _playerLoadSem = new(3, 3);
+
         // ─── Équipes en cours ─────────────────────────────────────────────────
         private ObservableCollection<PlayerViewModel> _allyTeam = new();
         public ObservableCollection<PlayerViewModel> AllyTeam
@@ -456,105 +459,103 @@ namespace MixOverlays.ViewModels
         }
 
         /// <summary>
-        /// Charge les données complètes d'un joueur et met à jour le ViewModel correspondant.
+        /// Charge les données d'un joueur en priorisant le rang (2 appels API) pour un affichage rapide,
+        /// évitant ainsi de saturer le quota Riot avec 9 appels par joueur en parallèle.
         /// </summary>
-        private async Task LoadAndRefreshPlayerAsync(PlayerData pd, ObservableCollection<PlayerViewModel> collection)
+        private async Task LoadAndRefreshPlayerAsync(
+            PlayerData pd,
+            ObservableCollection<PlayerViewModel> collection)
         {
-            var tag = $"[RANK|{pd.GameName}#{pd.TagLine}]";
-            App.Log($"{tag} ══ DÉBUT LoadAndRefreshPlayer ══");
-            App.Log($"{tag} PUUID entrant = '{pd.Puuid?.Substring(0, Math.Min(8, pd.Puuid?.Length ?? 0))}...'");
-            App.Log($"{tag} ApiKey présente = {!string.IsNullOrEmpty(_settings.Current.RiotApiKey)}");
+            var tag = $"[RANK|{pd.GameName}]";
 
             if (string.IsNullOrEmpty(_settings.Current.RiotApiKey))
             {
                 App.Log($"{tag} ❌ SKIP — ApiKey vide");
                 return;
             }
-
             if (string.IsNullOrEmpty(pd.Puuid))
             {
                 App.Log($"{tag} ❌ SKIP — PUUID vide");
                 return;
             }
 
-            // ── Vérification que le VM est bien dans la collection ──
-            int collCount = 0;
-            string? vmPuuidInCollection = null;
-            Application.Current.Dispatcher.Invoke(() =>
-            {
-                collCount = collection.Count;
-                vmPuuidInCollection = collection.FirstOrDefault(v => v.Data.Puuid == pd.Puuid)?.Data.Puuid;
-            });
-            App.Log($"{tag} Collection.Count={collCount} | VM trouvé avant chargement={vmPuuidInCollection != null}");
-            if (vmPuuidInCollection == null)
-            {
-                App.Log($"{tag} ⚠️ VM introuvable dans la collection ! PUUIDs présents :");
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    foreach (var v in collection)
-                        App.Log($"  → '{v.Data.Puuid?.Substring(0, Math.Min(8, v.Data.Puuid?.Length ?? 0))}...' ({v.Data.GameName})");
-                });
-            }
-
-            // ── Chargement données complètes ──
-            App.Log($"{tag} Appel LoadFullPlayerDataAsync...");
-            PlayerData fullData;
+            // ── ÉTAPE 1 : Rang seul (2 appels) — rapide et prioritaire ────────
             try
             {
-                fullData = await _riot.LoadFullPlayerDataAsync(pd.Puuid, pd.GameName, pd.TagLine, matchCount: 5);
+                var (summoner, entries) = await _riot.LoadRankOnlyAsync(pd.Puuid);
+
+                var rankData = new PlayerData
+                {
+                    Puuid        = pd.Puuid,
+                    GameName     = pd.GameName,
+                    TagLine      = pd.TagLine,
+                    TeamId       = pd.TeamId,
+                    ChampionId   = pd.ChampionId,
+                    ChampionName = pd.ChampionId > 0
+                        ? _champions.GetName(pd.ChampionId)
+                        : pd.ChampionName,
+                    LiveSpell1Id = pd.LiveSpell1Id,
+                    LiveSpell2Id = pd.LiveSpell2Id,
+                    IsLoading    = false,
+                    IsLoaded     = true,
+                };
+
+                if (summoner != null)
+                {
+                    rankData.SummonerId    = summoner.id;
+                    rankData.SummonerLevel = summoner.summonerLevel;
+                    rankData.ProfileIconId = summoner.profileIconId;
+                }
+
+                if (entries != null)
+                {
+                    foreach (var e in entries)
+                    {
+                        if (e.queueType == "RANKED_SOLO_5x5") rankData.SoloRank = e;
+                        else if (e.queueType == "RANKED_FLEX_SR") rankData.FlexRank = e;
+                    }
+                }
+
+                App.Log($"{tag} ✅ Rang chargé : {rankData.SoloRank?.tier ?? "Non classé"}");
+
+                // Mise à jour immédiate du VM avec le rang
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    var vm = collection.FirstOrDefault(v => v.Data.Puuid == pd.Puuid)
+                           ?? collection.FirstOrDefault(v => v.Data.GameName == pd.GameName);
+                    vm?.UpdateData(rankData);
+                });
             }
             catch (Exception ex)
             {
-                App.Log($"{tag} ❌ EXCEPTION LoadFullPlayerDataAsync : {ex.Message}");
-                return;
+                App.Log($"{tag} ❌ Erreur LoadRankOnly : {ex.Message}");
             }
 
-            App.Log($"{tag} ── Résultat LoadFullPlayerDataAsync ──");
-            App.Log($"{tag}   SoloRank       = {(fullData.SoloRank != null ? $"{fullData.SoloRank.tier} {fullData.SoloRank.rank} {fullData.SoloRank.leaguePoints}LP" : "NULL")}");
-            App.Log($"{tag}   FlexRank       = {(fullData.FlexRank != null ? $"{fullData.FlexRank.tier} {fullData.FlexRank.rank}" : "NULL")}");
-            App.Log($"{tag}   ProfileIconId  = {fullData.ProfileIconId}");
-            App.Log($"{tag}   SummonerLevel  = {fullData.SummonerLevel}");
-            App.Log($"{tag}   IsLoaded       = {fullData.IsLoaded}");
-            App.Log($"{tag}   ErrorMessage   = '{fullData.ErrorMessage ?? "aucune"}'");
-            App.Log($"{tag}   TopMasteries   = {fullData.TopMasteries.Count}");
-            App.Log($"{tag}   RecentMatches  = {fullData.RecentMatches.Count}");
-
-            // ── Copie des champs live dans fullData ──
-            fullData.TeamId       = pd.TeamId;
-            fullData.ChampionId   = pd.ChampionId;
-            fullData.ChampionName = pd.ChampionId > 0 ? _champions.GetName(pd.ChampionId) : pd.ChampionName;
-            fullData.LiveSpell1Id = pd.LiveSpell1Id;
-            fullData.LiveSpell2Id = pd.LiveSpell2Id;
-            foreach (var m in fullData.TopMasteries) m.ChampionName = _champions.GetName(m.championId);
-
-            App.Log($"{tag} ChampionName résolu = '{fullData.ChampionName}'");
-
-            // ── Mise à jour du ViewModel sur le Dispatcher ──
-            Application.Current.Dispatcher.Invoke(() =>
+            // ── ÉTAPE 2 : Masteries (optionnel, non bloquant) ─────────────────
+            // Pas critique pour l'affichage principal, on peut s'arrêter ici
+            // si tu veux juste le rang. Décommente si tu veux les masteries :
+            /*
+            try
             {
-                var vm = collection.FirstOrDefault(v => v.Data.Puuid == pd.Puuid);
-                App.Log($"{tag} VM trouvé pour UpdateData = {vm != null}");
-
-                if (vm == null)
+                var masteries = await _riot.GetTopMasteriesByPuuidAsync(pd.Puuid, 5);
+                if (masteries != null)
                 {
-                    App.Log($"{tag} ❌ VM introuvable — recherche par GameName...");
-                    vm = collection.FirstOrDefault(v => v.Data.GameName == pd.GameName);
-                    App.Log($"{tag} VM par GameName = {vm != null}");
-                }
+                    foreach (var m in masteries)
+                        m.ChampionName = _champions.GetName(m.championId);
 
-                if (vm != null)
-                {
-                    App.Log($"{tag} ✅ Appel UpdateData — SoloRank avant={vm.SoloRank?.tier ?? "null"}");
-                    vm.UpdateData(fullData);
-                    App.Log($"{tag} ✅ UpdateData terminé — SoloRank après={vm.SoloRank?.tier ?? "null"}");
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        var vm = collection.FirstOrDefault(v => v.Data.Puuid == pd.Puuid);
+                        if (vm != null)
+                        {
+                            vm.Data.TopMasteries = masteries;
+                            vm.UpdateData(vm.Data);
+                        }
+                    });
                 }
-                else
-                {
-                    App.Log($"{tag} ❌ IMPOSSIBLE de trouver le VM, le rang ne sera pas affiché !");
-                }
-            });
-
-            App.Log($"{tag} ══ FIN LoadAndRefreshPlayer ══");
+            }
+            catch { }
+            */
         }
 
         // ══════════════════════════════════════════════════════════════════════

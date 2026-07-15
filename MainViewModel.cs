@@ -83,7 +83,7 @@ namespace MixOverlays.ViewModels
         public MainViewModel()
         {
             _settings = App.SettingsService ?? new SettingsService();
-            _riot     = App.RiotApiService  ?? new RiotApiService(_settings);
+            _riot     = App.RiotApiService  ?? new RiotApiService(_settings, _champions);
             _lcu      = App.LcuService      ?? new LcuService();
 
             App.SettingsService ??= _settings;
@@ -122,10 +122,14 @@ namespace MixOverlays.ViewModels
                 App.Log($"[VM] HistoryUpdated fired — {_lpTracker.LpHistory.Count} snapshots, MyAccount={MyAccount?.Data?.GameName ?? "NULL"}");
                 Application.Current.Dispatcher.Invoke(() =>
                 {
-                    if (MyAccount != null)
+                    if (MyAccount != null && _lpTracker.IsActivePlayer(MyAccount.Data.Puuid))
                     {
-                        App.Log($"[VM] → SetLpHistory sur MyAccount");
+                        App.Log($"[VM] → SetLpHistory sur MyAccount ({MyAccount.Data.DisplayName})");
                         MyAccount.SetLpHistory(_lpTracker.LpHistory);
+                    }
+                    else if (MyAccount != null)
+                    {
+                        App.Log($"[VM] → historique LP ignoré : tracker={_lpTracker.ActivePuuid}, MyAccount={MyAccount.Data.Puuid}");
                     }
                     else
                     {
@@ -136,7 +140,7 @@ namespace MixOverlays.ViewModels
 
             // Charger l'historique existant au démarrage
             App.Log($"[VM] Démarrage — LpHistory déjà chargé : {_lpTracker.LpHistory.Count} snapshots, MyAccount={MyAccount?.Data?.GameName ?? "NULL"}");
-            if (MyAccount != null)
+            if (MyAccount != null && _lpTracker.IsActivePlayer(MyAccount.Data.Puuid))
                 MyAccount.SetLpHistory(_lpTracker.LpHistory);
             else
                 App.Log("[VM] ⚠ MyAccount NULL au démarrage — SetLpHistory ignoré");
@@ -306,3 +310,5 @@ public int PerformanceScore
         public MatchParticipantViewModel? Enemy    { get; set; }
     }
 }
+
+

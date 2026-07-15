@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
@@ -26,4 +26,11 @@
     <Resource Include="Icone.jpeg" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Fichiers de notes/correctifs déjà intégrés dans les fichiers principaux. -->
+    <Compile Remove="MainViewModel.InGame_fix.cs" />
+    <Compile Remove="RiotApiService_ajout.cs" />
+  </ItemGroup>
 </Project>
+
+

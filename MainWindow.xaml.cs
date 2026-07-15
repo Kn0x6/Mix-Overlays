@@ -289,10 +289,16 @@ namespace MixOverlays.Views
 
         private static void HighlightNavButton(System.Windows.Controls.Button btn, bool active)
         {
-            btn.Background = active ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(30, 31, 111, 235)) : System.Windows.Media.Brushes.Transparent;
+            btn.Background = active
+                ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(46, 31, 111, 235))
+                : System.Windows.Media.Brushes.Transparent;
             btn.Foreground = active
+                ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(230, 237, 243))
+                : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(167, 176, 188));
+            btn.BorderBrush = active
                 ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(56, 139, 253))
-                : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(139, 148, 158));
+                : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(48, 54, 61));
+            btn.FontWeight = active ? FontWeights.SemiBold : FontWeights.Normal;
         }
 
         private void SearchBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
