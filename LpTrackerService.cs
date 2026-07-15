@@ -23,16 +23,20 @@ namespace MixOverlays.Services
         // ─── Persistance ──────────────────────────────────────────────────────
         private static readonly string DataFolder =
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MixOverlays");
-        private static readonly string DataFile = Path.Combine(DataFolder, "lp_history.json");
+        private static readonly string LegacyDataFile = Path.Combine(DataFolder, "lp_history.json");
 
         // ─── État interne ─────────────────────────────────────────────────────
         private HttpClient? _lcuClient;
         private LpSnapshot? _preSnapshot;
         private string      _lastPhase   = string.Empty;
         private bool        _capturedPre = false;
+        private string      _activePuuid = string.Empty;
+        private string      _activeGameName = string.Empty;
+        private string      _activeTagLine = string.Empty;
 
         // ─── Données publiques ────────────────────────────────────────────────
         public List<LpSnapshot> LpHistory { get; private set; } = new();
+        public string ActivePuuid => _activePuuid;
         public event EventHandler? HistoryUpdated;
 
         private static void L(string m) => App.Log($"[LP Tracker] {m}");
@@ -40,6 +44,41 @@ namespace MixOverlays.Services
         public LpTrackerService() => LoadHistory();
 
         public void SetLcuClient(HttpClient client) => _lcuClient = client;
+
+        /// <summary>
+        /// Définit le joueur dont le panneau LP doit afficher l'historique.
+        /// L'historique est isolé par PUUID pour éviter d'afficher les LP d'un autre compte.
+        /// </summary>
+        public void SetActivePlayer(string puuid, string gameName = "", string tagLine = "")
+        {
+            puuid = puuid?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(puuid))
+            {
+                L("SetActivePlayer ignoré : PUUID vide.");
+                return;
+            }
+
+            if (string.Equals(_activePuuid, puuid, StringComparison.OrdinalIgnoreCase))
+            {
+                _activeGameName = gameName ?? _activeGameName;
+                _activeTagLine  = tagLine  ?? _activeTagLine;
+                return;
+            }
+
+            _activePuuid    = puuid;
+            _activeGameName = gameName ?? string.Empty;
+            _activeTagLine  = tagLine  ?? string.Empty;
+            _preSnapshot    = null;
+            _capturedPre    = false;
+
+            LoadHistory();
+            L($"Joueur actif LP : {FormatActivePlayer()} — {LpHistory.Count} snapshots.");
+            HistoryUpdated?.Invoke(this, EventArgs.Empty);
+        }
+
+        public bool IsActivePlayer(string puuid) =>
+            !string.IsNullOrWhiteSpace(puuid) &&
+            string.Equals(_activePuuid, puuid, StringComparison.OrdinalIgnoreCase);
 
         // ══════════════════════════════════════════════════════════════════════
         //  SEED DEPUIS L'HISTORIQUE RIOT API
@@ -55,6 +94,16 @@ namespace MixOverlays.Services
         /// </summary>
         public void SeedFromMatchHistory(List<MatchSummary> allMatches, LeagueEntry? soloRank)
         {
+            if (string.IsNullOrWhiteSpace(_activePuuid))
+            {
+                L("Seed ignoré : aucun joueur actif.");
+                return;
+            }
+
+            LpHistory = LpHistory
+                .Where(s => string.IsNullOrWhiteSpace(s.Puuid) || IsActivePlayer(s.Puuid))
+                .ToList();
+
             // Ne rien faire si on a déjà un historique réel suffisant
             if (LpHistory.Count >= 3 && LpHistory.Any(s => s.LpDelta.HasValue))
             {
@@ -97,6 +146,9 @@ namespace MixOverlays.Services
                 LeaguePoints = lp,
                 Tier         = soloRank.tier,
                 Rank         = soloRank.rank,
+                Puuid        = _activePuuid,
+                GameName     = _activeGameName,
+                TagLine      = _activeTagLine,
             });
 
             foreach (var match in ranked)
@@ -115,6 +167,9 @@ namespace MixOverlays.Services
                     LpDelta      = delta,
                     IsWin        = match.Win,
                     ChampionName = match.ChampionName,
+                    Puuid        = _activePuuid,
+                    GameName     = _activeGameName,
+                    TagLine      = _activeTagLine,
                 });
             }
 
@@ -153,6 +208,9 @@ namespace MixOverlays.Services
                 Rank         = soloRank.rank,
                 LpDelta      = null,
                 ChampionName = "Actuel",
+                Puuid        = _activePuuid,
+                GameName     = _activeGameName,
+                TagLine      = _activeTagLine,
             });
 
             // Générer une courbe réaliste : légère tendance positive avec variance
@@ -175,6 +233,9 @@ namespace MixOverlays.Services
                     LpDelta      = delta,
                     IsWin        = null,  // null = prévisionnel (pas de vraie donnée)
                     ChampionName = "Prévisionnel",
+                    Puuid        = _activePuuid,
+                    GameName     = _activeGameName,
+                    TagLine      = _activeTagLine,
                 });
             }
 
@@ -229,7 +290,7 @@ namespace MixOverlays.Services
 
         private async Task<LpSnapshot?> FetchCurrentLpAsync()
         {
-            if (_lcuClient == null) return null;
+            if (_lcuClient == null || string.IsNullOrWhiteSpace(_activePuuid)) return null;
             try
             {
                 var resp = await _lcuClient.GetAsync("/lol-ranked/v1/current-ranked-stats");
@@ -246,6 +307,9 @@ namespace MixOverlays.Services
                     LeaguePoints = solo.leaguePoints,
                     Tier         = solo.tier,
                     Rank         = solo.division,
+                    Puuid        = _activePuuid,
+                    GameName     = _activeGameName,
+                    TagLine      = _activeTagLine,
                 };
             }
             catch (Exception ex) { L($"FetchLP exception: {ex.Message}"); return null; }
@@ -306,12 +370,34 @@ namespace MixOverlays.Services
         {
             try
             {
-                if (!File.Exists(DataFile)) return;
+                if (string.IsNullOrWhiteSpace(_activePuuid))
+                {
+                    LpHistory = new();
+                    L("Historique non chargé : aucun joueur actif.");
+                    return;
+                }
+
+                var dataFile = GetCurrentDataFile();
+                if (!File.Exists(dataFile))
+                {
+                    LpHistory = new();
+                    return;
+                }
+
                 var loaded = JsonConvert.DeserializeObject<List<LpSnapshot>>(
-                    File.ReadAllText(DataFile)) ?? new();
+                    File.ReadAllText(dataFile)) ?? new();
                 // Ignorer les fichiers qui ne contiennent que des données fictives
                 if (loaded.All(s => s.ChampionName == "Prévisionnel" || s.ChampionName == "Actuel"))
-                { L("Fichier contient uniquement données fictives, ignoré."); return; }
+                { LpHistory = new(); L("Fichier contient uniquement données fictives, ignoré."); return; }
+                loaded = loaded
+                    .Where(s => string.IsNullOrWhiteSpace(s.Puuid) || IsActivePlayer(s.Puuid))
+                    .ToList();
+                foreach (var snap in loaded.Where(s => string.IsNullOrWhiteSpace(s.Puuid)))
+                {
+                    snap.Puuid    = _activePuuid;
+                    snap.GameName = _activeGameName;
+                    snap.TagLine  = _activeTagLine;
+                }
                 LpHistory = loaded;
                 L($"Historique chargé : {LpHistory.Count} entrées.");
             }
@@ -320,17 +406,43 @@ namespace MixOverlays.Services
 
         private void SaveHistory()
         {
+            if (string.IsNullOrWhiteSpace(_activePuuid))
+            { L("Pas de sauvegarde : aucun joueur actif."); return; }
+
             // Ne pas sauvegarder si tout est fictif
             if (LpHistory.All(s => s.ChampionName == "Prévisionnel" || s.ChampionName == "Actuel"))
             { L("Pas de sauvegarde : données fictives uniquement."); return; }
 
             try
             {
+                foreach (var snap in LpHistory)
+                {
+                    if (string.IsNullOrWhiteSpace(snap.Puuid)) snap.Puuid = _activePuuid;
+                    if (string.IsNullOrWhiteSpace(snap.GameName)) snap.GameName = _activeGameName;
+                    if (string.IsNullOrWhiteSpace(snap.TagLine)) snap.TagLine = _activeTagLine;
+                }
+
                 Directory.CreateDirectory(DataFolder);
-                File.WriteAllText(DataFile, JsonConvert.SerializeObject(LpHistory, Formatting.Indented));
+                File.WriteAllText(GetCurrentDataFile(), JsonConvert.SerializeObject(LpHistory, Formatting.Indented));
             }
             catch (Exception ex) { L($"SaveHistory : {ex.Message}"); }
         }
+
+        private string GetCurrentDataFile() => string.IsNullOrWhiteSpace(_activePuuid)
+            ? LegacyDataFile
+            : Path.Combine(DataFolder, $"lp_history_{SanitizeFileName(_activePuuid)}.json");
+
+        private static string SanitizeFileName(string value)
+        {
+            foreach (var c in Path.GetInvalidFileNameChars())
+                value = value.Replace(c, '_');
+            return value;
+        }
+
+        private string FormatActivePlayer() =>
+            string.IsNullOrWhiteSpace(_activeGameName)
+                ? _activePuuid[..Math.Min(8, _activePuuid.Length)]
+                : $"{_activeGameName}#{_activeTagLine}";
 
         // ─── Modèles LCU ─────────────────────────────────────────────────────
         private class LcuRankedStats { public List<LcuRankedQueue>? queues { get; set; } }

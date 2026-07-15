@@ -8,11 +8,12 @@
     <Color x:Key="BgPrimaryColor">#161B22</Color>
     <Color x:Key="BgSecondaryColor">#1C2333</Color>
     <Color x:Key="BgCardColor">#21262D</Color>
+    <Color x:Key="BgElevatedColor">#252C3A</Color>
     <Color x:Key="BgHoverColor">#2D3748</Color>
     <Color x:Key="BorderColor">#30363D</Color>
     <Color x:Key="TextPrimaryColor">#E6EDF3</Color>
-    <Color x:Key="TextSecondaryColor">#8B949E</Color>
-    <Color x:Key="TextMutedColor">#484F58</Color>
+    <Color x:Key="TextSecondaryColor">#A7B0BC</Color>
+    <Color x:Key="TextMutedColor">#6B7280</Color>
     <Color x:Key="AccentBlueColor">#1F6FEB</Color>
     <Color x:Key="AccentBlueLightColor">#388BFD</Color>
     <Color x:Key="GoldColor">#D4A017</Color>
@@ -28,6 +29,7 @@
     <SolidColorBrush x:Key="BgPrimaryBrush" Color="{StaticResource BgPrimaryColor}"/>
     <SolidColorBrush x:Key="BgSecondaryBrush" Color="{StaticResource BgSecondaryColor}"/>
     <SolidColorBrush x:Key="BgCardBrush" Color="{StaticResource BgCardColor}"/>
+    <SolidColorBrush x:Key="BgElevatedBrush" Color="{StaticResource BgElevatedColor}"/>
     <SolidColorBrush x:Key="BgHoverBrush" Color="{StaticResource BgHoverColor}"/>
     <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource BorderColor}"/>
     <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimaryColor}"/>
@@ -41,6 +43,15 @@
     <SolidColorBrush x:Key="WinLightBrush" Color="{StaticResource WinLightColor}"/>
     <SolidColorBrush x:Key="LossBrush" Color="{StaticResource LossColor}"/>
     <SolidColorBrush x:Key="LossLightBrush" Color="{StaticResource LossLightColor}"/>
+
+    <!-- Semantic / translucent brushes -->
+    <SolidColorBrush x:Key="AccentBlueSoftBrush" Color="#331F6FEB"/>
+    <SolidColorBrush x:Key="InfoSoftBrush" Color="#22388BFD"/>
+    <SolidColorBrush x:Key="SuccessSoftBrush" Color="#223FB950"/>
+    <SolidColorBrush x:Key="DangerSoftBrush" Color="#22F85149"/>
+    <SolidColorBrush x:Key="WarningSoftBrush" Color="#22F0C040"/>
+    <SolidColorBrush x:Key="PurpleAccentBrush" Color="#8B5CF6"/>
+    <SolidColorBrush x:Key="PurpleSoftBrush" Color="#228B5CF6"/>
 
     <!-- Rank brushes -->
     <SolidColorBrush x:Key="IronBrush" Color="#A0A0A0"/>
@@ -59,6 +70,15 @@
     <!-- ═══════════════════════════════════════════════════ -->
     <FontFamily x:Key="PrimaryFont">Segoe UI</FontFamily>
     <FontFamily x:Key="MonoFont">Cascadia Code, Consolas, Courier New</FontFamily>
+
+    <!-- Spacing / radius tokens -->
+    <CornerRadius x:Key="RadiusSmall">6</CornerRadius>
+    <CornerRadius x:Key="RadiusMedium">10</CornerRadius>
+    <CornerRadius x:Key="RadiusLarge">14</CornerRadius>
+    <Thickness x:Key="SpaceXS">4</Thickness>
+    <Thickness x:Key="SpaceS">8</Thickness>
+    <Thickness x:Key="SpaceM">12</Thickness>
+    <Thickness x:Key="SpaceL">16</Thickness>
 
     <!-- ═══════════════════════════════════════════════════ -->
     <!--  STYLES GLOBAUX                                     -->
@@ -117,6 +137,37 @@
         </Setter>
     </Style>
 
+    <!-- Shared layout styles -->
+    <Style x:Key="CardBorder" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource BgCardBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusMedium}"/>
+        <Setter Property="Padding" Value="12"/>
+    </Style>
+
+    <Style x:Key="ElevatedCardBorder" TargetType="Border" BasedOn="{StaticResource CardBorder}">
+        <Setter Property="Background" Value="{StaticResource BgElevatedBrush}"/>
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusLarge}"/>
+    </Style>
+
+    <Style x:Key="SectionLabel" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+        <Setter Property="FontSize" Value="10"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+
+    <Style x:Key="PageTitle" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+        <Setter Property="FontSize" Value="17"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+
+    <Style x:Key="SubtleCaption" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+        <Setter Property="FontSize" Value="11"/>
+    </Style>
+
     <!-- Button base -->
     <Style x:Key="BaseButton" TargetType="Button">
         <Setter Property="Cursor" Value="Hand"/>
@@ -160,6 +211,22 @@
         <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+    </Style>
+
+    <Style x:Key="NavButton" TargetType="Button" BasedOn="{StaticResource GhostButton}">
+        <Setter Property="Height" Value="38"/>
+        <Setter Property="Padding" Value="14,0"/>
+        <Setter Property="Margin" Value="2,0"/>
+        <Setter Property="FontSize" Value="12"/>
+    </Style>
+
+    <Style x:Key="WindowChromeButton" TargetType="Button" BasedOn="{StaticResource BaseButton}">
+        <Setter Property="Width" Value="32"/>
+        <Setter Property="Height" Value="28"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+        <Setter Property="BorderThickness" Value="0"/>
     </Style>
 
     <!-- Button secondary -->

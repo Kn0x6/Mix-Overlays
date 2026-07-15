@@ -29,7 +29,7 @@
     </UserControl.Resources>
 
     <!-- ROOT — pas de ScrollViewer ici : la MainWindow gère le défilement -->
-    <Border Background="#12151E" BorderBrush="#1E2435" BorderThickness="1" CornerRadius="12">
+    <Border Background="{StaticResource BgPrimaryBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="14">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>  <!-- Banner -->
@@ -62,7 +62,7 @@
             <!-- ══════════════════════════════════════════════════════════════ -->
             <!-- HEADER                                                         -->
             <!-- ══════════════════════════════════════════════════════════════ -->
-            <Border Grid.Row="1" ClipToBounds="True" Height="150">
+            <Border Grid.Row="1" ClipToBounds="True" Height="164">
                 <Grid>
                     <!-- ── Splash art en fond ── -->
                     <Image Source="{Binding TopChampionName, Converter={StaticResource ChampSplash}}"
@@ -267,7 +267,7 @@
             </Border>
 
             <!-- Separator -->
-            <Rectangle Grid.Row="2" Height="1" Fill="#1E2435" Margin="16,0"/>
+            <Rectangle Grid.Row="2" Height="1" Fill="{StaticResource BorderBrush}" Margin="18,0"/>
 
             <!-- ══════════════════════════════════════════════════════════════ -->
             <!-- BODY : Col gauche = matches  |  Col droite = stats            -->
@@ -276,18 +276,18 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="1"/>
-                    <ColumnDefinition Width="275"/>
+                    <ColumnDefinition Width="300"/>
                 </Grid.ColumnDefinitions>
 
                 <!-- ═══════════════════════════════════════════════════════ -->
                 <!-- GAUCHE : Historique                                     -->
                 <!-- ═══════════════════════════════════════════════════════ -->
-                <StackPanel Grid.Column="0" Margin="10,10,10,14">
+                <StackPanel Grid.Column="0" Margin="14,12,14,16">
 
                     <ItemsControl ItemsSource="{Binding RecentMatches}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Margin="0,2" CornerRadius="7" Cursor="Hand"
+                                <Border Margin="0,3" CornerRadius="9" Cursor="Hand"
                                         MouseLeftButtonDown="MatchRow_StopBubble">
                                     <Border.Style>
                                         <Style TargetType="Border">
@@ -311,7 +311,7 @@
                                                       CommandParameter="{Binding}"/>
                                     </Border.InputBindings>
 
-                                    <Grid Margin="6,5">
+                                    <Grid Margin="8,7">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="3"/>    <!-- V/L bar -->
                                             <ColumnDefinition Width="5"/>
@@ -342,7 +342,7 @@
                                         <!-- Mon champion -->
                                         <Border Grid.Column="4" Width="36" Height="36" CornerRadius="6"
                                                 ClipToBounds="True" VerticalAlignment="Center"
-                                                BorderBrush="#30FFFFFF" BorderThickness="1">
+                                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
                                             <Image Source="{Binding ChampionName, Converter={StaticResource ChampToImg}}"
                                                    Stretch="UniformToFill"/>
                                         </Border>
@@ -584,13 +584,13 @@
                 <!-- ═══════════════════════════════════════════════════════ -->
                 <!-- DROITE : Stats par champion + Coming soon               -->
                 <!-- ═══════════════════════════════════════════════════════ -->
-                <StackPanel Grid.Column="2" Margin="14,12,14,14">
+                <StackPanel Grid.Column="2" Margin="16,14,16,16">
 
                     <!-- ── Header Stats par champion ── -->
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                         <TextBlock Text="⚔" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
                         <TextBlock Text="Stats par champion"
-                                   Foreground="#C9D1D9" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"/>
+                                   Foreground="{StaticResource TextPrimaryBrush}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"/>
                     </StackPanel>
 
                     <!-- Top 3 champions — style référence -->
@@ -603,8 +603,8 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Margin="2,0" CornerRadius="10" Background="#0D1117"
-                                        BorderBrush="#1E2435" BorderThickness="1" Padding="8,12">
+                                <Border Margin="2,0" CornerRadius="10" Background="{StaticResource BgDeepBrush}"
+                                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="8,12">
                                     <StackPanel HorizontalAlignment="Center">
 
                                         <!-- Champion icon — circulaire -->
@@ -653,11 +653,11 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <Rectangle Height="1" Fill="#1E2435" Margin="0,14,0,14"/>
+                    <Rectangle Height="1" Fill="{StaticResource BorderBrush}" Margin="0,16,0,16"/>
 
                     <!-- ══ LP Stats (pleine largeur) ══ -->
-                    <Border CornerRadius="10" Background="#0D1117"
-                            BorderBrush="#1E2435" BorderThickness="1"
+                    <Border CornerRadius="10" Background="{StaticResource BgDeepBrush}"
+                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
                             Padding="10,10" Margin="0,0,0,6">
                         <StackPanel>
 
@@ -751,8 +751,8 @@
                     </Border>
 
                     <!-- ══ Lens (coming soon) ══ -->
-                    <Border CornerRadius="10" Background="#0D1117"
-                            BorderBrush="#1E2435" BorderThickness="1"
+                    <Border CornerRadius="10" Background="{StaticResource BgDeepBrush}"
+                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
                             Padding="6,12">
                         <StackPanel HorizontalAlignment="Center">
                             <TextBlock Text="Lens" Foreground="#8B949E"

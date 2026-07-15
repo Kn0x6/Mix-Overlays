@@ -26,4 +26,11 @@
     <Resource Include="Icone.jpeg" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Fichiers de notes/correctifs déjà intégrés dans les fichiers principaux. -->
+    <Compile Remove="MainViewModel.InGame_fix.cs" />
+    <Compile Remove="RiotApiService_ajout.cs" />
+  </ItemGroup>
 </Project>
+
+

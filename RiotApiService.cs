@@ -234,6 +234,7 @@ namespace MixOverlays.Services
             };
 
             var errors = new System.Text.StringBuilder();
+            ClearLastHttpError();
 
             try
             {
@@ -242,7 +243,7 @@ namespace MixOverlays.Services
                     GetSummonerByPuuidAsync(puuid),
                     GetLeagueEntriesByPuuidAsync(puuid),
                     GetTopMasteriesByPuuidAsync(puuid, 5),
-                    GetMatchIdsByPuuidAsync(puuid, 20),   // on récupère 20 IDs mais on charge 10
+                    GetMatchIdsByPuuidAsync(puuid, Math.Max(matchCount * 2, 10)),
                     GetActiveGameByPuuidAsync(puuid)
                 ).WhenAll5();
 
@@ -292,7 +293,11 @@ namespace MixOverlays.Services
 
                 player.IsLoaded = true;
                 if (errors.Length > 0)
-                    player.ErrorMessage = $"Données partielles : {errors}\n{LastHttpError}";
+                {
+                    player.ErrorMessage = LastHttpWasUnauthorized
+                        ? "Clé Riot API invalide ou expirée. Mets-la à jour dans Paramètres pour actualiser les données."
+                        : $"Données partielles : {errors}\n{LastHttpError}";
+                }
 
                 // ── Live game ─────────────────────────────────────────────────
                 await _champions.EnsureLoadedAsync();
@@ -319,6 +324,19 @@ namespace MixOverlays.Services
             }
 
             return player;
+        }
+
+        /// <summary>
+        /// Charge UNIQUEMENT le summoner + le rang d'un joueur (2 appels API).
+        /// Utilisé pendant le champ select pour afficher le rang rapidement,
+        /// sans bloquer sur les masteries et l'historique de parties.
+        /// </summary>
+        public async Task<(RiotSummoner? summoner, List<LeagueEntry>? entries)> LoadRankOnlyAsync(string puuid)
+        {
+            var summonerTask = GetSummonerByPuuidAsync(puuid);
+            var rankTask     = GetLeagueEntriesByPuuidAsync(puuid);
+            await Task.WhenAll(summonerTask, rankTask);
+            return (summonerTask.Result, rankTask.Result);
         }
 
         /// <summary>
@@ -457,6 +475,13 @@ summary.AllParticipants = match.info.participants
         // ─── HTTP Helper ───────────────────────────────────────────────────────
 
         public string LastHttpError { get; set; } = string.Empty;
+        public bool LastHttpWasUnauthorized { get; private set; }
+
+        public void ClearLastHttpError()
+        {
+            LastHttpError = string.Empty;
+            LastHttpWasUnauthorized = false;
+        }
 
         /// <summary>
         /// Attend qu'un token soit disponible avant d'envoyer une requête.
@@ -522,7 +547,17 @@ summary.AllParticipants = match.info.participants
                 {
                     var uri     = new Uri(url);
                     var segment = uri.AbsolutePath.Split('/').LastOrDefault(s => !string.IsNullOrEmpty(s) && s.Length < 30) ?? uri.AbsolutePath;
-                    LastHttpError = $"HTTP {(int)resp.StatusCode} {resp.StatusCode} sur /{segment}";
+                    var message = $"HTTP {(int)resp.StatusCode} {resp.StatusCode} sur /{segment}";
+
+                    if (resp.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                    {
+                        LastHttpWasUnauthorized = true;
+                        LastHttpError = "HTTP 401 Unauthorized — clé Riot API invalide ou expirée. Mets-la à jour dans Paramètres.";
+                    }
+                    else if (!LastHttpWasUnauthorized)
+                    {
+                        LastHttpError = message;
+                    }
                     
                     // Si c'est une erreur 429, on attend un peu plus longtemps
                     if (resp.StatusCode == System.Net.HttpStatusCode.TooManyRequests)

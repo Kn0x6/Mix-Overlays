@@ -32,6 +32,15 @@ namespace MixOverlays.Models
         /// <summary>Nom du champion joué pendant la partie (peut être vide).</summary>
         public string ChampionName { get; set; } = string.Empty;
 
+        /// <summary>PUUID du joueur auquel appartient ce snapshot LP.</summary>
+        public string Puuid { get; set; } = string.Empty;
+
+        /// <summary>Nom Riot du joueur auquel appartient ce snapshot LP.</summary>
+        public string GameName { get; set; } = string.Empty;
+
+        /// <summary>Tag Riot du joueur auquel appartient ce snapshot LP.</summary>
+        public string TagLine { get; set; } = string.Empty;
+
         // ── Helpers affichage ──────────────────────────────────────────────────
 
         /// <summary>Rang lisible : "Gold I", "Platinum IV", etc.</summary>
