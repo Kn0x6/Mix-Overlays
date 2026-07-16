@@ -27,6 +27,7 @@ namespace MixOverlays.Services
             _providers = new List<IChampionRecommendationProvider>
             {
                 new UggChampionRecommendationProvider(),
+                new OpggChampionRecommendationProvider(),
                 new CuratedFallbackRecommendationProvider()
             };
         }
@@ -112,7 +113,16 @@ namespace MixOverlays.Services
             var html = await resp.Content.ReadAsStringAsync();
             if (string.IsNullOrWhiteSpace(html)) return null;
 
+            if (LooksLikeCloudflareChallenge(html))
+            {
+                App.Log($"[Recommendations] U.GG bloqué par Cloudflare/challenge pour {championName} ({url})");
+                return null;
+            }
+
             var json = ExtractNextDataJson(html);
+            if (string.IsNullOrWhiteSpace(json))
+                App.Log($"[Recommendations] U.GG sans __NEXT_DATA__ exploitable pour {championName} ({url})");
+
             var recommendation = !string.IsNullOrWhiteSpace(json)
                 ? BuildFromJson(championId, championName, championKey, url, json)
                 : null;
@@ -120,6 +130,14 @@ namespace MixOverlays.Services
             if (recommendation == null) return null;
             if (!recommendation.HasRunes && !recommendation.HasCoreItems) return null;
             return recommendation;
+        }
+
+        private static bool LooksLikeCloudflareChallenge(string html)
+        {
+            return html.Contains("cf_chl", StringComparison.OrdinalIgnoreCase) ||
+                   html.Contains("Just a moment", StringComparison.OrdinalIgnoreCase) ||
+                   html.Contains("Enable JavaScript and cookies", StringComparison.OrdinalIgnoreCase) ||
+                   html.Contains("challenge-platform", StringComparison.OrdinalIgnoreCase);
         }
 
         private static string? ExtractNextDataJson(string html)
@@ -229,6 +247,124 @@ namespace MixOverlays.Services
         {
             if (string.Equals(championKey, "MonkeyKing", StringComparison.OrdinalIgnoreCase)) return "wukong";
             return Regex.Replace(championKey, "([a-z])([A-Z])", "$1-$2").ToLowerInvariant();
+        }
+    }
+
+    /// <summary>
+    /// Provider web générique basé sur OP.GG. Contrairement à U.GG actuellement,
+    /// les pages OP.GG exposent les sections items/runes directement dans le HTML
+    /// rendu côté serveur. On extrait explicitement les premières lignes des tables
+    /// "Starter items", "Boots" et "Core builds" pour éviter de mélanger les blocs.
+    /// </summary>
+    internal class OpggChampionRecommendationProvider : IChampionRecommendationProvider
+    {
+        private static readonly HttpClient _http = new()
+        {
+            Timeout = TimeSpan.FromSeconds(10)
+        };
+
+        public string SourceName => "OP.GG";
+
+        public async Task<ChampionRecommendation?> GetRecommendationAsync(int championId, string championName, string championKey)
+        {
+            var slug = ToOpggSlug(championKey);
+            var url = $"https://www.op.gg/champions/{slug}/build";
+
+            using var req = new HttpRequestMessage(HttpMethod.Get, url);
+            req.Headers.UserAgent.ParseAdd("Mozilla/5.0 MixOverlays/1.0");
+            req.Headers.Accept.ParseAdd("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+
+            using var resp = await _http.SendAsync(req);
+            if (!resp.IsSuccessStatusCode)
+            {
+                App.Log($"[Recommendations] OP.GG HTTP {(int)resp.StatusCode} pour {championName} ({url})");
+                return null;
+            }
+
+            var html = await resp.Content.ReadAsStringAsync();
+            if (string.IsNullOrWhiteSpace(html)) return null;
+
+            if (LooksLikeBlockedPage(html))
+            {
+                App.Log($"[Recommendations] OP.GG page bloquée/inexploitable pour {championName} ({url})");
+                return null;
+            }
+
+            var startingItems = ExtractFirstRowItemIds(html, "Starter items", 3);
+            var boots = ExtractFirstRowItemIds(html, "Boots", 1);
+            var coreItems = ExtractFirstRowItemIds(html, "Core builds", 6);
+            var runeIds = ExtractRuneIds(html, 6);
+
+            if (coreItems.Count < 2 && startingItems.Count == 0 && boots.Count == 0 && runeIds.Count == 0)
+            {
+                App.Log($"[Recommendations] OP.GG aucune section exploitable pour {championName} ({url})");
+                return null;
+            }
+
+            return new ChampionRecommendation
+            {
+                ChampionId = championId,
+                ChampionName = championName,
+                ChampionKey = championKey,
+                RuneIds = runeIds,
+                StartingItemIds = startingItems,
+                BootsItemIds = boots,
+                CoreItemIds = coreItems,
+                SourceName = "OP.GG",
+                SourceUrl = url,
+                IsFallback = false
+            };
+        }
+
+        private static List<int> ExtractFirstRowItemIds(string html, string heading, int maxCount)
+        {
+            var headingIndex = html.IndexOf(heading, StringComparison.OrdinalIgnoreCase);
+            if (headingIndex < 0) return new List<int>();
+
+            var tbodyStart = html.IndexOf("<tbody", headingIndex, StringComparison.OrdinalIgnoreCase);
+            if (tbodyStart < 0) return new List<int>();
+
+            var rowStart = html.IndexOf("<tr", tbodyStart, StringComparison.OrdinalIgnoreCase);
+            if (rowStart < 0) return new List<int>();
+
+            var rowEnd = html.IndexOf("</tr>", rowStart, StringComparison.OrdinalIgnoreCase);
+            if (rowEnd < 0) return new List<int>();
+
+            var row = html.Substring(rowStart, rowEnd - rowStart);
+            return Regex.Matches(row, @"/item/(?<id>\d+)\.png", RegexOptions.IgnoreCase)
+                .Select(m => int.TryParse(m.Groups["id"].Value, out var id) ? id : 0)
+                .Where(IsLikelyItemId)
+                .Distinct()
+                .Take(maxCount)
+                .ToList();
+        }
+
+        private static List<int> ExtractRuneIds(string html, int maxCount)
+        {
+            // La première carte rune OP.GG correspond au build le plus joué. Les URLs
+            // /perk/{id}.png excluent naturellement les styles (/perkStyle/{id}.png).
+            return Regex.Matches(html, @"/perk/(?<id>\d+)\.png", RegexOptions.IgnoreCase)
+                .Select(m => int.TryParse(m.Groups["id"].Value, out var id) ? id : 0)
+                .Where(id => id is >= 5000 and <= 9999)
+                .Distinct()
+                .Take(maxCount)
+                .ToList();
+        }
+
+        private static bool LooksLikeBlockedPage(string html)
+        {
+            return html.Contains("Just a moment", StringComparison.OrdinalIgnoreCase) ||
+                   html.Contains("Enable JavaScript and cookies", StringComparison.OrdinalIgnoreCase) ||
+                   html.Contains("cf_chl", StringComparison.OrdinalIgnoreCase) ||
+                   !html.Contains("/item/", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsLikelyItemId(int id) => id is >= 1001 and <= 9999;
+
+        private static string ToOpggSlug(string championKey)
+        {
+            // OP.GG utilise les clés Data Dragon en minuscules et sans ponctuation.
+            return Regex.Replace(championKey, "[^A-Za-z0-9]", string.Empty).ToLowerInvariant();
         }
     }
 
