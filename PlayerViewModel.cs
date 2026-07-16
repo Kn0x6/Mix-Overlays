@@ -123,6 +123,16 @@ namespace MixOverlays.ViewModels
                 OnPropertyChanged(nameof(RecentAvgDurationDisplay));
                 OnPropertyChanged(nameof(CurrentStreakDisplay));
                 OnPropertyChanged(nameof(CurrentStreakHex));
+                OnPropertyChanged(nameof(LiveChampionName));
+                OnPropertyChanged(nameof(LiveRuneId));
+                OnPropertyChanged(nameof(HasLiveRune));
+                OnPropertyChanged(nameof(ChampionWinRate));
+                OnPropertyChanged(nameof(ChampionGamesPlayed));
+                OnPropertyChanged(nameof(ChampionWinRateDisplay));
+                OnPropertyChanged(nameof(CurrentChampionMasteryPoints));
+                OnPropertyChanged(nameof(ExpertiseLabel));
+                OnPropertyChanged(nameof(ExpertiseBadgeBackground));
+                OnPropertyChanged(nameof(ExpertiseBadgeForeground));
             }
             catch (Exception ex)
             {

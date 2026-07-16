@@ -504,61 +504,28 @@ namespace MixOverlays.ViewModels
 
                 var localTeamId = clickedParticipant?.teamId ?? activeGame.participants[0].teamId;
 
-                async Task<PlayerData> ToPlayerDataAsync(SpectatorParticipant participant)
+                async Task<PlayerData?> ToPlayerDataAsync(SpectatorParticipant participant)
                 {
-                    string puuid    = participant.puuid ?? string.Empty;
-                    string gameName = participant.summonerName ?? string.Empty;
-                    string tagLine  = string.Empty;
+                    var championName = participant.championId > 0 ? _champions.GetName(participant.championId) : string.Empty;
+                    var runeId       = participant.perks?.perkIds?.FirstOrDefault() ?? 0;
 
-                    if (!string.IsNullOrWhiteSpace(puuid))
-                    {
-                        try
-                        {
-                            var account = await _riot.GetAccountByPuuidAsync(puuid);
-                            if (account != null)
-                            {
-                                puuid    = account.puuid;
-                                gameName = account.gameName;
-                                tagLine  = account.tagLine;
-                            }
-                        }
-                        catch { /* non critique : fallback sur summonerName */ }
-                    }
-
-                    if (gameName.Contains('#'))
-                    {
-                        var parts = gameName.Split('#', 2);
-                        gameName = parts[0];
-                        if (string.IsNullOrWhiteSpace(tagLine) && parts.Length > 1)
-                            tagLine = parts[1];
-                    }
-
-                    var championName = participant.championId > 0
-                        ? _champions.GetName(participant.championId)
-                        : string.Empty;
-
-                    return new PlayerData
-                    {
-                        Puuid             = puuid,
-                        GameName          = gameName,
-                        TagLine           = tagLine,
-                        TeamId            = participant.teamId,
-                        ChampionId        = participant.championId,
-                        ChampionName      = championName,
-                        CurrentChampionName = championName,
-                        LiveSpell1Id      = participant.spell1Id,
-                        LiveSpell2Id      = participant.spell2Id,
-                        ActiveGame        = activeGame,
-                        LiveGameStartTime = activeGame.gameStartTime,
-                        IsInGame          = true,
-                        IsLoading         = true,
-                        IsLoaded          = false
-                    };
+                    return await ResolveLivePlayerDataAsync(
+                        participant.puuid,
+                        participant.summonerName,
+                        participant.teamId,
+                        participant.championId,
+                        championName,
+                        participant.spell1Id,
+                        participant.spell2Id,
+                        activeGame,
+                        activeGame.gameStartTime,
+                        runeId);
                 }
 
                 var playerData = await Task.WhenAll(activeGame.participants.Select(ToPlayerDataAsync));
-                var allyData   = playerData.Where(p => p.TeamId == localTeamId).ToList();
-                var enemyData  = playerData.Where(p => p.TeamId != localTeamId).ToList();
+                var resolvedData = playerData.Where(p => p != null).Select(p => p!).ToList();
+                var allyData     = resolvedData.Where(p => p.TeamId == localTeamId).ToList();
+                var enemyData    = resolvedData.Where(p => p.TeamId != localTeamId).ToList();
 
                 Application.Current.Dispatcher.Invoke(() =>
                 {
@@ -1007,6 +974,7 @@ if (me != null && !string.IsNullOrEmpty(me.gameName))
         public ObservableCollection<PlayerViewModel> EnemyTeam { get; } = new();
     }
 }
+
 
 
 

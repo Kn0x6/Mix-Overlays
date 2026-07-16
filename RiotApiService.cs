@@ -340,6 +340,92 @@ namespace MixOverlays.Services
         }
 
         /// <summary>
+        /// Charge uniquement les données nécessaires à l'affichage du rang dans un PlayerData.
+        /// Utilise le même mapping Ranked que LoadFullPlayerDataAsync, sans charger masteries,
+        /// historique de matchs ou partie active.
+        /// </summary>
+        public async Task<PlayerData> LoadRankPlayerDataAsync(string puuid, string gameName, string tagLine)
+        {
+            string resolvedPuuid    = puuid;
+            string resolvedGameName = gameName;
+            string resolvedTagLine  = tagLine;
+
+            if (!string.IsNullOrWhiteSpace(resolvedGameName) && resolvedGameName.Contains('#'))
+            {
+                var parts = resolvedGameName.Split('#', 2);
+                resolvedGameName = parts[0];
+                if (string.IsNullOrWhiteSpace(resolvedTagLine) && parts.Length > 1)
+                    resolvedTagLine = parts[1];
+            }
+
+            var player = new PlayerData
+            {
+                Puuid     = resolvedPuuid,
+                GameName  = resolvedGameName,
+                TagLine   = resolvedTagLine,
+                IsLoading = true
+            };
+
+            try
+            {
+                // Même flux que le test CLI fonctionnel : RiotId → PUUID officiel Riot → League API.
+                // Cela évite d'utiliser un PUUID LCU/2999 incomplet ou non normalisé pour l'overlay.
+                if (!string.IsNullOrWhiteSpace(resolvedGameName) &&
+                    !string.IsNullOrWhiteSpace(resolvedTagLine))
+                {
+                    var account = await GetAccountByRiotIdAsync(resolvedGameName, resolvedTagLine);
+                    if (account != null && !string.IsNullOrWhiteSpace(account.puuid))
+                    {
+                        resolvedPuuid    = account.puuid;
+                        resolvedGameName = account.gameName;
+                        resolvedTagLine  = account.tagLine;
+
+                        player.Puuid    = resolvedPuuid;
+                        player.GameName = resolvedGameName;
+                        player.TagLine  = resolvedTagLine;
+                    }
+                }
+
+                var summonerTask = GetSummonerByPuuidAsync(resolvedPuuid);
+                var rankTask     = GetLeagueEntriesByPuuidAsync(resolvedPuuid);
+                await Task.WhenAll(summonerTask, rankTask);
+
+                var summoner      = summonerTask.Result;
+                var leagueEntries = rankTask.Result;
+
+                if (summoner != null)
+                {
+                    player.SummonerId    = summoner.id;
+                    player.ProfileIconId = summoner.profileIconId;
+                    player.SummonerLevel = summoner.summonerLevel;
+                }
+
+                if (leagueEntries != null)
+                {
+                    foreach (var entry in leagueEntries)
+                    {
+                        if (entry.queueType == "RANKED_SOLO_5x5") player.SoloRank = entry;
+                        else if (entry.queueType == "RANKED_FLEX_SR") player.FlexRank = entry;
+                    }
+                }
+
+                player.IsLoaded = true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[LoadRankPlayerData] Erreur: {ex}");
+                player.ErrorMessage = $"Erreur rang : {ex.Message}";
+                player.IsLoaded = true;
+            }
+            finally
+            {
+                player.IsLoading = false;
+            }
+
+            return player;
+        }
+
+        /// <summary>
         /// Charge la page suivante de matchs (10 parties) pour un joueur déjà chargé.
         /// Retourne la liste des nouveaux MatchSummary ajoutés, ou une liste vide si plus rien.
         /// </summary>

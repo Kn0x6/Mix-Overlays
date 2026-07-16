@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -246,29 +243,14 @@ namespace MixOverlays.ViewModels
 
             async Task<PlayerData?> Resolve(LcuTeamMember m, int teamId)
             {
-                if (string.IsNullOrEmpty(m.puuid)) return null;
-                var account  = await _riot.GetAccountByPuuidAsync(m.puuid);
-                var gameName = account?.gameName ?? m.summonerName;
-                var tagLine  = account?.tagLine  ?? string.Empty;
-
-                // FIX : séparer GameName#TagLine si combinés
-                if (!string.IsNullOrEmpty(gameName) && gameName.Contains('#'))
-                {
-                    var parts = gameName.Split('#', 2);
-                    gameName = parts[0];
-                    if (string.IsNullOrEmpty(tagLine) && parts.Length > 1)
-                        tagLine = parts[1];
-                }
-
-                if (string.IsNullOrEmpty(gameName)) return null;
-
                 // ── Récupérer champion + spells depuis playerChampionSelections ──
                 var champSel = gameData.playerChampionSelections
                     ?.FirstOrDefault(c => c.puuid == m.puuid);
 
+                var championId   = champSel?.championId ?? 0;
                 var championName = m.championName;
-                int spell1 = m.spell1Id;
-                int spell2 = m.spell2Id;
+                int spell1       = m.spell1Id;
+                int spell2       = m.spell2Id;
 
                 // playerChampionSelections a priorité (plus fiable, contient championId)
                 if (champSel != null)
@@ -279,20 +261,14 @@ namespace MixOverlays.ViewModels
                     if (champSel.spell2Id > 0) spell2 = champSel.spell2Id;
                 }
 
-                return new PlayerData
-                {
-                    Puuid             = m.puuid ?? string.Empty,
-                    GameName          = gameName,
-                    TagLine           = tagLine,
-                    TeamId            = teamId,
-                    IsLoading         = true,
-                    ChampionId        = champSel?.championId ?? 0,
-                    ChampionName      = championName,
-                    CurrentChampionName = championName,
-                    LiveSpell1Id      = spell1,
-                    LiveSpell2Id      = spell2,
-                    IsInGame          = true
-                };
+                return await ResolveLivePlayerDataAsync(
+                    m.puuid,
+                    m.summonerName,
+                    teamId,
+                    championId,
+                    championName,
+                    spell1,
+                    spell2);
             }
 
 
@@ -406,6 +382,101 @@ namespace MixOverlays.ViewModels
             };
         }
 
+        /// <summary>
+        /// Résout les infos d'un joueur live en <see cref="PlayerData"/>.
+        /// Cette méthode centralise la logique utilisée par la page Live session et l'overlay in-game :
+        /// priorité au PUUID + Account API, fallback RiotId GameName#TagLine, puis fallback nom brut LCU/2999.
+        /// </summary>
+        private async Task<PlayerData?> ResolveLivePlayerDataAsync(
+            string? puuid,
+            string? fallbackName,
+            int teamId,
+            int championId = 0,
+            string? championName = null,
+            int spell1Id = 0,
+            int spell2Id = 0,
+            SpectatorGameInfo? activeGame = null,
+            long liveGameStartTime = 0,
+            int liveRuneId = 0)
+        {
+            string resolvedPuuid    = puuid ?? string.Empty;
+            string resolvedGameName = fallbackName ?? string.Empty;
+            string resolvedTagLine  = string.Empty;
+
+            if (!string.IsNullOrWhiteSpace(resolvedPuuid))
+            {
+                try
+                {
+                    var account = await _riot.GetAccountByPuuidAsync(resolvedPuuid);
+                    if (account != null)
+                    {
+                        resolvedPuuid    = account.puuid;
+                        resolvedGameName = account.gameName;
+                        resolvedTagLine  = account.tagLine;
+                    }
+                }
+                catch { /* non critique : fallback sur le nom fourni par LCU/2999 */ }
+            }
+
+            SplitRiotId(ref resolvedGameName, ref resolvedTagLine);
+
+            if (string.IsNullOrWhiteSpace(resolvedPuuid) &&
+                !string.IsNullOrWhiteSpace(resolvedGameName) &&
+                !string.IsNullOrWhiteSpace(resolvedTagLine))
+            {
+                try
+                {
+                    var account = await _riot.GetAccountByRiotIdAsync(resolvedGameName, resolvedTagLine);
+                    if (account != null)
+                    {
+                        resolvedPuuid    = account.puuid;
+                        resolvedGameName = account.gameName;
+                        resolvedTagLine  = account.tagLine;
+                    }
+                }
+                catch { /* non critique : affichage possible avec le nom seul */ }
+            }
+
+            if (string.IsNullOrWhiteSpace(resolvedGameName) && string.IsNullOrWhiteSpace(resolvedPuuid))
+                return null;
+
+            var resolvedChampionName = championName ?? string.Empty;
+            if (championId > 0 && string.IsNullOrWhiteSpace(resolvedChampionName))
+            {
+                await _champions.EnsureLoadedAsync();
+                resolvedChampionName = _champions.GetName(championId);
+            }
+
+            return new PlayerData
+            {
+                Puuid               = resolvedPuuid,
+                GameName            = resolvedGameName,
+                TagLine             = resolvedTagLine,
+                TeamId              = teamId,
+                ChampionId          = championId,
+                ChampionName        = resolvedChampionName,
+                CurrentChampionName = resolvedChampionName,
+                LiveSpell1Id        = spell1Id,
+                LiveSpell2Id        = spell2Id,
+                ActiveGame          = activeGame,
+                LiveGameStartTime   = liveGameStartTime,
+                LiveRuneId          = liveRuneId,
+                IsInGame            = true,
+                IsLoading           = true,
+                IsLoaded            = false
+            };
+        }
+
+        private static void SplitRiotId(ref string gameName, ref string tagLine)
+        {
+            if (string.IsNullOrWhiteSpace(gameName) || !gameName.Contains('#')) return;
+
+            var parts = gameName.Split('#', 2);
+            gameName = parts[0];
+            if (string.IsNullOrWhiteSpace(tagLine) && parts.Length > 1)
+                tagLine = parts[1];
+        }
+
 
         /// <summary>
         /// Convertit un championId en nom via le dictionnaire DDragon chargé.
@@ -482,39 +553,19 @@ namespace MixOverlays.ViewModels
             // ── ÉTAPE 1 : Rang seul (2 appels) — rapide et prioritaire ────────
             try
             {
-                var (summoner, entries) = await _riot.LoadRankOnlyAsync(pd.Puuid);
+                var rankData = await _riot.LoadRankPlayerDataAsync(pd.Puuid, pd.GameName, pd.TagLine);
 
-                var rankData = new PlayerData
-                {
-                    Puuid        = pd.Puuid,
-                    GameName     = pd.GameName,
-                    TagLine      = pd.TagLine,
-                    TeamId       = pd.TeamId,
-                    ChampionId   = pd.ChampionId,
-                    ChampionName = pd.ChampionId > 0
-                        ? _champions.GetName(pd.ChampionId)
-                        : pd.ChampionName,
-                    LiveSpell1Id = pd.LiveSpell1Id,
-                    LiveSpell2Id = pd.LiveSpell2Id,
-                    IsLoading    = false,
-                    IsLoaded     = true,
-                };
-
-                if (summoner != null)
-                {
-                    rankData.SummonerId    = summoner.id;
-                    rankData.SummonerLevel = summoner.summonerLevel;
-                    rankData.ProfileIconId = summoner.profileIconId;
-                }
-
-                if (entries != null)
-                {
-                    foreach (var e in entries)
-                    {
-                        if (e.queueType == "RANKED_SOLO_5x5") rankData.SoloRank = e;
-                        else if (e.queueType == "RANKED_FLEX_SR") rankData.FlexRank = e;
-                    }
-                }
+                // Conserver les données live déjà résolues pour l'overlay / Live session.
+                rankData.TeamId              = pd.TeamId;
+                rankData.ChampionId          = pd.ChampionId;
+                rankData.ChampionName        = pd.ChampionId > 0 ? _champions.GetName(pd.ChampionId) : pd.ChampionName;
+                rankData.CurrentChampionName = pd.CurrentChampionName;
+                rankData.LiveSpell1Id        = pd.LiveSpell1Id;
+                rankData.LiveSpell2Id        = pd.LiveSpell2Id;
+                rankData.ActiveGame          = pd.ActiveGame;
+                rankData.LiveGameStartTime   = pd.LiveGameStartTime;
+                rankData.LiveRuneId          = pd.LiveRuneId;
+                rankData.IsInGame            = pd.IsInGame;
 
                 App.Log($"{tag} ✅ Rang chargé : {rankData.SoloRank?.tier ?? "Non classé"}");
 

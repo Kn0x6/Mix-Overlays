@@ -349,6 +349,7 @@ public long GameDuration { get; set; }
         public int teamId { get; set; }
         public int spell1Id { get; set; }
         public int spell2Id { get; set; }
+        public SpectatorPerks? perks { get; set; }
     }
 
     // Modèle pour Spectator API v4 (fallback)
