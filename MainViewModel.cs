@@ -48,6 +48,7 @@ namespace MixOverlays.ViewModels
                 OnPropertyChanged(nameof(IsConnected));
                 OnPropertyChanged(nameof(IsInChampSelect));
                 OnPropertyChanged(nameof(IsInGame));
+                OnPropertyChanged(nameof(IsLiveSessionAvailable));
                 OnPropertyChanged(nameof(ShowChampionRecommendationPanel));
                 OnPropertyChanged(nameof(IsWaitingForChampionLock));
                 OnPropertyChanged(nameof(ClientStateDisplay));
@@ -58,6 +59,7 @@ namespace MixOverlays.ViewModels
         public bool IsConnected     => _clientState != LcuState.Disconnected;
         public bool IsInChampSelect => _clientState == LcuState.InChampSelect;
         public bool IsInGame        => _clientState == LcuState.InGame;
+        public bool IsLiveSessionAvailable => IsInChampSelect || IsInGame;
 
         public string ClientStateDisplay => _clientState switch
         {
@@ -327,6 +329,7 @@ public int PerformanceScore
         public MatchParticipantViewModel? Enemy    { get; set; }
     }
 }
+
 
 
 

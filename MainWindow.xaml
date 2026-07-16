@@ -115,7 +115,8 @@
                                     Click="NavButton_Click" Tag="MyAccount"/>
                             <Button x:Name="BtnLive" Content="🎮  Live Session"
                                     Style="{StaticResource NavButton}"
-                                    Click="NavButton_Click" Tag="Live"/>
+                                    Click="NavButton_Click" Tag="Live"
+                                    Visibility="{Binding IsLiveSessionAvailable, Converter={StaticResource BoolVis}}"/>
                             <Button x:Name="BtnSearch" Content="🔍  Rechercher"
                                     Style="{StaticResource NavButton}"
                                     Click="NavButton_Click" Tag="Search"/>

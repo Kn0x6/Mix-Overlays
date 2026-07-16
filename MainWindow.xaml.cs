@@ -40,6 +40,15 @@ namespace MixOverlays.Views
                         else
                             MatchDetailPanel.Visibility = Visibility.Collapsed;
                     }
+
+                    if (e.PropertyName == nameof(MainViewModel.IsLiveSessionAvailable))
+                    {
+                        if (_vm.IsLiveSessionAvailable)
+                            SetActiveNav("Live");
+                        else if (_currentPage == "Live")
+                            SetActiveNav("MyAccount");
+                    }
+
                     // L'overlay s'affiche UNIQUEMENT via Ctrl+X (raccourci global).
                 };
             }
@@ -265,6 +274,12 @@ namespace MixOverlays.Views
 
         private void SetActiveNav(string page)
         {
+            if (_vm == null)
+                return;
+
+            if (page == "Live" && !_vm.IsLiveSessionAvailable)
+                page = "MyAccount";
+
             if (page == "Search" && !_vm.IsSearching)
             {
                 _vm.SearchedPlayer         = null;
