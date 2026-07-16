@@ -21,7 +21,10 @@
         <conv:TimeAgoConverter                  x:Key="TimeAgo"/>
         <conv:GameDurationConverter             x:Key="GameDuration"/>
         <conv:ChampionNameToImageConverter      x:Key="ChampImg"/>
+        <conv:ChampionIdToImageConverter        x:Key="ChampIdImg"/>
         <conv:SummonerSpellIdToImageConverter   x:Key="SpellImg"/>
+        <conv:RuneIdToImageConverter            x:Key="RuneToImg"/>
+        <conv:ItemIdToImageConverter            x:Key="ItemToImg"/>
         <conv:UrlToImageSourceWithFallbackConverter x:Key="UrlToImgWithFallback"/>
         <conv:WinLossBrushConverter             x:Key="WinLossBrush"/>
     </Window.Resources>
@@ -144,6 +147,7 @@
                     <Grid x:Name="PageLive">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
 
@@ -167,8 +171,182 @@
                             </StackPanel>
                         </Border>
 
+                        <!-- Recommandations Champion Select -->
+                        <Border Grid.Row="1"
+                                Visibility="{Binding ShowChampionRecommendationPanel, Converter={StaticResource BoolVis}}"
+                                Background="{StaticResource BgSecondaryBrush}"
+                                BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="0,0,0,1"
+                                Padding="16,10">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Column="0" Width="44" Height="44"
+                                        CornerRadius="7" ClipToBounds="True"
+                                        Background="{StaticResource BgCardBrush}"
+                                        Margin="0,0,12,0">
+                                    <Image Source="{Binding LockedChampionId, Converter={StaticResource ChampIdImg}}"
+                                           Stretch="UniformToFill"/>
+                                </Border>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                                        <StackPanel.Style>
+                                            <Style TargetType="StackPanel">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding HasDetectedChampionForRecommendation}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </StackPanel.Style>
+                                        <TextBlock Text="Recommandations pour "
+                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                   FontSize="12"/>
+                                        <TextBlock Text="{Binding LockedChampionName}"
+                                                   Foreground="#FF8C5A"
+                                                   FontSize="12" FontWeight="Bold"/>
+                                    </StackPanel>
+
+                                    <TextBlock Text="En attente du prélock/verrouillage de votre champion..."
+                                               Visibility="{Binding IsWaitingForChampionLock, Converter={StaticResource BoolVis}}"
+                                               Foreground="{StaticResource TextMutedBrush}"
+                                               FontSize="11"/>
+
+                                    <TextBlock Text="Chargement des runes et du build communautaire..."
+                                               Visibility="{Binding IsLoadingChampionRecommendation, Converter={StaticResource BoolVis}}"
+                                               Foreground="{StaticResource TextMutedBrush}"
+                                               FontSize="11"/>
+
+                                    <TextBlock Text="{Binding ChampionRecommendationError}"
+                                               Visibility="{Binding HasChampionRecommendationError, Converter={StaticResource BoolVis}}"
+                                               Foreground="#F85149"
+                                               FontSize="11"/>
+
+                                    <StackPanel Visibility="{Binding HasChampionRecommendation, Converter={StaticResource BoolVis}}">
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                            <TextBlock Text="Runes"
+                                                       Style="{StaticResource SectionLabel}"
+                                                       Margin="0,0,8,0"
+                                                       VerticalAlignment="Center"/>
+                                            <ItemsControl ItemsSource="{Binding ChampionRecommendation.RuneIds}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <StackPanel Orientation="Horizontal"/>
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Width="24" Height="24" CornerRadius="12"
+                                                                Background="{StaticResource BgCardBrush}"
+                                                                BorderBrush="{StaticResource BorderBrush}"
+                                                                BorderThickness="1"
+                                                                ClipToBounds="True" Margin="0,0,4,0">
+                                                            <Image Source="{Binding Converter={StaticResource RuneToImg}}"
+                                                                   Stretch="UniformToFill"/>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+
+                                        <WrapPanel>
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,14,4">
+                                                <TextBlock Text="Start"
+                                                           Style="{StaticResource SectionLabel}"
+                                                           Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                                <ItemsControl ItemsSource="{Binding ChampionRecommendation.StartingItemIds}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Border Width="24" Height="24" CornerRadius="4"
+                                                                    ClipToBounds="True" Margin="0,0,4,0"
+                                                                    Background="{StaticResource BgCardBrush}">
+                                                                <Image Source="{Binding Converter={StaticResource ItemToImg}}" Stretch="UniformToFill"/>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </StackPanel>
+
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,14,4">
+                                                <TextBlock Text="Bottes"
+                                                           Style="{StaticResource SectionLabel}"
+                                                           Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                                <ItemsControl ItemsSource="{Binding ChampionRecommendation.BootsItemIds}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Border Width="24" Height="24" CornerRadius="4"
+                                                                    ClipToBounds="True" Margin="0,0,4,0"
+                                                                    Background="{StaticResource BgCardBrush}">
+                                                                <Image Source="{Binding Converter={StaticResource ItemToImg}}" Stretch="UniformToFill"/>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </StackPanel>
+
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,14,4">
+                                                <TextBlock Text="Core"
+                                                           Style="{StaticResource SectionLabel}"
+                                                           Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                                <ItemsControl ItemsSource="{Binding ChampionRecommendation.CoreItemIds}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Border Width="24" Height="24" CornerRadius="4"
+                                                                    ClipToBounds="True" Margin="0,0,4,0"
+                                                                    Background="{StaticResource BgCardBrush}">
+                                                                <Image Source="{Binding Converter={StaticResource ItemToImg}}" Stretch="UniformToFill"/>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </StackPanel>
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right"
+                                            Visibility="{Binding HasChampionRecommendation, Converter={StaticResource BoolVis}}">
+                                    <TextBlock Text="SOURCE"
+                                               Style="{StaticResource SectionLabel}"
+                                               HorizontalAlignment="Right"/>
+                                    <TextBlock Text="{Binding ChampionRecommendation.SourceName}"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               FontSize="11" HorizontalAlignment="Right"/>
+                                    <TextBlock Text="fallback"
+                                               Foreground="#F59E0B"
+                                               FontSize="10" HorizontalAlignment="Right">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ChampionRecommendation.IsFallback}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
                         <!-- Empty state -->
-                        <StackPanel Grid.Row="1"
+                        <StackPanel Grid.Row="2"
                                     Visibility="{Binding IsInLiveSession, Converter={StaticResource InvBoolVis}}"
                                     HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.72">
                             <TextBlock Text="🎮" FontSize="48" HorizontalAlignment="Center"/>
@@ -181,7 +359,7 @@
                         </StackPanel>
 
                         <!-- Teams columns -->
-                        <Grid Grid.Row="1"
+                        <Grid Grid.Row="2"
                               Visibility="{Binding IsInLiveSession, Converter={StaticResource BoolVis}}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
@@ -657,7 +835,7 @@
                           Panel.ZIndex="100">
 
                         <!-- Fond semi-transparent -->
-                        <Rectangle Fill="#CC0D1117"/>
+                        <Rectangle Fill="#CC151B24"/>
 
                         <!-- Carte centrale -->
                         <Border Background="{StaticResource BgPrimaryBrush}"
@@ -1138,7 +1316,7 @@
                           Panel.ZIndex="101">
 
                         <!-- Fond semi-transparent -->
-                        <Rectangle Fill="#CC0D1117"/>
+                        <Rectangle Fill="#CC151B24"/>
 
                         <!-- Carte centrale -->
                         <Border Background="{StaticResource BgPrimaryBrush}"
@@ -1267,6 +1445,281 @@
                         </Border>
                     </Grid>
                     <!-- FIN PANNEAU LIVE GAME -->
+
+                    <!-- ══════════════════════════════════════════════════════════ -->
+                    <!--  PANNEAU RÉCAP FIN DE PARTIE — affiché après EndOfGame     -->
+                    <!-- ══════════════════════════════════════════════════════════ -->
+                    <Grid Visibility="{Binding HasPostGameRecap, Converter={StaticResource BoolVis}}"
+                          Panel.ZIndex="120">
+
+                        <Rectangle Fill="#D9151B24"/>
+
+                        <Border Background="{StaticResource BgPrimaryBrush}"
+                                BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="12"
+                                Margin="34,24"
+                                DataContext="{Binding PostGameRecap}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="56"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Header -->
+                                <Border Grid.Row="0"
+                                        BorderBrush="{StaticResource BorderBrush}"
+                                        BorderThickness="0,0,0,1"
+                                        CornerRadius="12,12,0,0"
+                                        Padding="18,0"
+                                        Background="{StaticResource BgSecondaryBrush}">
+                                    <Grid>
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Border Padding="10,5" CornerRadius="14"
+                                                    Background="{Binding ResultBackgroundHex, Converter={StaticResource HexBrush}}"
+                                                    Margin="0,0,12,0">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding ResultIcon}" FontSize="14" Margin="0,0,6,0"/>
+                                                    <TextBlock Text="{Binding ResultText}"
+                                                               Foreground="{Binding ResultHex, Converter={StaticResource HexBrush}}"
+                                                               FontWeight="Bold" FontSize="13"/>
+                                                </StackPanel>
+                                            </Border>
+                                            <TextBlock Text="Récap de fin de partie"
+                                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                                       FontSize="15" FontWeight="SemiBold"
+                                                       VerticalAlignment="Center"/>
+                                            <TextBlock Text="·" Foreground="{StaticResource TextMutedBrush}"
+                                                       Margin="10,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding QueueName}"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                       FontSize="12" VerticalAlignment="Center"/>
+                                            <TextBlock Text="·" Foreground="{StaticResource TextMutedBrush}"
+                                                       Margin="10,0" VerticalAlignment="Center"/>
+                                            <TextBlock Foreground="{StaticResource TextMutedBrush}"
+                                                       FontSize="12" VerticalAlignment="Center">
+                                                <Run Text="{Binding GameDuration, Converter={StaticResource GameDuration}}"/>
+                                            </TextBlock>
+                                        </StackPanel>
+
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                            <Button Content="Voir détail complet"
+                                                    Style="{StaticResource GhostButton}"
+                                                    Command="{Binding DataContext.OpenPostGameDetailCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    Padding="10,5" FontSize="12" Margin="0,0,8,0"/>
+                                            <Button Command="{Binding DataContext.ClosePostGameRecapCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    Width="30" Height="30"
+                                                    Background="Transparent" BorderThickness="0" Cursor="Hand">
+                                                <Button.Style>
+                                                    <Style TargetType="Button">
+                                                        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+                                                        <Style.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                                                                <Setter Property="Background" Value="{StaticResource BgHoverBrush}"/>
+                                                            </Trigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
+                                                <TextBlock Text="✕" FontSize="14"/>
+                                            </Button>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Body -->
+                                <ScrollViewer Grid.Row="1"
+                                              VerticalScrollBarVisibility="Auto"
+                                              Style="{StaticResource SlimScrollViewer}">
+                                    <StackPanel Margin="18">
+
+                                        <!-- Carte joueur -->
+                                        <Border Background="{StaticResource BgCardBrush}"
+                                                BorderBrush="{StaticResource BorderBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="12"
+                                                Padding="16"
+                                                Margin="0,0,0,14">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="84"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <Border Grid.Column="0" Width="68" Height="68"
+                                                        CornerRadius="10" ClipToBounds="True"
+                                                        BorderBrush="{Binding ResultHex, Converter={StaticResource HexBrush}}"
+                                                        BorderThickness="2">
+                                                    <Image Source="{Binding ChampionName, Converter={StaticResource ChampImg}}"
+                                                           Stretch="UniformToFill"/>
+                                                </Border>
+
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                    <TextBlock Text="Votre performance"
+                                                               Style="{StaticResource SectionLabel}"/>
+                                                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                                        <TextBlock Text="{Binding ChampionName}"
+                                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                                   FontSize="18" FontWeight="SemiBold"/>
+                                                        <TextBlock Text="{Binding Position}"
+                                                                   Foreground="{StaticResource TextMutedBrush}"
+                                                                   FontSize="12" VerticalAlignment="Bottom"
+                                                                   Margin="10,0,0,2"/>
+                                                    </StackPanel>
+                                                    <TextBlock Foreground="{StaticResource TextMutedBrush}"
+                                                               FontSize="12" Margin="0,4,0,0">
+                                                        <Run Text="Score de performance : "/>
+                                                        <Run Text="{Binding PerformanceScore}"/>
+                                                    </TextBlock>
+                                                </StackPanel>
+
+                                                <UniformGrid Grid.Column="2" Columns="6" VerticalAlignment="Center">
+                                                    <StackPanel Margin="12,0" MinWidth="58">
+                                                        <TextBlock Text="KDA" Style="{StaticResource SectionLabel}" HorizontalAlignment="Center"/>
+                                                        <TextBlock Text="{Binding KdaLine}" Foreground="{StaticResource TextPrimaryBrush}"
+                                                                   FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                                        <TextBlock Foreground="{StaticResource TextMutedBrush}" FontSize="11" HorizontalAlignment="Center">
+                                                            <Run Text="{Binding KDA, Converter={StaticResource DoubleFmt}}"/>
+                                                            <Run Text=" ratio"/>
+                                                        </TextBlock>
+                                                    </StackPanel>
+                                                    <StackPanel Margin="12,0" MinWidth="58">
+                                                        <TextBlock Text="CS" Style="{StaticResource SectionLabel}" HorizontalAlignment="Center"/>
+                                                        <TextBlock Text="{Binding CS}" Foreground="{StaticResource TextPrimaryBrush}"
+                                                                   FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                                        <TextBlock Text="{Binding CSPerMinDisplay}" Foreground="{StaticResource TextMutedBrush}"
+                                                                   FontSize="11" HorizontalAlignment="Center"/>
+                                                    </StackPanel>
+                                                    <StackPanel Margin="12,0" MinWidth="58">
+                                                        <TextBlock Text="DÉGÂTS" Style="{StaticResource SectionLabel}" HorizontalAlignment="Center"/>
+                                                        <TextBlock Text="{Binding DamageDisplay}" Foreground="{StaticResource TextPrimaryBrush}"
+                                                                   FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                                    </StackPanel>
+                                                    <StackPanel Margin="12,0" MinWidth="58">
+                                                        <TextBlock Text="GOLD" Style="{StaticResource SectionLabel}" HorizontalAlignment="Center"/>
+                                                        <TextBlock Text="{Binding GoldDisplay}" Foreground="{StaticResource TextPrimaryBrush}"
+                                                                   FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                                    </StackPanel>
+                                                    <StackPanel Margin="12,0" MinWidth="58">
+                                                        <TextBlock Text="VISION" Style="{StaticResource SectionLabel}" HorizontalAlignment="Center"/>
+                                                        <TextBlock Text="{Binding VisionDisplay}" Foreground="{StaticResource TextPrimaryBrush}"
+                                                                   FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                                    </StackPanel>
+                                                    <StackPanel Margin="12,0" MinWidth="58">
+                                                        <TextBlock Text="RÉSULTAT" Style="{StaticResource SectionLabel}" HorizontalAlignment="Center"/>
+                                                        <TextBlock Text="{Binding ResultText}"
+                                                                   Foreground="{Binding ResultHex, Converter={StaticResource HexBrush}}"
+                                                                   FontSize="15" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                                    </StackPanel>
+                                                </UniformGrid>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Highlights -->
+                                        <UniformGrid Columns="3" Margin="0,0,0,14">
+                                            <Border Background="{StaticResource BgCardBrush}" BorderBrush="{StaticResource BorderBrush}"
+                                                    BorderThickness="1" CornerRadius="10" Padding="12" Margin="0,0,8,0">
+                                                <StackPanel>
+                                                    <TextBlock Text="🔥 Plus gros dégâts" Style="{StaticResource SectionLabel}"/>
+                                                    <TextBlock Text="{Binding BestDamagePlayer.DisplayName}" Foreground="{StaticResource TextPrimaryBrush}"
+                                                               FontSize="13" FontWeight="SemiBold" Margin="0,6,0,0"/>
+                                                    <TextBlock Text="{Binding BestDamagePlayer.TotalDamage, StringFormat={}{0:N0} dégâts}"
+                                                               Foreground="{StaticResource TextMutedBrush}" FontSize="12"/>
+                                                </StackPanel>
+                                            </Border>
+                                            <Border Background="{StaticResource BgCardBrush}" BorderBrush="{StaticResource BorderBrush}"
+                                                    BorderThickness="1" CornerRadius="10" Padding="12" Margin="4,0,4,0">
+                                                <StackPanel>
+                                                    <TextBlock Text="⭐ Meilleur KDA" Style="{StaticResource SectionLabel}"/>
+                                                    <TextBlock Text="{Binding BestKdaPlayer.DisplayName}" Foreground="{StaticResource TextPrimaryBrush}"
+                                                               FontSize="13" FontWeight="SemiBold" Margin="0,6,0,0"/>
+                                                    <TextBlock Foreground="{StaticResource TextMutedBrush}" FontSize="12">
+                                                        <Run Text="{Binding BestKdaPlayer.KDA, Converter={StaticResource DoubleFmt}}"/>
+                                                        <Run Text=" KDA"/>
+                                                    </TextBlock>
+                                                </StackPanel>
+                                            </Border>
+                                            <Border Background="{StaticResource BgCardBrush}" BorderBrush="{StaticResource BorderBrush}"
+                                                    BorderThickness="1" CornerRadius="10" Padding="12" Margin="8,0,0,0">
+                                                <StackPanel>
+                                                    <TextBlock Text="👁 Meilleure vision" Style="{StaticResource SectionLabel}"/>
+                                                    <TextBlock Text="{Binding BestVisionPlayer.DisplayName}" Foreground="{StaticResource TextPrimaryBrush}"
+                                                               FontSize="13" FontWeight="SemiBold" Margin="0,6,0,0"/>
+                                                    <TextBlock Text="{Binding BestVisionPlayer.VisionScore, StringFormat={}{0} score de vision}"
+                                                               Foreground="{StaticResource TextMutedBrush}" FontSize="12"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </UniformGrid>
+
+                                        <!-- Participants -->
+                                        <Border Background="{StaticResource BgCardBrush}"
+                                                BorderBrush="{StaticResource BorderBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="10"
+                                                Padding="0">
+                                            <DockPanel>
+                                                <Border DockPanel.Dock="Top" Padding="12,9"
+                                                        BorderBrush="{StaticResource BorderBrush}"
+                                                        BorderThickness="0,0,0,1">
+                                                    <TextBlock Text="JOUEURS DE LA PARTIE"
+                                                               Style="{StaticResource SectionLabel}"/>
+                                                </Border>
+                                                <ItemsControl ItemsSource="{Binding Participants}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Border BorderBrush="{StaticResource BorderBrush}"
+                                                                    BorderThickness="0,0,0,1"
+                                                                    Padding="10,7">
+                                                                <Grid>
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="34"/>
+                                                                        <ColumnDefinition Width="*"/>
+                                                                        <ColumnDefinition Width="72"/>
+                                                                        <ColumnDefinition Width="54"/>
+                                                                        <ColumnDefinition Width="78"/>
+                                                                        <ColumnDefinition Width="54"/>
+                                                                        <ColumnDefinition Width="66"/>
+                                                                    </Grid.ColumnDefinitions>
+
+                                                                    <Border Grid.Column="0" Width="28" Height="28" CornerRadius="4" ClipToBounds="True">
+                                                                        <Image Source="{Binding ChampionName, Converter={StaticResource ChampImg}}"/>
+                                                                    </Border>
+                                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="8,0,0,0">
+                                                                        <TextBlock Text="{Binding DisplayName}" Foreground="{StaticResource TextPrimaryBrush}"
+                                                                                   FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                                                        <TextBlock Text="{Binding ChampionName}" Foreground="{StaticResource TextMutedBrush}"
+                                                                                   FontSize="10"/>
+                                                                    </StackPanel>
+                                                                    <TextBlock Grid.Column="2" Text="{Binding RankDisplay}" Foreground="{StaticResource TextMutedBrush}"
+                                                                               FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                                                    <TextBlock Grid.Column="3" Text="{Binding CS, StringFormat={}{0} CS}" Foreground="{StaticResource TextMutedBrush}"
+                                                                               FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                                                    <TextBlock Grid.Column="4" Foreground="{StaticResource TextSecondaryBrush}"
+                                                                               FontSize="12" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                                        <Run Text="{Binding Kills}" Foreground="#3FB950"/>
+                                                                        <Run Text=" / " Foreground="{StaticResource TextMutedBrush}"/>
+                                                                        <Run Text="{Binding Deaths}" Foreground="#F85149"/>
+                                                                        <Run Text=" / " Foreground="{StaticResource TextMutedBrush}"/>
+                                                                        <Run Text="{Binding Assists}" Foreground="#58A6FF"/>
+                                                                    </TextBlock>
+                                                                    <TextBlock Grid.Column="5" Text="{Binding VisionScore}" Foreground="{StaticResource TextMutedBrush}"
+                                                                               FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                                                    <TextBlock Grid.Column="6" Text="{Binding TotalDamage, StringFormat={}{0:N0}}" Foreground="{StaticResource TextMutedBrush}"
+                                                                               FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                                                                </Grid>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </DockPanel>
+                                        </Border>
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                    <!-- FIN PANNEAU RÉCAP FIN DE PARTIE -->
                 </Grid>
             </Grid>
 

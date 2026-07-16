@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Windows;
 using MixOverlays.Models;
 using MixOverlays.Services;
@@ -19,7 +20,10 @@ namespace MixOverlays.ViewModels
         private readonly RiotApiService      _riot;
         private readonly SettingsService     _settings;
         private readonly ChampionDataService _champions = new();
+        private readonly ChampionRecommendationService _recommendations;
         private readonly LpTrackerService    _lpTracker = new();
+        private int _postGameHistoryRefreshInProgress;
+        private string _lastPostGameHistoryRefreshMatchId = string.Empty;
 
         // ─── Déclarations des méthodes partielles ─────────────────────────────
         //  Chaque fichier partiel implémente sa propre initialisation.
@@ -44,6 +48,8 @@ namespace MixOverlays.ViewModels
                 OnPropertyChanged(nameof(IsConnected));
                 OnPropertyChanged(nameof(IsInChampSelect));
                 OnPropertyChanged(nameof(IsInGame));
+                OnPropertyChanged(nameof(ShowChampionRecommendationPanel));
+                OnPropertyChanged(nameof(IsWaitingForChampionLock));
                 OnPropertyChanged(nameof(ClientStateDisplay));
                 OnPropertyChanged(nameof(StatusDotColor));
             }
@@ -85,6 +91,7 @@ namespace MixOverlays.ViewModels
             _settings = App.SettingsService ?? new SettingsService();
             _riot     = App.RiotApiService  ?? new RiotApiService(_settings, _champions);
             _lcu      = App.LcuService      ?? new LcuService();
+            _recommendations = new ChampionRecommendationService(_champions);
 
             App.SettingsService ??= _settings;
             App.RiotApiService  ??= _riot;
@@ -115,7 +122,12 @@ namespace MixOverlays.ViewModels
             };
 
             _lcu.GameflowSessionUpdated += async (_, session) =>
+            {
                 await _lpTracker.OnGameflowPhaseChanged(session.phase);
+
+                if (IsPostGamePhase(session.phase))
+                    _ = RefreshMyAccountMatchHistoryAfterGameAsync(session.phase);
+            };
 
             _lpTracker.HistoryUpdated += (_, __) =>
             {
@@ -183,6 +195,11 @@ namespace MixOverlays.ViewModels
         // ─── Hook partiel pour InGame ─────────────────────────────────────────
         //  Appelé par OnLcuStateChanged pour que InGame nettoie ses équipes.
         partial void OnLcuStateChangedInGame(LcuState state);
+
+        private static bool IsPostGamePhase(string? phase) => phase is
+            "PreEndOfGame" or
+            "WaitingForStats" or
+            "EndOfGame";
 
     }
 
@@ -310,5 +327,9 @@ public int PerformanceScore
         public MatchParticipantViewModel? Enemy    { get; set; }
     }
 }
+
+
+
+
 
 

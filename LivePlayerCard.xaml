@@ -55,7 +55,7 @@
                                Stretch="UniformToFill"/>
                     </Border>
                     <!-- Niveau — masqué si non chargé (SummonerLevel <= 0) -->
-                    <Border Background="#DD0D1117" CornerRadius="3"
+                    <Border Background="#DD1D2633" CornerRadius="3"
                             Padding="4,1" HorizontalAlignment="Center"
                             VerticalAlignment="Bottom" Margin="0,0,0,-6">
                         <Border.Style>

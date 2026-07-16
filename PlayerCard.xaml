@@ -75,10 +75,10 @@
                     <Border>
                         <Border.Background>
                             <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                <GradientStop Color="#F012151E" Offset="0.0"/>
-                                <GradientStop Color="#CC12151E" Offset="0.35"/>
-                                <GradientStop Color="#6612151E" Offset="0.65"/>
-                                <GradientStop Color="#1012151E" Offset="1.0"/>
+                                <GradientStop Color="#E81D2633" Offset="0.0"/>
+                                <GradientStop Color="#C41D2633" Offset="0.35"/>
+                                <GradientStop Color="#662B3648" Offset="0.65"/>
+                                <GradientStop Color="#102B3648" Offset="1.0"/>
                             </LinearGradientBrush>
                         </Border.Background>
                     </Border>
@@ -87,8 +87,8 @@
                     <Border VerticalAlignment="Bottom" Height="50">
                         <Border.Background>
                             <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                <GradientStop Color="#0012151E" Offset="0"/>
-                                <GradientStop Color="#FF12151E" Offset="1"/>
+                                <GradientStop Color="#001D2633" Offset="0"/>
+                                <GradientStop Color="#FF1D2633" Offset="1"/>
                             </LinearGradientBrush>
                         </Border.Background>
                     </Border>
@@ -603,7 +603,7 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Margin="2,0" CornerRadius="10" Background="{StaticResource BgDeepBrush}"
+                                <Border Margin="2,0" CornerRadius="10" Background="{StaticResource BgCardBrush}"
                                         BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="8,12">
                                     <StackPanel HorizontalAlignment="Center">
 
@@ -656,7 +656,7 @@
                     <Rectangle Height="1" Fill="{StaticResource BorderBrush}" Margin="0,16,0,16"/>
 
                     <!-- ══ LP Stats (pleine largeur) ══ -->
-                    <Border CornerRadius="10" Background="{StaticResource BgDeepBrush}"
+                    <Border CornerRadius="10" Background="{StaticResource BgCardBrush}"
                             BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
                             Padding="10,10" Margin="0,0,0,6">
                         <StackPanel>
@@ -751,7 +751,7 @@
                     </Border>
 
                     <!-- ══ Lens (coming soon) ══ -->
-                    <Border CornerRadius="10" Background="{StaticResource BgDeepBrush}"
+                    <Border CornerRadius="10" Background="{StaticResource BgCardBrush}"
                             BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
                             Padding="6,12">
                         <StackPanel HorizontalAlignment="Center">

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using MixOverlays.Models;
@@ -188,6 +189,8 @@ namespace MixOverlays.ViewModels
         // ─── Initialisation (appelée depuis le constructeur Core) ──────────────
         partial void InitializeOutOfGameCommands()
         {
+            InitializePostGameRecapCommands();
+
             SearchPlayerCommand = new RelayCommand(
                 async _ => await SearchPlayerAsync(),
                 _ => !string.IsNullOrWhiteSpace(SearchInput) && !IsSearching);
@@ -359,6 +362,110 @@ namespace MixOverlays.ViewModels
             finally
             {
                 IsLoadingMyAccount = false;
+            }
+        }
+
+        /// <summary>
+        /// Actualise automatiquement l'historique de Mon Compte après une fin de partie.
+        /// La Match API peut publier la partie avec un léger délai : on tente donc plusieurs fois,
+        /// tout en évitant les refreshs concurrents lorsque plusieurs phases post-game arrivent.
+        /// </summary>
+        private async Task RefreshMyAccountMatchHistoryAfterGameAsync(string sourcePhase)
+        {
+            if (Interlocked.Exchange(ref _postGameHistoryRefreshInProgress, 1) == 1)
+            {
+                App.Log($"[PostGameHistory] Refresh déjà en cours — phase={sourcePhase}");
+                return;
+            }
+
+            try
+            {
+                if (string.IsNullOrWhiteSpace(_settings.Current.RiotApiKey))
+                {
+                    App.Log("[PostGameHistory] Skip — clé Riot API vide");
+                    return;
+                }
+
+                var currentAccount = MyAccount;
+                if (currentAccount == null || string.IsNullOrWhiteSpace(currentAccount.Data.Puuid))
+                {
+                    App.Log("[PostGameHistory] Skip — MyAccount/Puuid indisponible");
+                    return;
+                }
+
+                var puuid = currentAccount.Data.Puuid;
+                var gameName = currentAccount.Data.GameName;
+                var tagLine = currentAccount.Data.TagLine;
+                var currentLatestMatchId = currentAccount.Data.RecentMatches.FirstOrDefault()?.MatchId ?? string.Empty;
+
+                App.Log($"[PostGameHistory] Détection fin de partie ({sourcePhase}) — dernier actuel={currentLatestMatchId}");
+
+                const int maxAttempts = 6;
+                for (int attempt = 1; attempt <= maxAttempts; attempt++)
+                {
+                    if (attempt > 1)
+                        await Task.Delay(TimeSpan.FromSeconds(8));
+                    else
+                        await Task.Delay(TimeSpan.FromSeconds(4));
+
+                    var latestIds = await _riot.GetMatchIdsByPuuidAsync(puuid, count: 1);
+                    var latestMatchId = latestIds?.FirstOrDefault() ?? string.Empty;
+
+                    App.Log($"[PostGameHistory] Tentative {attempt}/{maxAttempts} — latest={latestMatchId}");
+
+                    if (string.IsNullOrWhiteSpace(latestMatchId))
+                        continue;
+
+                    if (latestMatchId == currentLatestMatchId || latestMatchId == _lastPostGameHistoryRefreshMatchId)
+                        continue;
+
+                    var refreshedData = await _riot.LoadFullPlayerDataAsync(puuid, gameName, tagLine);
+                    if (refreshedData == null || refreshedData.RecentMatches.Count == 0)
+                    {
+                        App.Log("[PostGameHistory] Données rechargées vides — nouvel essai plus tard");
+                        continue;
+                    }
+
+                    await _champions.EnsureLoadedAsync();
+                    foreach (var mastery in refreshedData.TopMasteries)
+                    {
+                        try { mastery.ChampionName = _champions.GetName(mastery.championId); }
+                        catch { mastery.ChampionName = "Inconnu"; }
+                    }
+
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        if (MyAccount == null || MyAccount.Data.Puuid != puuid)
+                        {
+                            App.Log("[PostGameHistory] Compte actif changé — mise à jour ignorée");
+                            return;
+                        }
+
+                        MyAccount.UpdateData(refreshedData);
+                        MyAccount.RefreshMatchesAndPagination();
+
+                        _lpTracker.SeedFromMatchHistory(refreshedData.RecentMatches, refreshedData.SoloRank);
+                        MyAccount.SetLpHistory(_lpTracker.LpHistory);
+
+                        ShowPostGameRecap(refreshedData.RecentMatches[0], puuid);
+
+                        StatusMessage = $"Historique actualisé : dernière partie ajoutée ({QueueHelper.GetQueueName(refreshedData.RecentMatches[0].QueueId)}).";
+                    });
+
+                    _lastPostGameHistoryRefreshMatchId = latestMatchId;
+                    App.Log($"[PostGameHistory] ✅ Historique actualisé avec {latestMatchId}");
+                    return;
+                }
+
+                App.Log("[PostGameHistory] Aucune nouvelle partie visible après les tentatives");
+            }
+            catch (Exception ex)
+            {
+                App.Log($"[PostGameHistory] Erreur : {ex.Message}");
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _postGameHistoryRefreshInProgress, 0);
             }
         }
 
@@ -974,6 +1081,9 @@ if (me != null && !string.IsNullOrEmpty(me.gameName))
         public ObservableCollection<PlayerViewModel> EnemyTeam { get; } = new();
     }
 }
+
+
+
 
 
 

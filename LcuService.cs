@@ -42,6 +42,15 @@ namespace MixOverlays.Services
         private bool         _inGameDataLoaded  = false;
         private bool         _disposed;
 
+        private static readonly JsonSerializerSettings _champSelectJsonSettings = new()
+        {
+            Error = (_, args) =>
+            {
+                App.Log($"[LCU] [ChampSelect|Deserialize] warning path='{args.ErrorContext.Path}' error='{args.ErrorContext.Error.Message}'");
+                args.ErrorContext.Handled = true;
+            }
+        };
+
         private static readonly HttpClient _liveClient = new(
             new HttpClientHandler { ServerCertificateCustomValidationCallback = (_, _, _, _) => true })
         { Timeout = TimeSpan.FromSeconds(4) };
@@ -467,6 +476,11 @@ namespace MixOverlays.Services
             {
                 "summonerflash"        => 4,
                 "summonerteleport"     => 12,
+                // Après 10 minutes, Riot peut renvoyer la Téléportation améliorée
+                // sous un nom différent via le Live Client Data API. On garde l'ID
+                // 12 pour afficher l'icône de Téléportation au lieu de rien.
+                "summonerteleportupgrade" => 12,
+                "summonerteleportunleashed" => 12,
                 "summonerdot"          => 14,
                 "summonerexhaust"      => 3,
                 "summonerhaste"        => 6,
@@ -573,7 +587,7 @@ namespace MixOverlays.Services
                 if (!resp.IsSuccessStatusCode) return null;
                 var json = await resp.Content.ReadAsStringAsync();
                 L($"ChampSelect JSON ({json.Length}c): {json[..Math.Min(300, json.Length)]}");
-                var s = JsonConvert.DeserializeObject<LcuChampSelectSession>(json);
+                var s = JsonConvert.DeserializeObject<LcuChampSelectSession>(json, _champSelectJsonSettings);
                 if (s == null) { L("ChampSelect deserialize null"); return null; }
                 L($"ChampSelect myTeam={s.myTeam.Count} theirTeam={s.theirTeam.Count}");
                 var gd = new LcuGameData();
@@ -600,13 +614,59 @@ namespace MixOverlays.Services
             try
             {
                 var resp = await _client.GetAsync("/lol-champ-select/v1/session");
+                L($"[ChampSelect|Poll] session HTTP {(int)resp.StatusCode}");
                 if (!resp.IsSuccessStatusCode) return;
                 var json    = await resp.Content.ReadAsStringAsync();
-                var session = JsonConvert.DeserializeObject<LcuChampSelectSession>(json);
-                if (session == null) return;
+                var session = JsonConvert.DeserializeObject<LcuChampSelectSession>(json, _champSelectJsonSettings);
+                if (session == null)
+                {
+                    L("[ChampSelect|Poll] session deserialize null");
+                    return;
+                }
+
+                var sessionChampions = string.Join(" | ", session.myTeam.Select(m =>
+                    $"cell={m.cellId},sid={m.summonerId},champ={m.championId},team={m.teamId}"));
+                var sessionActions = session.actions == null
+                    ? "actions=null"
+                    : string.Join(" | ", session.actions
+                        .SelectMany(group => group ?? new List<LcuChampSelectAction>())
+                        .Where(a => a.championId > 0 || string.Equals(a.type, "pick", StringComparison.OrdinalIgnoreCase))
+                        .Select(a => $"actor={a.actorCellId},type={a.type},champ={a.championId},done={a.completed}"));
+
+                L($"[ChampSelect|Poll] localCell={session.localPlayerCellId} my={session.myTeam.Count} their={session.theirTeam.Count} myTeam=[{sessionChampions}] actions=[{sessionActions}]");
+
+                try
+                {
+                    var currentResp = await _client.GetAsync("/lol-champ-select/v1/current-champion");
+                    L($"[ChampSelect|CurrentChampion] HTTP {(int)currentResp.StatusCode}");
+                    if (currentResp.IsSuccessStatusCode)
+                    {
+                        var currentBody = (await currentResp.Content.ReadAsStringAsync()).Trim();
+                        L($"[ChampSelect|CurrentChampion] body='{currentBody}'");
+                        if (int.TryParse(currentBody.Trim('"'), out var currentChampionId))
+                        {
+                            session.currentChampionId = currentChampionId;
+                            L($"[ChampSelect|CurrentChampion] parsed currentChampionId={session.currentChampionId}");
+                        }
+                        else
+                        {
+                            L($"[ChampSelect|CurrentChampion] parse failed for body='{currentBody}'");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    L($"current-champion ex: {ex.Message}");
+                }
+
+                L($"[ChampSelect|Poll] invoke update currentChampionId={session.currentChampionId}");
+
                 ChampSelectSessionUpdated?.Invoke(this, session);
             }
-            catch { }
+            catch (Exception ex)
+            {
+                L($"[ChampSelect|Poll] exception: {ex.Message}");
+            }
         }
 
         // ─── Public API ────────────────────────────────────────────────────────

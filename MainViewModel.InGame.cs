@@ -39,6 +39,79 @@ namespace MixOverlays.ViewModels
             set => SetField(ref _enemyTeam, value);
         }
 
+        // ─── Recommandations Champion Select ──────────────────────────────────
+        private int _lockedChampionId;
+        public int LockedChampionId
+        {
+            get => _lockedChampionId;
+            private set
+            {
+                if (SetField(ref _lockedChampionId, value))
+                {
+                    OnPropertyChanged(nameof(HasDetectedChampionForRecommendation));
+                    OnPropertyChanged(nameof(ShowChampionRecommendationPanel));
+                }
+            }
+        }
+
+        private string _lockedChampionName = string.Empty;
+        public string LockedChampionName
+        {
+            get => _lockedChampionName;
+            private set => SetField(ref _lockedChampionName, value);
+        }
+
+        private ChampionRecommendation? _championRecommendation;
+        public ChampionRecommendation? ChampionRecommendation
+        {
+            get => _championRecommendation;
+            private set
+            {
+                if (SetField(ref _championRecommendation, value))
+                {
+                    OnPropertyChanged(nameof(HasChampionRecommendation));
+                    OnPropertyChanged(nameof(ShowChampionRecommendationPanel));
+                }
+            }
+        }
+
+        private bool _isLoadingChampionRecommendation;
+        public bool IsLoadingChampionRecommendation
+        {
+            get => _isLoadingChampionRecommendation;
+            private set
+            {
+                if (SetField(ref _isLoadingChampionRecommendation, value))
+                    OnPropertyChanged(nameof(ShowChampionRecommendationPanel));
+            }
+        }
+
+        private string _championRecommendationError = string.Empty;
+        public string ChampionRecommendationError
+        {
+            get => _championRecommendationError;
+            private set
+            {
+                if (SetField(ref _championRecommendationError, value))
+                {
+                    OnPropertyChanged(nameof(HasChampionRecommendationError));
+                    OnPropertyChanged(nameof(ShowChampionRecommendationPanel));
+                }
+            }
+        }
+
+        private int _lastRecommendationChampionId;
+
+        public bool HasChampionRecommendation => ChampionRecommendation != null;
+        public bool HasDetectedChampionForRecommendation => LockedChampionId > 0;
+        public bool HasChampionRecommendationError => !string.IsNullOrWhiteSpace(ChampionRecommendationError);
+        public bool IsWaitingForChampionLock => IsInChampSelect &&
+            LockedChampionId <= 0 &&
+            !IsLoadingChampionRecommendation &&
+            !HasChampionRecommendation &&
+            !HasChampionRecommendationError;
+        public bool ShowChampionRecommendationPanel => IsInChampSelect;
+
         // IsInLiveSession : vrai dès qu'on a au moins un joueur chargé
         public bool IsInLiveSession => AllyTeam.Count > 0 || EnemyTeam.Count > 0;
 
@@ -57,6 +130,9 @@ namespace MixOverlays.ViewModels
         // ─── Hook nettoyage équipes depuis Core (OnLcuStateChanged) ───────────
         partial void OnLcuStateChangedInGame(LcuState state)
         {
+            if (state != LcuState.InChampSelect)
+                ClearChampionRecommendation();
+
             if (state == LcuState.Connected || state == LcuState.Disconnected)
             {
                 AllyTeam.Clear();
@@ -84,6 +160,8 @@ namespace MixOverlays.ViewModels
 
         private async Task LoadChampSelectDataAsync(LcuChampSelectSession session)
         {
+            _ = UpdateLockedChampionRecommendationAsync(session);
+
             bool isAram = !session.theirTeam.Any() && session.myTeam.Count > 5;
             App.Log($"[InGame|ChampSelect] my={session.myTeam.Count} their={session.theirTeam.Count} aram={isAram}");
 
@@ -165,6 +243,211 @@ namespace MixOverlays.ViewModels
                     SortTeamByLane(EnemyTeam);
                 }));
             }
+        }
+
+        private async Task UpdateLockedChampionRecommendationAsync(LcuChampSelectSession session)
+        {
+            var lockedChampionId = DetectLocalLockedChampionId(session, out var detectionSource);
+            LogChampSelectRecommendationDiagnostics(session, lockedChampionId, detectionSource);
+
+            if (lockedChampionId <= 0)
+            {
+                if (LockedChampionId > 0)
+                    Application.Current.Dispatcher.Invoke(ClearChampionRecommendation);
+                else
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        OnPropertyChanged(nameof(IsWaitingForChampionLock));
+                        OnPropertyChanged(nameof(ShowChampionRecommendationPanel));
+                    });
+                return;
+            }
+
+            if (lockedChampionId == _lastRecommendationChampionId &&
+                (ChampionRecommendation != null || IsLoadingChampionRecommendation))
+                return;
+
+            _lastRecommendationChampionId = lockedChampionId;
+
+            await _champions.EnsureLoadedAsync();
+            var championName = _champions.GetName(lockedChampionId);
+
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                LockedChampionId = lockedChampionId;
+                LockedChampionName = championName;
+                ChampionRecommendation = null;
+                ChampionRecommendationError = string.Empty;
+                IsLoadingChampionRecommendation = true;
+                OnPropertyChanged(nameof(IsWaitingForChampionLock));
+            });
+
+            try
+            {
+                var recommendation = await _recommendations.GetRecommendationAsync(lockedChampionId);
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    ChampionRecommendation = recommendation;
+                    ChampionRecommendationError = recommendation == null
+                        ? "Aucune recommandation disponible pour ce champion."
+                        : string.Empty;
+                    OnPropertyChanged(nameof(IsWaitingForChampionLock));
+                });
+            }
+            catch (System.Exception ex)
+            {
+                App.Log($"[Recommendations] Erreur chargement champion {lockedChampionId}: {ex.Message}");
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    ChampionRecommendation = null;
+                    ChampionRecommendationError = "Impossible de charger les recommandations en ligne.";
+                    OnPropertyChanged(nameof(IsWaitingForChampionLock));
+                });
+            }
+            finally
+            {
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    IsLoadingChampionRecommendation = false;
+                    OnPropertyChanged(nameof(IsWaitingForChampionLock));
+                });
+            }
+        }
+
+        private static int DetectLocalLockedChampionId(LcuChampSelectSession session, out string detectionSource)
+        {
+            detectionSource = "none";
+
+            // Source la plus directe pour le prélock / hover du joueur local.
+            // LCU la remplit via /lol-champ-select/v1/current-champion.
+            if (session.currentChampionId > 0)
+            {
+                detectionSource = "current-champion endpoint";
+                return session.currentChampionId;
+            }
+
+            if (session.localPlayerCellId >= 0 && session.actions != null)
+            {
+                var localPickActions = session.actions
+                    .SelectMany(group => group ?? new List<LcuChampSelectAction>())
+                    .Where(action =>
+                        action.actorCellId == session.localPlayerCellId &&
+                        action.championId > 0 &&
+                        string.Equals(action.type, "pick", System.StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+
+                // Prélock / sélection locale non confirmée selon certains clients.
+                var selectedPick = localPickActions
+                    .Where(action => !action.completed)
+                    .Select(action => action.championId)
+                    .LastOrDefault();
+
+                if (selectedPick > 0)
+                {
+                    detectionSource = "local pick action pending/hover";
+                    return selectedPick;
+                }
+
+                // Lock confirmé : conservé comme fallback explicite si l'ordre des actions LCU
+                // ne permet pas de récupérer la dernière sélection locale ci-dessus.
+                var completedPick = localPickActions
+                    .Where(action => action.completed)
+                    .Select(action => action.championId)
+                    .LastOrDefault();
+
+                if (completedPick > 0)
+                {
+                    detectionSource = "local pick action completed";
+                    return completedPick;
+                }
+
+                var anyPick = localPickActions
+                    .Select(action => action.championId)
+                    .LastOrDefault();
+
+                if (anyPick > 0)
+                {
+                    detectionSource = "local pick action any";
+                    return anyPick;
+                }
+            }
+
+            // Fallback : certains modes/clients remplissent myTeam[].championId mais pas actions[].
+            // Cela peut détecter le champion dès qu'il est attribué au joueur local, ce qui est
+            // préférable à un panneau totalement invisible si LCU ne renseigne pas completed.
+            if (session.localPlayerCellId >= 0)
+            {
+                var myCellChampion = session.myTeam
+                    .Where(member => member.cellId == session.localPlayerCellId && member.championId > 0)
+                    .Select(member => member.championId)
+                    .FirstOrDefault();
+
+                if (myCellChampion > 0)
+                {
+                    detectionSource = "myTeam localPlayerCellId";
+                    return myCellChampion;
+                }
+            }
+
+            // Dernier fallback pour certains modes personnalisés : s'il n'y a qu'un seul champion
+            // renseigné dans notre équipe, on l'utilise pour déclencher l'affichage.
+            var uniqueMyChampion = session.myTeam
+                .Where(member => member.championId > 0)
+                .Select(member => member.championId)
+                .Distinct()
+                .Take(2)
+                .ToList();
+
+            if (uniqueMyChampion.Count == 1)
+            {
+                detectionSource = "myTeam unique champion fallback";
+                return uniqueMyChampion[0];
+            }
+
+            return 0;
+        }
+
+        private static void LogChampSelectRecommendationDiagnostics(LcuChampSelectSession session, int detectedChampionId, string detectionSource)
+        {
+            try
+            {
+                var myTeam = string.Join(" | ", session.myTeam.Select(m =>
+                    $"cell={m.cellId},sid={m.summonerId},champ={m.championId},team={m.teamId}"));
+
+                var actions = session.actions == null
+                    ? "actions=null"
+                    : string.Join(" | ", session.actions
+                        .SelectMany(group => group ?? new List<LcuChampSelectAction>())
+                        .Where(a => string.Equals(a.type, "pick", System.StringComparison.OrdinalIgnoreCase) || a.championId > 0)
+                        .Select(a => $"actor={a.actorCellId},type={a.type},champ={a.championId},done={a.completed}"));
+
+                var localActions = session.actions == null
+                    ? "actions=null"
+                    : string.Join(" | ", session.actions
+                        .SelectMany(group => group ?? new List<LcuChampSelectAction>())
+                        .Where(a => a.actorCellId == session.localPlayerCellId)
+                        .Select(a => $"type={a.type},champ={a.championId},done={a.completed}"));
+
+                var localTeamMember = session.myTeam
+                    .FirstOrDefault(m => m.cellId == session.localPlayerCellId);
+
+                App.Log($"[Recommendations|ChampSelect] currentChampionId={session.currentChampionId} localCell={session.localPlayerCellId} detected={detectedChampionId} source='{detectionSource}' localTeamChampion={localTeamMember?.championId ?? 0} localActions=[{localActions}] myTeam=[{myTeam}] actions=[{actions}]");
+            }
+            catch (System.Exception ex)
+            {
+                App.Log($"[Recommendations|ChampSelect] diagnostic error: {ex.Message}");
+            }
+        }
+
+        private void ClearChampionRecommendation()
+        {
+            LockedChampionId = 0;
+            LockedChampionName = string.Empty;
+            ChampionRecommendation = null;
+            ChampionRecommendationError = string.Empty;
+            IsLoadingChampionRecommendation = false;
+            _lastRecommendationChampionId = 0;
+            OnPropertyChanged(nameof(IsWaitingForChampionLock));
         }
 
         // ══════════════════════════════════════════════════════════════════════
@@ -514,6 +797,11 @@ namespace MixOverlays.ViewModels
             {
                 "summonerflash"        => 4,
                 "summonerteleport"     => 12,
+                // Après 10 minutes, Riot peut renvoyer la Téléportation améliorée
+                // sous un nom différent via le Live Client Data API. On garde l'ID
+                // 12 pour afficher l'icône de Téléportation au lieu de rien.
+                "summonerteleportupgrade" => 12,
+                "summonerteleportunleashed" => 12,
                 "summonerdot"          => 14,
                 "summonerexhaust"      => 3,
                 "summonerhaste"        => 6,

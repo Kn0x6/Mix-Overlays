@@ -4,16 +4,16 @@
     <!-- ═══════════════════════════════════════════════════ -->
     <!--  COULEURS PRINCIPALES                               -->
     <!-- ═══════════════════════════════════════════════════ -->
-    <Color x:Key="BgDeepColor">#0D1117</Color>
-    <Color x:Key="BgPrimaryColor">#161B22</Color>
-    <Color x:Key="BgSecondaryColor">#1C2333</Color>
-    <Color x:Key="BgCardColor">#21262D</Color>
-    <Color x:Key="BgElevatedColor">#252C3A</Color>
-    <Color x:Key="BgHoverColor">#2D3748</Color>
-    <Color x:Key="BorderColor">#30363D</Color>
+    <Color x:Key="BgDeepColor">#151B24</Color>
+    <Color x:Key="BgPrimaryColor">#1D2633</Color>
+    <Color x:Key="BgSecondaryColor">#253145</Color>
+    <Color x:Key="BgCardColor">#2B3648</Color>
+    <Color x:Key="BgElevatedColor">#334056</Color>
+    <Color x:Key="BgHoverColor">#3D4A61</Color>
+    <Color x:Key="BorderColor">#46536A</Color>
     <Color x:Key="TextPrimaryColor">#E6EDF3</Color>
     <Color x:Key="TextSecondaryColor">#A7B0BC</Color>
-    <Color x:Key="TextMutedColor">#6B7280</Color>
+    <Color x:Key="TextMutedColor">#8792A2</Color>
     <Color x:Key="AccentBlueColor">#1F6FEB</Color>
     <Color x:Key="AccentBlueLightColor">#388BFD</Color>
     <Color x:Key="GoldColor">#D4A017</Color>
@@ -22,7 +22,7 @@
     <Color x:Key="WinLightColor">#3FB950</Color>
     <Color x:Key="LossColor">#DA3633</Color>
     <Color x:Key="LossLightColor">#F85149</Color>
-    <Color x:Key="OverlayBgColor">#E6000000</Color>
+    <Color x:Key="OverlayBgColor">#E6151B24</Color>
 
     <!-- Brushes -->
     <SolidColorBrush x:Key="BgDeepBrush" Color="{StaticResource BgDeepColor}"/>
@@ -47,7 +47,6 @@
     <!-- Semantic / translucent brushes -->
     <SolidColorBrush x:Key="AccentBlueSoftBrush" Color="#331F6FEB"/>
     <SolidColorBrush x:Key="InfoSoftBrush" Color="#22388BFD"/>
-    <SolidColorBrush x:Key="SuccessSoftBrush" Color="#223FB950"/>
     <SolidColorBrush x:Key="DangerSoftBrush" Color="#22F85149"/>
     <SolidColorBrush x:Key="WarningSoftBrush" Color="#22F0C040"/>
     <SolidColorBrush x:Key="PurpleAccentBrush" Color="#8B5CF6"/>
@@ -100,7 +99,7 @@
                                 <Thumb>
                                     <Thumb.Template>
                                         <ControlTemplate TargetType="Thumb">
-                                            <Border Background="#FF404040" CornerRadius="3" Margin="1"/>
+                                            <Border Background="#FF5A6678" CornerRadius="3" Margin="1"/>
                                         </ControlTemplate>
                                     </Thumb.Template>
                                 </Thumb>

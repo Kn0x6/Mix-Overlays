@@ -132,10 +132,11 @@
                     <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Stretch">
 
                         <!-- Médaillon décoratif -->
-                        <Grid Width="58" Height="58" HorizontalAlignment="Center" Margin="0,2,0,7">
-                            <Ellipse Stroke="#7040EDE3" StrokeThickness="1.5" Fill="#66050B14"/>
-                            <Ellipse Margin="6" Stroke="#D6F3D37A" StrokeThickness="2"/>
-                            <Path Data="M29,9 L39,29 L29,49 L19,29 Z"
+                        <Grid Width="62" Height="62" HorizontalAlignment="Center" Margin="0,0,0,5">
+                            <!-- Marges internes : évite que les traits du médaillon soient coupés par les limites du Grid. -->
+                            <Ellipse Margin="2" Stroke="#7040EDE3" StrokeThickness="1.5" Fill="#66050B14"/>
+                            <Ellipse Margin="8" Stroke="#D6F3D37A" StrokeThickness="2"/>
+                            <Path Data="M31,11 L41,31 L31,51 L21,31 Z"
                                   Fill="#5532F5E7" Stroke="#E8F3D37A" StrokeThickness="1"/>
                         </Grid>
 
@@ -151,7 +152,7 @@
                             </TextBlock.Effect>
                         </TextBlock>
 
-                        <Grid Height="12" Margin="4,5,4,3">
+                        <Grid Height="16" Margin="4,3,4,2">
                             <Rectangle Height="1" VerticalAlignment="Center">
                                 <Rectangle.Fill>
                                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">

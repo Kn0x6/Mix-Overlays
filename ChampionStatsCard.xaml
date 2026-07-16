@@ -11,8 +11,8 @@
         <conv:KdaBrushConverter                     x:Key="KdaBrush"/>
     </UserControl.Resources>
 
-    <Border Background="#0D1117"
-            BorderBrush="#21262D"
+    <Border Background="{StaticResource BgCardBrush}"
+            BorderBrush="{StaticResource BorderBrush}"
             BorderThickness="1"
             CornerRadius="10">
 
@@ -24,9 +24,9 @@
 
             <!-- ── Header ── -->
             <Border Grid.Row="0"
-                    Background="#161B22"
+                    Background="{StaticResource BgPrimaryBrush}"
                     CornerRadius="10,10,0,0"
-                    BorderBrush="#21262D"
+                    BorderBrush="{StaticResource BorderBrush}"
                     BorderThickness="0,0,0,1">
                 <Grid Margin="14,0">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -73,8 +73,8 @@
                             <!-- Carte d'un champion -->
                             <Border Margin="0,4" Padding="10,9"
                                     CornerRadius="8"
-                                    Background="#161B22"
-                                    BorderBrush="#21262D"
+                                    Background="{StaticResource BgPrimaryBrush}"
+                                    BorderBrush="{StaticResource BorderBrush}"
                                     BorderThickness="1">
                                 <Grid>
                                     <Grid.RowDefinitions>

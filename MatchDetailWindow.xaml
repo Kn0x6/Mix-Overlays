@@ -24,8 +24,8 @@
         <conv:NullToVisibilityConverter         x:Key="NullToVis"/>
     </Window.Resources>
 
-    <Border Background="#0D1117"
-            BorderBrush="#30363D"
+    <Border Background="{StaticResource BgDeepBrush}"
+            BorderBrush="{StaticResource BorderBrush}"
             BorderThickness="1"
             CornerRadius="10">
         <Border.Effect>
@@ -41,7 +41,7 @@
 
             <!-- ═══ Barre de titre ═══ -->
             <Border Grid.Row="0"
-                    Background="#161B22"
+                    Background="{StaticResource BgPrimaryBrush}"
                     CornerRadius="10,10,0,0"
                     MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"
                     Cursor="SizeAll">
@@ -55,7 +55,7 @@
 
                     <!-- Mode de jeu -->
                     <Border Grid.Column="0"
-                            Background="#21262D"
+                            Background="{StaticResource BgCardBrush}"
                             CornerRadius="4"
                             Padding="8,3"
                             VerticalAlignment="Center"

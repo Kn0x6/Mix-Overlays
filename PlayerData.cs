@@ -10,6 +10,17 @@ namespace MixOverlays.Models
         public List<LcuMyTeam> myTeam { get; set; } = new();
         public List<LcuTheirTeam> theirTeam { get; set; } = new();
         public bool isSpectating { get; set; }
+        public int localPlayerCellId { get; set; }
+        public int currentChampionId { get; set; }
+        public List<List<LcuChampSelectAction>> actions { get; set; } = new();
+    }
+
+    public class LcuChampSelectAction
+    {
+        public int actorCellId { get; set; }
+        public int championId { get; set; }
+        public bool completed { get; set; }
+        public string type { get; set; } = string.Empty;
     }
 
     public class LcuMyTeam
@@ -17,7 +28,7 @@ namespace MixOverlays.Models
         public long summonerId { get; set; }
         public string puuid { get; set; } = string.Empty;
         public int championId { get; set; }
-        public int assignedPosition { get; set; }
+        public string assignedPosition { get; set; } = string.Empty;
         public int cellId { get; set; }
         public int teamId { get; set; }
     }
@@ -321,6 +332,22 @@ public long GameDuration { get; set; }
         public int    Summoner1Id  { get; set; }
         public int    Summoner2Id  { get; set; }
         public double KDA          => Deaths == 0 ? Kills + Assists : (double)(Kills + Assists) / Deaths;
+
+        public int PerformanceScore
+        {
+            get
+            {
+                if (GameDuration <= 0) return 0;
+                double min   = GameDuration / 60.0;
+                double kda   = Deaths == 0 ? Kills + Assists : (double)(Kills + Assists) / Deaths;
+                double csMin = min > 0 ? CS / min : 0;
+                double raw   = Math.Min(kda / 6.0, 1.0) * 40 + Math.Min(csMin / 7.0, 1.0) * 30 + (Win ? 30 : 0);
+                int score    = Math.Clamp((int)Math.Round(raw), 0, 98);
+                if (Win && kda >= 5.0 && csMin >= 6.0) return 100;
+                if (kda >= 4.0 && score >= 75)         return 99;
+                return score;
+            }
+        }
 
         // ─── Rang Solo/Duo (chargé en arrière-plan lors de l'ouverture du détail) ──
         public string Tier         { get; set; } = string.Empty;   // ex: "GOLD", "PLATINUM"
