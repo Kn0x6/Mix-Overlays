@@ -629,7 +629,7 @@ namespace MixOverlays.ViewModels
                 {
                     resolvedGameName = !string.IsNullOrEmpty(lcuSummoner.gameName) ? lcuSummoner.gameName : lcuSummoner.displayName;
                     resolvedTagLine  = lcuSummoner.tagLine;
-                    
+
                     // Tentative de résolution par RiotId
                     if (!string.IsNullOrEmpty(resolvedGameName))
                     {
@@ -792,29 +792,34 @@ namespace MixOverlays.ViewModels
 
             // Amélioration : ajout de variants et normalisation
             name = name.ToLower().Trim();
-            
+
             return name switch
             {
-                "summonerflash"        => 4,
-                "summonerteleport"     => 12,
+                "summonerflash"                 => 4,
+                "summonerteleport"              => 12,
                 // Après 10 minutes, Riot peut renvoyer la Téléportation améliorée
                 // sous un nom différent via le Live Client Data API. On garde l'ID
                 // 12 pour afficher l'icône de Téléportation au lieu de rien.
-                "summonerteleportupgrade" => 12,
-                "summonerteleportunleashed" => 12,
-                "summonerdot"          => 14,
-                "summonerexhaust"      => 3,
-                "summonerhaste"        => 6,
-                "summonerheal"         => 7,
-                "summonersmite"        => 11,
-                "summonerbarrier"      => 21,
-                "summonerclairvoyance" => 2,
-                "summonermana"         => 13,
-                "summonersnowball"     => 32,
-                "summonerboost"        => 1,  // Cleanse
-                "summonerpororecall"   => 30,
-                "summonerporothrow"    => 31,
-                _                      => 0
+                "summonerteleportupgrade"        => 12,
+                "summonerteleportunleashed"      => 12,
+                "summonerdot"                   => 14,
+                "summonerexhaust"               => 3,
+                "summonerhaste"                 => 6,
+                "summonerheal"                  => 7,
+                "summonersmite"                 => 11,
+                "summonerbarrier"               => 21,
+                "summonerclairvoyance"          => 2,
+                "summonermana"                  => 13,
+                "summonersnowball"              => 32,
+                "summonerboost"                 => 1,  // Cleanse
+                "summonerpororecall"            => 30,
+                "summonerporothrow"             => 31,
+                "summonersnowurfsnowball_mark"  => 39,
+                "summoner_ultbookplaceholder"    => 54,
+                "summoner_ultbooksmiteplaceholder" => 55,
+                "summonercherryhold"            => 2201,
+                "summonercherryflash"           => 2202,
+                _                               => 0
             };
         }
 

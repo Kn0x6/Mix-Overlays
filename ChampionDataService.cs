@@ -15,7 +15,7 @@ namespace MixOverlays.Services
         private Dictionary<string, int> _nameToId = new();
         private Dictionary<string, string> _nameToKey = new(); // display name -> DDragon key
         private bool _loaded = false;
-        private string _latestVersion = "15.1.1";
+        private string _latestVersion = "16.12.1";
 
         // Shared spell ID -> DDragon spell name mapping, populated dynamically
         // Singleton accessible par les converters XAML (stateless)
@@ -44,7 +44,7 @@ namespace MixOverlays.Services
                 var versionsJson = await _http.GetStringAsync(
                     "https://ddragon.leagueoflegends.com/api/versions.json");
                 var versions = JsonConvert.DeserializeObject<List<string>>(versionsJson);
-                var version = versions?[0] ?? "15.1.1";
+                var version = versions?[0] ?? "16.12.1";
 
                 _latestVersion = version;
                 VersionHolder.Latest = version; // shared with converters
@@ -256,7 +256,7 @@ namespace MixOverlays.Services
                 "Rek'Sai"         => "RekSai",
                 "Tahm Kench"      => "TahmKench",
                 "Twisted Fate"    => "TwistedFate",
-                "Vel'Koz"         => "VelKoz",
+                "Vel'Koz"         => "Velkoz",
                 "Xin Zhao"        => "XinZhao",
                 "Aurelion Sol"    => "AurelionSol",
                 "Jarvan IV"       => "JarvanIV",
