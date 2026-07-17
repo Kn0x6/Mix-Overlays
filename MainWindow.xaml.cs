@@ -130,6 +130,21 @@ namespace MixOverlays.Views
         private void CloseMatchDetailPanel_Click(object sender, RoutedEventArgs e)
             => _vm.SelectedMatch = null;
 
+        private void SettingsButton_Click(object sender, RoutedEventArgs e)
+        {
+            SetActiveNav(_currentPage == "Settings" ? "MyAccount" : "Settings");
+        }
+
+        private void BackToMyAccountButton_Click(object sender, RoutedEventArgs e)
+        {
+            SetActiveNav("MyAccount");
+        }
+
+        private void OpenLiveSessionButton_Click(object sender, RoutedEventArgs e)
+        {
+            SetActiveNav("Live");
+        }
+
         // ─── Clic sur un participant ───────────────────────────────────────────
         private DateTime _matchDetailOpenTime = DateTime.MinValue;
 
@@ -280,13 +295,6 @@ namespace MixOverlays.Views
             if (page == "Live" && !_vm.IsLiveSessionAvailable)
                 page = "MyAccount";
 
-            if (page == "Search" && !_vm.IsSearching)
-            {
-                _vm.SearchedPlayer         = null;
-                _vm.SearchInput            = string.Empty;
-                _vm.HasSearchedAtLeastOnce = false;   // ← AJOUTER cette ligne
-            }
-
             _currentPage = page;
 
             PageLive.Visibility      = page == "Live"      ? Visibility.Visible : Visibility.Collapsed;
@@ -294,32 +302,25 @@ namespace MixOverlays.Views
             PageSearch.Visibility    = page == "Search"    ? Visibility.Visible : Visibility.Collapsed;
             PageSettings.Visibility  = page == "Settings"  ? Visibility.Visible : Visibility.Collapsed;
 
-            HighlightNavButton(BtnLive,      page == "Live");
-            HighlightNavButton(BtnMyAccount, page == "MyAccount");
-            HighlightNavButton(BtnSearch,    page == "Search");
-            HighlightNavButton(BtnSettings,  page == "Settings");
-
             if (_vm != null) _vm.SelectedMatch = null;
-        }
-
-        private static void HighlightNavButton(System.Windows.Controls.Button btn, bool active)
-        {
-            btn.Background = active
-                ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(46, 31, 111, 235))
-                : System.Windows.Media.Brushes.Transparent;
-            btn.Foreground = active
-                ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(230, 237, 243))
-                : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(167, 176, 188));
-            btn.BorderBrush = active
-                ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(56, 139, 253))
-                : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(48, 54, 61));
-            btn.FontWeight = active ? FontWeights.SemiBold : FontWeights.Normal;
         }
 
         private void SearchBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
             if (e.Key == Key.Return && _vm.SearchPlayerCommand.CanExecute(null))
+            {
+                SetActiveNav("Search");
                 _vm.SearchPlayerCommand.Execute(null);
+            }
+        }
+
+        private void SearchPlayerButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_vm.SearchPlayerCommand.CanExecute(null))
+            {
+                SetActiveNav("Search");
+                _vm.SearchPlayerCommand.Execute(null);
+            }
         }
 
         private void Hyperlink_RequestNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
