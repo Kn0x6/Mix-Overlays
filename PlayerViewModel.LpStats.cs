@@ -34,8 +34,12 @@ namespace MixOverlays.ViewModels
 
         // ─── Propriétés bindées ───────────────────────────────────────────────
 
-        /// <summary>Snapshots ordonnés du plus récent au plus ancien (max 30).</summary>
-        public List<LpSnapshot> LpSnapshots => _lpHistory.Take(30).ToList();
+        /// <summary>
+        /// Snapshots ordonnés du plus récent au plus ancien (max 30).
+        /// Le premier point est normalisé avec le SoloRank actuel afin que le graphique
+        /// ne reste jamais en retard par rapport au rang affiché en haut de la carte.
+        /// </summary>
+        public List<LpSnapshot> LpSnapshots => BuildDisplayLpSnapshots();
 
         /// <summary>True si on a au moins 2 snapshots (courbe possible).</summary>
         public bool HasLpData => _lpHistory.Count >= 2;
@@ -76,6 +80,71 @@ namespace MixOverlays.ViewModels
                 .Where(s => s.Timestamp >= cutoff && s.LpDelta.HasValue)
                 .Sum(s => s.LpDelta!.Value);
         }
+
+        private List<LpSnapshot> BuildDisplayLpSnapshots()
+        {
+            var snapshots = _lpHistory
+                .OrderByDescending(s => s.Timestamp)
+                .Take(30)
+                .ToList();
+
+            var solo = _data.SoloRank;
+            if (solo == null || string.IsNullOrWhiteSpace(solo.tier))
+                return snapshots;
+
+            var current = new LpSnapshot
+            {
+                Timestamp    = DateTime.UtcNow,
+                LeaguePoints = solo.leaguePoints,
+                Tier         = solo.tier,
+                Rank         = solo.rank,
+                ChampionName = "Actuel",
+                Puuid        = _data.Puuid,
+                GameName     = _data.GameName,
+                TagLine      = _data.TagLine,
+            };
+
+            if (snapshots.Count == 0)
+                return new List<LpSnapshot> { current };
+
+            var latest = snapshots[0];
+            bool alreadyCurrent = string.Equals(latest.Tier, current.Tier, StringComparison.OrdinalIgnoreCase)
+                               && string.Equals(latest.Rank, current.Rank, StringComparison.OrdinalIgnoreCase)
+                               && latest.LeaguePoints == current.LeaguePoints;
+
+            if (alreadyCurrent)
+                return snapshots;
+
+            current.LpDelta = ComputeDeltaBetweenSnapshots(latest, current);
+            current.IsWin   = current.LpDelta > 0 ? true : current.LpDelta < 0 ? false : null;
+
+            snapshots.Insert(0, current);
+            return snapshots.Take(30).ToList();
+        }
+
+        private static int ComputeDeltaBetweenSnapshots(LpSnapshot pre, LpSnapshot post)
+        {
+            if (string.Equals(pre.Tier, post.Tier, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(pre.Rank, post.Rank, StringComparison.OrdinalIgnoreCase))
+                return post.LeaguePoints - pre.LeaguePoints;
+
+            int rs = (TierVal(post.Tier) - TierVal(pre.Tier)) * 400
+                   + (RankVal(post.Rank) - RankVal(pre.Rank))  * 100;
+
+            if (rs > 0) return  post.LeaguePoints + (100 - pre.LeaguePoints)  + Math.Max(0, rs - 100);
+            if (rs < 0) return -(pre.LeaguePoints + (100 - post.LeaguePoints) + Math.Max(0, -rs - 100));
+            return post.LeaguePoints - pre.LeaguePoints;
+        }
+
+        private static int TierVal(string t) => t?.ToUpper() switch
+        {
+            "IRON" => 0, "BRONZE" => 1, "SILVER" => 2, "GOLD" => 3, "PLATINUM" => 4,
+            "EMERALD" => 5, "DIAMOND" => 6, "MASTER" => 7, "GRANDMASTER" => 8, "CHALLENGER" => 9,
+            _ => -1,
+        };
+
+        private static int RankVal(string r) => r?.ToUpper() switch
+        { "IV" => 0, "III" => 1, "II" => 2, "I" => 3, _ => 0 };
 
         private static string FormatDelta(int delta) =>
             delta >= 0 ? $"+{delta} LP" : $"{delta} LP";

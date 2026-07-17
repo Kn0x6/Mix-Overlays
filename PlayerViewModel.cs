@@ -133,6 +133,11 @@ namespace MixOverlays.ViewModels
                 OnPropertyChanged(nameof(ExpertiseLabel));
                 OnPropertyChanged(nameof(ExpertiseBadgeBackground));
                 OnPropertyChanged(nameof(ExpertiseBadgeForeground));
+
+                // Le graphique LP dépend à la fois de l'historique LP et du SoloRank actuel.
+                // Si le rang/LP actuel change sans nouvel historique injecté, on force aussi
+                // le refresh LP pour que LpSnapshots puisse se resynchroniser avec SoloRank.
+                RefreshLpStats();
             }
             catch (Exception ex)
             {

@@ -74,7 +74,7 @@ namespace MixOverlays.Views
             // ── Remplir le tooltip (date + rang/LP seulement, pas de gain) ────────────
             var snap = _snapshots[idx];
             TipDate.Text = snap.Timestamp.ToLocalTime().ToString("dd/MM");
-            TipRank.Text = $"{rankLabel} — {(int)values[idx] % 100} LP";
+            TipRank.Text = $"{rankLabel} — {ComputeLpWithinRank(_snapshots[0], values[idx])} LP";
 
             // ── Position du tooltip ───────────────────────────────────────────────────
             double cx  = PadLeft + idx * cW / Math.Max(n - 1, 1);
@@ -401,6 +401,27 @@ namespace MixOverlays.Views
             });
 
             return tierAbbr + rankAbbr; // ex: "P4", "E1", "D3", "M"
+        }
+
+        /// <summary>
+        /// Retourne les LP à afficher dans la division calculée, en utilisant le même
+        /// référentiel absolu que ComputeRankLabel. Évite les valeurs incorrectes dues
+        /// à un simple modulo sur une courbe cumulative.
+        /// </summary>
+        private static int ComputeLpWithinRank(LpSnapshot baseSnap, double cumulativeValue)
+        {
+            int baseAbsLp = TierVal(baseSnap.Tier) * 400
+                          + RankVal(baseSnap.Rank)  * 100
+                          + baseSnap.LeaguePoints;
+
+            int absLp = Math.Max(0, baseAbsLp + (int)Math.Round(cumulativeValue - baseSnap.LeaguePoints));
+            int tier = Math.Min(absLp / 400, 9);
+
+            // Master+ n'a pas de divisions : on garde les LP totaux dans le tier.
+            if (tier >= 7)
+                return Math.Max(0, absLp - tier * 400);
+
+            return absLp % 100;
         }
 
         /// <summary>Couleur associée au rang pour le label.</summary>

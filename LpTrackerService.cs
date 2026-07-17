@@ -104,16 +104,28 @@ namespace MixOverlays.Services
                 .Where(s => string.IsNullOrWhiteSpace(s.Puuid) || IsActivePlayer(s.Puuid))
                 .ToList();
 
-            // Ne rien faire si on a déjà un historique réel suffisant
-            if (LpHistory.Count >= 3 && LpHistory.Any(s => s.LpDelta.HasValue))
-            {
-                L("Seed ignoré : historique réel existant.");
-                return;
-            }
-
             if (soloRank == null || string.IsNullOrEmpty(soloRank.tier))
             {
                 L("Seed ignoré : joueur non classé.");
+                return;
+            }
+
+            // Ne rien reconstruire si on a déjà un historique réel suffisant,
+            // mais resynchroniser quand même le dernier point avec le rang actuel.
+            // Cela évite un graphique "une partie en retard" si la capture LCU post-game
+            // a été faite avant que Riot mette à jour les LP.
+            if (LpHistory.Count >= 3 && LpHistory.Any(s => s.LpDelta.HasValue))
+            {
+                if (TrySyncLatestSnapshotWithCurrentRank(soloRank))
+                {
+                    SaveHistory();
+                    HistoryUpdated?.Invoke(this, EventArgs.Empty);
+                    L("Seed ignoré : historique réel existant, dernier snapshot resynchronisé.");
+                }
+                else
+                {
+                    L("Seed ignoré : historique réel existant déjà à jour.");
+                }
                 return;
             }
 
@@ -128,6 +140,50 @@ namespace MixOverlays.Services
                 SeedFromRankedMatches(ranked, soloRank);
             else
                 SeedForecast(soloRank, ranked); // Données prévisionnelles si pas assez de parties
+        }
+
+        /// <summary>
+        /// Aligne le dernier point de l'historique sur le rang actuel fourni par Riot API.
+        /// Utile quand le snapshot post-game LCU a été capturé trop tôt et contient encore
+        /// les anciens LP (ex: graphique à 10 LP alors que SoloRank est déjà à 30 LP).
+        /// </summary>
+        private bool TrySyncLatestSnapshotWithCurrentRank(LeagueEntry soloRank)
+        {
+            if (soloRank == null || string.IsNullOrWhiteSpace(soloRank.tier)) return false;
+            if (LpHistory.Count == 0) return false;
+
+            LpHistory = LpHistory
+                .OrderByDescending(s => s.Timestamp)
+                .ToList();
+
+            var latest = LpHistory[0];
+            bool sameRank = string.Equals(latest.Tier, soloRank.tier, StringComparison.OrdinalIgnoreCase)
+                         && string.Equals(latest.Rank, soloRank.rank, StringComparison.OrdinalIgnoreCase);
+
+            if (sameRank && latest.LeaguePoints == soloRank.leaguePoints)
+                return false;
+
+            var synced = new LpSnapshot
+            {
+                Timestamp    = DateTime.UtcNow,
+                LeaguePoints = soloRank.leaguePoints,
+                Tier         = soloRank.tier,
+                Rank         = soloRank.rank,
+                ChampionName = "Actuel",
+                Puuid        = _activePuuid,
+                GameName     = _activeGameName,
+                TagLine      = _activeTagLine,
+            };
+
+            int delta = ComputeDelta(latest, synced);
+            synced.LpDelta = delta;
+            synced.IsWin   = delta > 0 ? true : delta < 0 ? false : null;
+
+            L($"Sync rang actuel : {latest.RankDisplay} {latest.LeaguePoints} LP -> {synced.RankDisplay} {synced.LeaguePoints} LP | delta={delta:+0;-0;0}");
+
+            LpHistory.Insert(0, synced);
+            if (LpHistory.Count > 200) LpHistory.RemoveRange(200, LpHistory.Count - 200);
+            return true;
         }
 
         // ─── Seed depuis parties réelles ─────────────────────────────────────
@@ -275,7 +331,6 @@ namespace MixOverlays.Services
                     if (_capturedPre && _preSnapshot != null)
                     {
                         _capturedPre = false;
-                        await Task.Delay(TimeSpan.FromSeconds(8));
                         await CapturePostAsync();
                     }
                     break;
@@ -317,12 +372,33 @@ namespace MixOverlays.Services
 
         private async Task CapturePostAsync()
         {
-            var post = await FetchCurrentLpAsync();
+            if (_preSnapshot == null) return;
+
+            LpSnapshot? post = null;
+            const int maxAttempts = 6;
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(8));
+                post = await FetchCurrentLpAsync();
+
+                if (post == null)
+                {
+                    L($"POST tentative {attempt}/{maxAttempts} : rang indisponible.");
+                    continue;
+                }
+
+                bool rankChanged = !SameRankAndLp(_preSnapshot, post);
+                L($"POST tentative {attempt}/{maxAttempts} : {post.LeaguePoints} LP ({post.RankDisplay}) | updated={rankChanged}");
+
+                if (rankChanged || attempt == maxAttempts)
+                    break;
+            }
+
             if (post == null || _preSnapshot == null) return;
 
             int delta    = ComputeDelta(_preSnapshot, post);
             post.LpDelta = delta;
-            post.IsWin   = delta > 0;
+            post.IsWin   = delta > 0 ? true : delta < 0 ? false : null;
 
             L($"POST : {post.LeaguePoints} LP | delta={delta:+0;-0}");
 
@@ -340,6 +416,11 @@ namespace MixOverlays.Services
             HistoryUpdated?.Invoke(this, EventArgs.Empty);
             _preSnapshot = null;
         }
+
+        private static bool SameRankAndLp(LpSnapshot a, LpSnapshot b) =>
+            string.Equals(a.Tier, b.Tier, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(a.Rank, b.Rank, StringComparison.OrdinalIgnoreCase) &&
+            a.LeaguePoints == b.LeaguePoints;
 
         // ─── Calcul delta LP ──────────────────────────────────────────────────
 
