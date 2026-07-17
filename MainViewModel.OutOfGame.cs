@@ -519,12 +519,39 @@ namespace MixOverlays.ViewModels
                 StatusMessage  = $"Chargement de {account.gameName}#{account.tagLine}...";
 
                 var fullData = await _riot.LoadFullPlayerDataAsync(account.puuid, account.gameName, account.tagLine);
+                if (fullData == null)
+                {
+                    StatusMessage = $"Données du joueur '{account.gameName}#{account.tagLine}' non récupérées.";
+                    return;
+                }
+
                 await _champions.EnsureLoadedAsync();
-                foreach (var m in fullData.TopMasteries) m.ChampionName = _champions.GetName(m.championId);
+                foreach (var m in fullData.TopMasteries)
+                {
+                    try { m.ChampionName = _champions.GetName(m.championId); }
+                    catch { m.ChampionName = "Inconnu"; }
+                }
+
+                // LP Stats pour un joueur recherché : utiliser un tracker temporaire
+                // afin de ne pas changer le joueur actif du tracker principal (Mon Compte).
+                var searchLpTracker = new LpTrackerService();
+                searchLpTracker.SetActivePlayer(fullData.Puuid, fullData.GameName, fullData.TagLine);
+                App.Log($"[Search] SeedFromMatchHistory — {fullData.RecentMatches?.Count ?? 0} parties, SoloRank={fullData.SoloRank?.tier ?? "null"}");
+                if (fullData.RecentMatches != null)
+                    searchLpTracker.SeedFromMatchHistory(fullData.RecentMatches, fullData.SoloRank);
+                var searchLpHistory = searchLpTracker.LpHistory.ToList();
 
                 System.Windows.Application.Current.Dispatcher.Invoke(() =>
                 {
+                    if (SearchedPlayer == null || SearchedPlayer.Data.Puuid != account.puuid)
+                    {
+                        App.Log("[Search] Mise à jour UI ignorée : le résultat de recherche actif a changé.");
+                        return;
+                    }
+
                     SearchedPlayer.UpdateData(fullData);
+                    App.Log($"[Search] SetLpHistory sur SearchedPlayer — {searchLpHistory.Count} snapshots");
+                    SearchedPlayer.SetLpHistory(searchLpHistory);
                     StatusMessage = $"Données chargées pour {account.gameName}#{account.tagLine}";
 
                     HasSearchedAtLeastOnce = true;
@@ -1081,6 +1108,7 @@ if (me != null && !string.IsNullOrEmpty(me.gameName))
         public ObservableCollection<PlayerViewModel> EnemyTeam { get; } = new();
     }
 }
+
 
 
 
