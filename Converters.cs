@@ -423,19 +423,24 @@ namespace MixOverlays.Converters
         // IDs corrects issus de summoner.json Riot officiel.
         private static readonly Dictionary<int, string> FallbackSpellNames = new()
         {
-            [1]  = "SummonerBoost",      // Cleanse
-            [3]  = "SummonerExhaust",
-            [4]  = "SummonerFlash",
-            [6]  = "SummonerHaste",      // Ghost
-            [7]  = "SummonerHeal",
-            [11] = "SummonerSmite",
-            [12] = "SummonerTeleport",
-            [13] = "SummonerMana",       // Clarity
-            [14] = "SummonerDot",        // Ignite
-            [21] = "SummonerBarrier",
-            [30] = "SummonerPoroRecall",
-            [31] = "SummonerPoroThrow",
-            [32] = "SummonerSnowball",
+            [1]    = "SummonerBoost",              // Cleanse
+            [3]    = "SummonerExhaust",
+            [4]    = "SummonerFlash",
+            [6]    = "SummonerHaste",              // Ghost
+            [7]    = "SummonerHeal",
+            [11]   = "SummonerSmite",
+            [12]   = "SummonerTeleport",
+            [13]   = "SummonerMana",               // Clarity
+            [14]   = "SummonerDot",                // Ignite
+            [21]   = "SummonerBarrier",
+            [30]   = "SummonerPoroRecall",
+            [31]   = "SummonerPoroThrow",
+            [32]   = "SummonerSnowball",
+            [39]   = "SummonerSnowURFSnowball_Mark",
+            [54]   = "Summoner_UltBookPlaceholder",
+            [55]   = "Summoner_UltBookSmitePlaceholder",
+            [2201] = "SummonerCherryHold",         // Swarm/Flee
+            [2202] = "SummonerCherryFlash",        // Swarm/Flash
         };
 
         public object? Convert(object value, Type t, object p, CultureInfo c)
@@ -494,25 +499,30 @@ namespace MixOverlays.Converters
             }
 
             // Priorité 2 : fallback statique
-            if (string.IsNullOrEmpty(spellName))
-            {
-                var fallback = new Dictionary<int, string>
+                if (string.IsNullOrEmpty(spellName))
                 {
-                    [1]  = "SummonerBoost",
-                    [3]  = "SummonerExhaust",
-                    [4]  = "SummonerFlash",
-                    [6]  = "SummonerHaste",
-                    [7]  = "SummonerHeal",
-                    [11] = "SummonerSmite",
-                    [12] = "SummonerTeleport",
-                    [13] = "SummonerMana",
-                    [14] = "SummonerDot",
-                    [21] = "SummonerBarrier",
-                    [30] = "SummonerPoroRecall",
-                    [31] = "SummonerPoroThrow",
-                    [32] = "SummonerSnowball",
-                };
-                fallback.TryGetValue(spellId, out spellName);
+                    var fallback = new Dictionary<int, string>
+                    {
+                        [1]    = "SummonerBoost",
+                        [3]    = "SummonerExhaust",
+                        [4]    = "SummonerFlash",
+                        [6]    = "SummonerHaste",
+                        [7]    = "SummonerHeal",
+                        [11]   = "SummonerSmite",
+                        [12]   = "SummonerTeleport",
+                        [13]   = "SummonerMana",
+                        [14]   = "SummonerDot",
+                        [21]   = "SummonerBarrier",
+                        [30]   = "SummonerPoroRecall",
+                        [31]   = "SummonerPoroThrow",
+                        [32]   = "SummonerSnowball",
+                        [39]   = "SummonerSnowURFSnowball_Mark",
+                        [54]   = "Summoner_UltBookPlaceholder",
+                        [55]   = "Summoner_UltBookSmitePlaceholder",
+                        [2201] = "SummonerCherryHold",
+                        [2202] = "SummonerCherryFlash",
+                    };
+                    fallback.TryGetValue(spellId, out spellName);
                 if (!string.IsNullOrEmpty(spellName))
                     System.Diagnostics.Debug.WriteLine($"[SummonerSpell] ID {spellId} → {spellName} (fallback)");
             }

@@ -1,2 +1,44 @@
-bin/
-obj/
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Bb]in/
+[Oo]bj/
+
+# Visual Studio / Rider / VS Code local files
+.vs/
+.idea/
+.vscode/
+*.user
+*.userosscache
+*.suo
+*.rsuser
+*.sln.docstates
+
+# Logs and diagnostics
+logs/
+log/
+*.log
+*.tlog
+*.binlog
+
+# Test results and coverage
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+coverage.cobertura.xml
+
+# Temporary files
+*.tmp
+*.temp
+*.cache
+*.bak
+*.swp
+~$*
+
+# OS-generated files
+Thumbs.db
+Desktop.ini
+.DS_Store
