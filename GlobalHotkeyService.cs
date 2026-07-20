@@ -6,7 +6,7 @@ namespace MixOverlays.Services
 {
     /// <summary>
     /// Hook clavier bas-niveau (WH_KEYBOARD_LL).
-    /// Capture Ctrl+X même quand League of Legends est en plein écran exclusif,
+    /// Capture un raccourci Ctrl+lettre même quand League of Legends est en plein écran exclusif,
     /// contrairement à RegisterHotKey qui est bloqué par les jeux fullscreen.
     /// </summary>
     public sealed class GlobalHotkeyService : IDisposable
@@ -15,7 +15,6 @@ namespace MixOverlays.Services
         private const int  WH_KEYBOARD_LL = 13;
         private const int  WM_KEYDOWN     = 0x0100;
         private const int  WM_SYSKEYDOWN  = 0x0104;
-        private const uint VK_X           = 0x58;
         private const uint VK_CONTROL     = 0x11;
         private const uint VK_LCONTROL    = 0xA2;
         private const uint VK_RCONTROL    = 0xA3;
@@ -53,15 +52,32 @@ namespace MixOverlays.Services
         private IntPtr              _hookHandle = IntPtr.Zero;
         private LowLevelKeyboardProc _proc;          // gardé en vie pour éviter le GC
         private bool                _disposed;
+        private readonly uint       _virtualKey;
+        private readonly string     _hotkeyDisplay;
 
-        /// <summary>Déclenché sur le thread UI quand Ctrl+X est pressé.</summary>
-        public event EventHandler? CtrlXPressed;
+        /// <summary>Déclenché sur le thread UI lorsque le raccourci configuré est pressé.</summary>
+        public event EventHandler? HotkeyPressed;
 
         // ─── Constructeur ─────────────────────────────────────────────────────
-        public GlobalHotkeyService()
+        public GlobalHotkeyService(string? hotkey = null)
         {
+            _hotkeyDisplay = NormalizeHotkey(hotkey, out _virtualKey);
             _proc = HookCallback;
             Install();
+        }
+
+        private static string NormalizeHotkey(string? value, out uint virtualKey)
+        {
+            var key = (value ?? string.Empty).Trim().ToUpperInvariant();
+            if (key.StartsWith("CTRL+", StringComparison.Ordinal) &&
+                key.Length == 6 && key[5] is >= 'A' and <= 'Z')
+            {
+                virtualKey = key[5];
+                return $"Ctrl+{key[5]}";
+            }
+
+            virtualKey = 'X';
+            return "Ctrl+X";
         }
 
         private void Install()
@@ -87,7 +103,7 @@ namespace MixOverlays.Services
             {
                 var kb = Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
 
-                if (kb.vkCode == VK_X)
+                if (kb.vkCode == _virtualKey)
                 {
                     // Vérifie que Ctrl est enfoncé (GetAsyncKeyState fonctionne cross-process)
                     bool ctrlDown = (GetAsyncKeyState(VK_LCONTROL) & 0x8000) != 0
@@ -96,10 +112,10 @@ namespace MixOverlays.Services
 
                     if (ctrlDown)
                     {
-                        Debug.WriteLine("[GlobalHotkey] Ctrl+X détecté !");
+                        Debug.WriteLine($"[GlobalHotkey] {_hotkeyDisplay} détecté !");
                         // Remonter sur le thread UI
                         System.Windows.Application.Current?.Dispatcher.BeginInvoke(
-                            () => CtrlXPressed?.Invoke(this, EventArgs.Empty));
+                            () => HotkeyPressed?.Invoke(this, EventArgs.Empty));
                     }
                 }
             }

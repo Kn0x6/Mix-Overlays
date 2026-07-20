@@ -27,6 +27,7 @@ namespace MixOverlays.Views
             {
                 _vm = new MainViewModel();
                 DataContext = _vm;
+                _vm.SettingsSaved += MainViewModel_SettingsSaved;
 
                 _vm.PropertyChanged += (s, e) =>
                 {
@@ -66,8 +67,19 @@ namespace MixOverlays.Views
 
         private void MainWindow_Closed(object? sender, EventArgs e)
         {
+            if (_vm != null)
+                _vm.SettingsSaved -= MainViewModel_SettingsSaved;
             DisposeGlobalHotkey();
             _vm?.Dispose();
+        }
+
+        private void MainViewModel_SettingsSaved(object? sender, EventArgs e)
+        {
+            DisposeGlobalHotkey();
+            InitGlobalHotkey();
+
+            // Keep a visible overlay in sync with its newly saved visual preferences.
+            App.OverlayWindow?.ApplySettings();
         }
 
         /// <summary>
@@ -76,8 +88,8 @@ namespace MixOverlays.Views
         /// </summary>
         private void InitGlobalHotkey()
         {
-            _hotkey = new GlobalHotkeyService();
-            _hotkey.CtrlXPressed += (_, _) => ToggleOverlay();
+            _hotkey = new GlobalHotkeyService(_vm?.Settings.OverlayHotkey);
+            _hotkey.HotkeyPressed += (_, _) => ToggleOverlay();
         }
 
         /// <summary>
@@ -98,6 +110,7 @@ namespace MixOverlays.Views
                 if (App.OverlayWindow == null)
                     App.OverlayWindow = new OverlayWindow();
 
+                App.OverlayWindow.ApplySettings();
                 App.OverlayWindow.SetTeamData(_vm.AllyTeam, _vm.EnemyTeam);
 
                 if (App.OverlayWindow.IsVisible)
@@ -108,7 +121,7 @@ namespace MixOverlays.Views
                 else
                 {
                     // Ouverture uniquement si LoL est en cours de partie
-            if (_vm.ClientState == LcuState.InGame)
+                    if (_vm.ClientState == LcuState.InGame && _vm.Settings.ShowOverlayInGame)
                     {
                         App.OverlayWindow.Show();
                     }

@@ -1,5 +1,6 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
 
     <!-- ═══════════════════════════════════════════════════ -->
     <!--  COULEURS PRINCIPALES                               -->
@@ -45,6 +46,14 @@
     <SolidColorBrush x:Key="LossLightBrush" Color="{StaticResource LossLightColor}"/>
 
     <!-- Semantic / translucent brushes -->
+    <!-- Semantic aliases: use these in views instead of literal colour values. -->
+    <SolidColorBrush x:Key="Surface1Brush" Color="{StaticResource BgPrimaryColor}"/>
+    <SolidColorBrush x:Key="Surface2Brush" Color="{StaticResource BgCardColor}"/>
+    <SolidColorBrush x:Key="Surface3Brush" Color="{StaticResource BgElevatedColor}"/>
+    <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource WinLightColor}"/>
+    <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource LossLightColor}"/>
+    <SolidColorBrush x:Key="WarningBrush" Color="{StaticResource GoldLightColor}"/>
+    <SolidColorBrush x:Key="InfoBrush" Color="{StaticResource AccentBlueLightColor}"/>
     <SolidColorBrush x:Key="AccentBlueSoftBrush" Color="#331F6FEB"/>
     <SolidColorBrush x:Key="InfoSoftBrush" Color="#22388BFD"/>
     <SolidColorBrush x:Key="DangerSoftBrush" Color="#22F85149"/>
@@ -78,6 +87,9 @@
     <Thickness x:Key="SpaceS">8</Thickness>
     <Thickness x:Key="SpaceM">12</Thickness>
     <Thickness x:Key="SpaceL">16</Thickness>
+    <sys:Double x:Key="FontCaptionSize">11</sys:Double>
+    <sys:Double x:Key="FontBodySize">13</sys:Double>
+    <sys:Double x:Key="FontTitleSize">22</sys:Double>
 
     <!-- ═══════════════════════════════════════════════════ -->
     <!--  STYLES GLOBAUX                                     -->
@@ -152,7 +164,7 @@
 
     <Style x:Key="SectionLabel" TargetType="TextBlock">
         <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
-        <Setter Property="FontSize" Value="10"/>
+        <Setter Property="FontSize" Value="{StaticResource FontCaptionSize}"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
     </Style>
 
@@ -165,6 +177,19 @@
     <Style x:Key="SubtleCaption" TargetType="TextBlock">
         <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
         <Setter Property="FontSize" Value="11"/>
+    </Style>
+
+    <Style x:Key="TextBodyStyle" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+        <Setter Property="FontSize" Value="{StaticResource FontBodySize}"/>
+    </Style>
+
+    <Style x:Key="StatusBadgeStyle" TargetType="Border">
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusSmall}"/>
+        <Setter Property="Padding" Value="7,3"/>
+        <Setter Property="Background" Value="{StaticResource InfoSoftBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource AccentBlueBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
     </Style>
 
     <!-- Button base -->
@@ -226,6 +251,20 @@
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+
+    <!-- Buttons that only contain a vector icon still have a 32px hit target. -->
+    <Style x:Key="IconButton" TargetType="Button" BasedOn="{StaticResource GhostButton}">
+        <Setter Property="Width" Value="32"/>
+        <Setter Property="Height" Value="32"/>
+        <Setter Property="Padding" Value="7"/>
+        <Setter Property="ToolTipService.ShowOnDisabled" Value="True"/>
+        <Setter Property="AutomationProperties.Name" Value="Action"/>
+    </Style>
+
+    <Style x:Key="CompactCardStyle" TargetType="Border" BasedOn="{StaticResource CardBorder}">
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusSmall}"/>
+        <Setter Property="Padding" Value="8"/>
     </Style>
 
     <!-- Button secondary -->

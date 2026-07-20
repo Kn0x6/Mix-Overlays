@@ -78,8 +78,14 @@
 
                     <!-- Window controls -->
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button Content="⚙" Style="{StaticResource WindowChromeButton}"
-                                Click="SettingsButton_Click" FontSize="13" ToolTip="Paramètres"/>
+                        <Button Style="{StaticResource WindowChromeButton}"
+                                Click="SettingsButton_Click" ToolTip="Paramètres"
+                                AutomationProperties.Name="Ouvrir les paramètres">
+                            <Viewbox Width="14" Height="14">
+                                <Path Data="M 7,1 L 8,3 L 10,3 L 11,5 L 10,7 L 11,9 L 10,11 L 8,11 L 7,13 L 5,11 L 3,11 L 2,9 L 3,7 L 2,5 L 3,3 L 5,3 Z M 7,5 A 2,2 0 1 1 6.9,5"
+                                      Stroke="{StaticResource TextSecondaryBrush}" StrokeThickness="1.2" Fill="Transparent"/>
+                            </Viewbox>
+                        </Button>
                         <Button Content="─" Style="{StaticResource WindowChromeButton}"
                                 Click="MinimizeButton_Click" FontSize="14"/>
                         <Button x:Name="BtnFullscreen" Content="⛶" Style="{StaticResource WindowChromeButton}"
@@ -1005,7 +1011,7 @@
                                                       Content="Afficher l'overlay en jeu"
                                                       FontSize="13"/>
                                         </StackPanel>
-                                        <StackPanel Orientation="Horizontal">
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                                             <TextBlock Text="Opacité :"
                                                        Foreground="{StaticResource TextSecondaryBrush}"
                                                        FontSize="13" VerticalAlignment="Center" Margin="0,0,10,0"/>
@@ -1017,11 +1023,35 @@
                                                 <Run Text="{Binding Settings.OverlayOpacity, StringFormat={}{0:P0}, Mode=OneWay}"/>
                                             </TextBlock>
                                         </StackPanel>
+                                         <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                             <TextBlock Text="Échelle :"
+                                                        Foreground="{StaticResource TextSecondaryBrush}"
+                                                        FontSize="13" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                             <Slider Minimum="0.85" Maximum="1.30" TickFrequency="0.05" IsSnapToTickEnabled="True"
+                                                     Value="{Binding Settings.UiScale, UpdateSourceTrigger=PropertyChanged}"
+                                                     Width="200" VerticalAlignment="Center"/>
+                                             <TextBlock Foreground="{StaticResource TextMutedBrush}"
+                                                        FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0"
+                                                        Text="{Binding Settings.UiScale, StringFormat={}{0:P0}}"/>
+                                         </StackPanel>
+                                         <TextBlock Text="Les changements sont appliqués dès la sauvegarde."
+                                                    Style="{StaticResource SubtleCaption}" TextWrapping="Wrap"/>
+                                         <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                             <TextBlock Text="Raccourci :"
+                                                        Foreground="{StaticResource TextSecondaryBrush}"
+                                                        FontSize="13" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                             <TextBox Width="100" MaxLength="6"
+                                                      Text="{Binding Settings.OverlayHotkey, UpdateSourceTrigger=PropertyChanged}"
+                                                      ToolTip="Format accepté : Ctrl suivi d’une lettre, par exemple Ctrl+X"
+                                                      AutomationProperties.Name="Raccourci de l’overlay"/>
+                                             <TextBlock Text="Utilisez Ctrl + une lettre (ex. Ctrl+X)."
+                                                        Style="{StaticResource SubtleCaption}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                         </StackPanel>
                                     </StackPanel>
                                 </Border>
 
                                 <!-- Save button -->
-                                <Button Content="💾  Sauvegarder les paramètres"
+                                <Button Content="Sauvegarder les paramètres"
                                         Style="{StaticResource AccentButton}"
                                         Command="{Binding SaveSettingsCommand}"
                                         HorizontalAlignment="Left"

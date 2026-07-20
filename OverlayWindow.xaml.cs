@@ -43,6 +43,8 @@ namespace MixOverlays.Views
 
             // Ne pas voler le focus à LoL au moment de Show()
             ShowActivated = false;
+            ApplySettings();
+            LocationChanged += OverlayWindow_LocationChanged;
         }
 
         // ─── Données ──────────────────────────────────────────────────────────
@@ -55,6 +57,26 @@ namespace MixOverlays.Views
 
             if (enemies != null)
                 EnemyList.ItemsSource = enemies;
+        }
+
+        /// <summary>Applique les préférences persistées juste avant chaque affichage.</summary>
+        public void ApplySettings()
+        {
+            var settings = App.SettingsService?.Current;
+            if (settings == null)
+                return;
+
+            Opacity = Math.Clamp(settings.OverlayOpacity, 0.30, 1.00);
+            var scale = Math.Clamp(settings.UiScale, 0.85, 1.30);
+            OverlayScale.ScaleX = scale;
+            OverlayScale.ScaleY = scale;
+            HotkeyHint.Text = $"  ·  Glisser pour déplacer · {settings.OverlayHotkey}";
+
+            // Settings are expressed in WPF device-independent pixels.
+            Left = Math.Clamp(settings.OverlayX, SystemParameters.VirtualScreenLeft,
+                SystemParameters.VirtualScreenLeft + SystemParameters.VirtualScreenWidth - 80);
+            Top = Math.Clamp(settings.OverlayY, SystemParameters.VirtualScreenTop,
+                SystemParameters.VirtualScreenTop + SystemParameters.VirtualScreenHeight - 60);
         }
 
 
@@ -85,10 +107,39 @@ namespace MixOverlays.Views
         // ─── Interactions UI ──────────────────────────────────────────────────
 
         private void Overlay_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-            => DragMove();
+        {
+            if (e.OriginalSource is DependencyObject source &&
+                FindAncestor<System.Windows.Controls.Primitives.ButtonBase>(source) != null)
+                return;
+
+            DragMove();
+        }
 
         private void CloseOverlay_Click(object sender, RoutedEventArgs e)
             => Hide();
+
+        private void OverlayWindow_LocationChanged(object? sender, EventArgs e)
+        {
+            var service = App.SettingsService;
+            if (service == null || !IsVisible)
+                return;
+
+            service.Current.OverlayX = (int)Math.Round(Left);
+            service.Current.OverlayY = (int)Math.Round(Top);
+            service.Save();
+        }
+
+        private static T? FindAncestor<T>(DependencyObject source) where T : DependencyObject
+        {
+            for (DependencyObject? current = source; current != null;
+                 current = System.Windows.Media.VisualTreeHelper.GetParent(current))
+            {
+                if (current is T match)
+                    return match;
+            }
+
+            return null;
+        }
 
         private void Overlay_KeyDown(object sender, KeyEventArgs e)
         {

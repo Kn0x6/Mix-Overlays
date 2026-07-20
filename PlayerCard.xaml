@@ -26,10 +26,72 @@
         <conv:RuneIdToImageConverter                x:Key="RuneToImg"/>
         <conv:ChampionNameToSplashConverter         x:Key="ChampSplash"/>
         <conv:HexStringToBrushConverter             x:Key="HexBrush"/>
+
+        <!-- En-tête interactif de la section d'analyse, cohérent avec le thème global. -->
+        <Style x:Key="AnalysisExpanderStyle" TargetType="Expander">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Expander">
+                        <DockPanel>
+                            <ToggleButton x:Name="HeaderButton" DockPanel.Dock="Top"
+                                          IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                          Background="{StaticResource Surface2Brush}"
+                                          BorderBrush="{StaticResource BorderBrush}"
+                                          BorderThickness="1"
+                                          Padding="10,8"
+                                          Cursor="Hand"
+                                          Content="{TemplateBinding Header}"
+                                          AutomationProperties.Name="Afficher ou masquer l’analyse et les statistiques">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border x:Name="HeaderSurface" Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                CornerRadius="8" Padding="{TemplateBinding Padding}">
+                                            <Grid>
+                                                <ContentPresenter ContentSource="Content" VerticalAlignment="Center"/>
+                                                <Path x:Name="Chevron" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                      Data="M 0,0 L 4,4 L 8,0" Stroke="{StaticResource TextSecondaryBrush}"
+                                                      StrokeThickness="1.5" StrokeLineJoin="Round">
+                                                    <Path.RenderTransform>
+                                                        <RotateTransform Angle="0" CenterX="4" CenterY="2"/>
+                                                    </Path.RenderTransform>
+                                                </Path>
+                                            </Grid>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="HeaderSurface" Property="Background" Value="{StaticResource BgHoverBrush}"/>
+                                                <Setter TargetName="HeaderSurface" Property="BorderBrush" Value="{StaticResource InfoBrush}"/>
+                                            </Trigger>
+                                            <Trigger Property="IsChecked" Value="True">
+                                                <Setter TargetName="HeaderSurface" Property="Background" Value="{StaticResource InfoSoftBrush}"/>
+                                                <Setter TargetName="HeaderSurface" Property="BorderBrush" Value="{StaticResource InfoBrush}"/>
+                                                <Setter TargetName="Chevron" Property="RenderTransform">
+                                                    <Setter.Value><RotateTransform Angle="180" CenterX="4" CenterY="2"/></Setter.Value>
+                                                </Setter>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <ContentPresenter x:Name="ExpandSite" Content="{TemplateBinding Content}"
+                                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                                              Margin="0,10,0,0" Visibility="Collapsed"/>
+                        </DockPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsExpanded" Value="True">
+                                <Setter TargetName="ExpandSite" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
 
     <!-- ROOT — pas de ScrollViewer ici : la MainWindow gère le défilement -->
-    <Border Background="{StaticResource BgPrimaryBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="14">
+    <Border Background="{StaticResource Surface1Brush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="14">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>  <!-- Banner -->
@@ -39,9 +101,9 @@
             </Grid.RowDefinitions>
 
             <!-- Loading banner -->
-            <Border Grid.Row="0" Background="#1A8B5CF6" CornerRadius="12,12,0,0" Padding="10,6"
+            <Border Grid.Row="0" Background="{StaticResource InfoSoftBrush}" CornerRadius="12,12,0,0" Padding="10,6"
                     Visibility="{Binding IsLoading, Converter={StaticResource BoolVis}}">
-                <TextBlock Text="⏳  Chargement…" Foreground="#8B5CF6" FontSize="11" HorizontalAlignment="Center"/>
+                <TextBlock Text="Chargement des données…" Foreground="{StaticResource InfoBrush}" Style="{StaticResource TextBodyStyle}" HorizontalAlignment="Center"/>
             </Border>
 
             <!-- Error banner -->
@@ -56,7 +118,8 @@
                         </Style.Triggers>
                     </Style>
                 </Border.Style>
-                <TextBlock Text="{Binding ErrorMessage}" Foreground="#F85149" FontSize="10" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}" Style="{StaticResource SubtleCaption}"
+                           TextTrimming="CharacterEllipsis" ToolTip="{Binding ErrorMessage}"/>
             </Border>
 
             <!-- ══════════════════════════════════════════════════════════════ -->
@@ -124,7 +187,7 @@
                                 <Run Text=" "/>
                                 <Run Text="{Binding SoloRank.rank, Mode=OneWay}"/>
                             </TextBlock>
-                            <TextBlock Text="Non classé" FontSize="22" FontWeight="Bold" Foreground="#6B7280">
+                            <TextBlock Text="Non classé" FontSize="22" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Visibility" Value="Collapsed"/>
@@ -190,9 +253,9 @@
 
                             <!-- Summoner name -->
                             <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
-                                <TextBlock Text="{Binding GameName}" Foreground="#C9D1D9" FontWeight="SemiBold" FontSize="14"/>
-                                <TextBlock Text=" #" Foreground="#6B7280" FontSize="12" Margin="0,2,0,0"/>
-                                <TextBlock Text="{Binding TagLine}" Foreground="#6B7280" FontSize="12" Margin="0,2,0,0"/>
+                                <TextBlock Text="{Binding GameName}" Foreground="{StaticResource TextPrimaryBrush}" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis" ToolTip="{Binding GameName}"/>
+                                <TextBlock Text=" #" Foreground="{StaticResource TextMutedBrush}" FontSize="12" Margin="0,2,0,0"/>
+                                <TextBlock Text="{Binding TagLine}" Foreground="{StaticResource TextMutedBrush}" FontSize="12" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" ToolTip="{Binding TagLine}"/>
                             </StackPanel>
 
                             <!-- Lanes -->
@@ -235,7 +298,8 @@
                             <Button HorizontalAlignment="Right" Margin="0,5,0,0" Padding="8,4" FontSize="11" Cursor="Hand"
                                     Visibility="{Binding IsInGame, Converter={StaticResource BoolVis}}"
                                     Command="{Binding DataContext.ViewLiveGameCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                    CommandParameter="{Binding}">
+                                    CommandParameter="{Binding}"
+                                    AutomationProperties.Name="Ouvrir la partie en direct">
                                 <Button.Style>
                                     <Style TargetType="Button">
                                         <Setter Property="Background" Value="#1A8B5CF6"/>
@@ -259,7 +323,13 @@
                                         </Setter>
                                     </Style>
                                 </Button.Style>
-                                <TextBlock Text="👁 Voir la partie" FontSize="11"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <Viewbox Width="13" Height="13" Margin="0,0,5,0">
+                                        <Path Data="M 1,6 C 3,2 6,1 8,1 C 10,1 13,2 15,6 C 13,10 10,11 8,11 C 6,11 3,10 1,6 M 8,4 A 2,2 0 1 1 7.9,4"
+                                              Stroke="{StaticResource PurpleAccentBrush}" StrokeThickness="1.2" Fill="Transparent"/>
+                                    </Viewbox>
+                                    <TextBlock Text="Voir la partie" FontSize="11"/>
+                                </StackPanel>
                             </Button>
                         </StackPanel>
                     </Grid>
@@ -276,7 +346,8 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="1"/>
-                    <ColumnDefinition Width="300"/>
+                    <!-- Analyse secondaire : largeur dictée par son contenu et repliée par défaut. -->
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
                 <!-- ═══════════════════════════════════════════════════════ -->
@@ -584,11 +655,22 @@
                 <!-- ═══════════════════════════════════════════════════════ -->
                 <!-- DROITE : Stats par champion + Coming soon               -->
                 <!-- ═══════════════════════════════════════════════════════ -->
-                <StackPanel Grid.Column="2" Margin="16,14,16,16">
+                <Expander Grid.Column="2" Margin="12,14,14,16" IsExpanded="True"
+                          Style="{StaticResource AnalysisExpanderStyle}"
+                          Foreground="{StaticResource TextPrimaryBrush}">
+                    <Expander.Header>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <Viewbox Width="14" Height="14" Margin="0,0,6,0">
+                                <Path Data="M 2,11 L 5,7 L 8,9 L 12,3 M 9,3 H 12 V 6"
+                                      Stroke="{StaticResource InfoBrush}" StrokeThickness="1.5" Fill="Transparent"/>
+                            </Viewbox>
+                            <TextBlock Text="Analyse et statistiques" FontWeight="Bold" FontSize="12"/>
+                        </StackPanel>
+                    </Expander.Header>
+                    <StackPanel>
 
                     <!-- ── Header Stats par champion ── -->
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                        <TextBlock Text="⚔" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
                         <TextBlock Text="Stats par champion"
                                    Foreground="{StaticResource TextPrimaryBrush}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"/>
                     </StackPanel>
@@ -664,14 +746,13 @@
                             <!-- En-tête -->
                             <Grid Margin="0,0,0,6">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="📈" FontSize="10" Margin="0,0,4,0" VerticalAlignment="Center"/>
                                     <TextBlock Text="LP Stats"
                                                Foreground="#C9D1D9"
                                                FontSize="10" FontWeight="SemiBold"
                                                VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <TextBlock Text="{Binding LpTrackedGamesDisplay}"
-                                           Foreground="#4B5563" FontSize="8"
+                                                   Foreground="{StaticResource TextMutedBrush}" FontSize="11"
                                            HorizontalAlignment="Right" VerticalAlignment="Center"/>
                             </Grid>
 
@@ -687,8 +768,8 @@
                                 <Border Grid.Column="0" CornerRadius="6" Padding="6,4"
                                         Background="#0F172A">
                                     <StackPanel>
-                                        <TextBlock Text="7 JOURS" Foreground="#4B5563"
-                                                   FontSize="8" FontWeight="Bold"
+                                        <TextBlock Text="7 JOURS" Foreground="{StaticResource TextMutedBrush}"
+                                                   FontSize="11" FontWeight="Bold"
                                                    HorizontalAlignment="Center"/>
                                         <TextBlock Text="{Binding LpDelta7dDisplay}"
                                                    FontSize="13" FontWeight="Bold"
@@ -701,8 +782,8 @@
                                 <Border Grid.Column="2" CornerRadius="6" Padding="6,4"
                                         Background="#0F172A">
                                     <StackPanel>
-                                        <TextBlock Text="30 JOURS" Foreground="#4B5563"
-                                                   FontSize="8" FontWeight="Bold"
+                                        <TextBlock Text="30 JOURS" Foreground="{StaticResource TextMutedBrush}"
+                                                   FontSize="11" FontWeight="Bold"
                                                    HorizontalAlignment="Center"/>
                                         <TextBlock Text="{Binding LpDelta30dDisplay}"
                                                    FontSize="13" FontWeight="Bold"
@@ -731,19 +812,18 @@
                                     </Style>
                                 </Border.Style>
                                 <StackPanel HorizontalAlignment="Center">
-                                    <TextBlock Text="📊" FontSize="18" HorizontalAlignment="Center" Margin="0,0,0,4"/>
                                     <TextBlock Text="Joue une partie classée"
-                                               Foreground="#6B7280" FontSize="9"
+                                               Foreground="{StaticResource TextSecondaryBrush}" FontSize="11"
                                                HorizontalAlignment="Center"/>
                                     <TextBlock Text="pour démarrer le suivi LP"
-                                               Foreground="#4B5563" FontSize="8"
+                                               Foreground="{StaticResource TextMutedBrush}" FontSize="11"
                                                HorizontalAlignment="Center"/>
                                 </StackPanel>
                             </Border>
 
                             <!-- Note approximation (visible uniquement si données seedées) -->
                             <TextBlock Text="* estimé depuis l'historique récent"
-                                       Foreground="#374151" FontSize="7"
+                                       Foreground="{StaticResource TextMutedBrush}" FontSize="11"
                                        HorizontalAlignment="Right"
                                        Visibility="{Binding HasLpData, Converter={StaticResource BoolVis}}"/>
 
@@ -763,7 +843,8 @@
                         </StackPanel>
                     </Border>
 
-                </StackPanel>
+                    </StackPanel>
+                </Expander>
 
             </Grid>
         </Grid>

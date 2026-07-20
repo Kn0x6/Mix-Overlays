@@ -87,6 +87,7 @@ namespace MixOverlays.ViewModels
 
         // ─── Commande Paramètres (partagée) ──────────────────────────────────
         public RelayCommand SaveSettingsCommand { get; private set; } = null!;
+        public event EventHandler? SettingsSaved;
 
         // ─── Constructeur ─────────────────────────────────────────────────────
         public MainViewModel()
@@ -107,6 +108,7 @@ namespace MixOverlays.ViewModels
                 _settings.Save();
                 _riot.RefreshApiKey();
                 StatusMessage = "Paramètres sauvegardés.";
+                SettingsSaved?.Invoke(this, EventArgs.Empty);
             });
 
             // ── Initialisation des deux sections ──
