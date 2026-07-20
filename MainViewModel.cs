@@ -12,7 +12,7 @@ namespace MixOverlays.ViewModels
     //    • MainViewModel.OutOfGame.cs  → Mon Compte, Recherche, Historique, Settings
     //    • MainViewModel.InGame.cs     → Live Session, Champ Select, Overlay
     // ════════════════════════════════════════════════════════════════════════════
-    public partial class MainViewModel : BaseViewModel
+    public partial class MainViewModel : BaseViewModel, IDisposable
     {
         // ─── Services partagés ────────────────────────────────────────────────
         //  Accessibles par les deux fichiers partiels via les champs protégés.
@@ -24,6 +24,7 @@ namespace MixOverlays.ViewModels
         private readonly LpTrackerService    _lpTracker = new();
         private int _postGameHistoryRefreshInProgress;
         private string _lastPostGameHistoryRefreshMatchId = string.Empty;
+        private bool _disposed;
 
         // ─── Déclarations des méthodes partielles ─────────────────────────────
         //  Chaque fichier partiel implémente sa propre initialisation.
@@ -116,44 +117,14 @@ namespace MixOverlays.ViewModels
             _lcu.StateChanged += OnLcuStateChanged;
 
             // ── Événements LCU pour le tracker LP ──
-            _lcu.StateChanged += (_, e) =>
-            {
-                var client = _lcu.GetHttpClient();
-                if (client != null)
-                    _lpTracker.SetLcuClient(client);
-            };
+            _lcu.StateChanged += OnLcuStateChangedForLpTracker;
 
-            _lcu.GameflowSessionUpdated += async (_, session) =>
-            {
-                await _lpTracker.OnGameflowPhaseChanged(session.phase);
+            _lcu.GameflowSessionUpdated += OnGameflowSessionUpdated;
 
-                if (IsPostGamePhase(session.phase))
-                    _ = RefreshMyAccountMatchHistoryAfterGameAsync(session.phase);
-            };
-
-            _lpTracker.HistoryUpdated += (_, __) =>
-            {
-                App.Log($"[VM] HistoryUpdated fired — {_lpTracker.LpHistory.Count} snapshots, MyAccount={MyAccount?.Data?.GameName ?? "NULL"}");
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    if (MyAccount != null && _lpTracker.IsActivePlayer(MyAccount.Data.Puuid))
-                    {
-                        App.Log($"[VM] → SetLpHistory sur MyAccount ({MyAccount.Data.DisplayName})");
-                        MyAccount.SetLpHistory(_lpTracker.LpHistory);
-                    }
-                    else if (MyAccount != null)
-                    {
-                        App.Log($"[VM] → historique LP ignoré : tracker={_lpTracker.ActivePuuid}, MyAccount={MyAccount.Data.Puuid}");
-                    }
-                    else
-                    {
-                        App.Log($"[VM] → MyAccount est NULL, SetLpHistory ignoré !");
-                    }
-                });
-            };
+            _lpTracker.HistoryUpdated += OnLpHistoryUpdated;
 
             // Charger l'historique existant au démarrage
-            App.Log($"[VM] Démarrage — LpHistory déjà chargé : {_lpTracker.LpHistory.Count} snapshots, MyAccount={MyAccount?.Data?.GameName ?? "NULL"}");
+            App.Log($"[VM] Démarrage — historique LP chargé : {_lpTracker.LpHistory.Count} snapshots");
             if (MyAccount != null && _lpTracker.IsActivePlayer(MyAccount.Data.Puuid))
                 MyAccount.SetLpHistory(_lpTracker.LpHistory);
             else
@@ -161,12 +132,38 @@ namespace MixOverlays.ViewModels
 
             _ = _champions.EnsureLoadedAsync();
 
-            // Écouter les changements d'état LCU pour charger le cache si déconnecté
-            _lcu.StateChanged += (_, e) =>
+        }
+
+        private void OnLcuStateChangedForLpTracker(object? sender, LcuConnectionEventArgs e)
+        {
+            var client = _lcu.GetHttpClient();
+            if (client != null)
+                _lpTracker.SetLcuClient(client);
+        }
+
+        private async void OnGameflowSessionUpdated(object? sender, LcuGameflowSession session)
+        {
+            try
             {
-                if (e.State == LcuState.Disconnected && MyAccount == null)
-                    _ = LoadMyAccountFromCacheAsync();
-            };
+                await _lpTracker.OnGameflowPhaseChanged(session.phase);
+
+                if (IsPostGamePhase(session.phase))
+                    await RefreshMyAccountMatchHistoryAfterGameAsync(session.phase);
+            }
+            catch (Exception ex)
+            {
+                App.Log($"[VM] Erreur traitement gameflow '{session.phase}': {ex.Message}");
+            }
+        }
+
+        private void OnLpHistoryUpdated(object? sender, EventArgs e)
+        {
+            App.Log($"[VM] Historique LP actualisé — {_lpTracker.LpHistory.Count} snapshots");
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                if (MyAccount != null && _lpTracker.IsActivePlayer(MyAccount.Data.Puuid))
+                    MyAccount.SetLpHistory(_lpTracker.LpHistory);
+            });
         }
 
         // ─── Changement d'état LCU (core : gère la connexion et le compte) ───
@@ -202,6 +199,21 @@ namespace MixOverlays.ViewModels
             "PreEndOfGame" or
             "WaitingForStats" or
             "EndOfGame";
+
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+
+            _disposed = true;
+            _lcu.StateChanged -= OnLcuStateChanged;
+            _lcu.StateChanged -= OnLcuStateChangedForLpTracker;
+            _lcu.GameflowSessionUpdated -= OnGameflowSessionUpdated;
+            _lcu.ChampSelectSessionUpdated -= OnChampSelectUpdated;
+            _lcu.InGameSessionUpdated -= OnInGameSessionUpdated;
+            _lpTracker.HistoryUpdated -= OnLpHistoryUpdated;
+            _playerLoadSem.Dispose();
+        }
 
     }
 
@@ -329,10 +341,3 @@ public int PerformanceScore
         public MatchParticipantViewModel? Enemy    { get; set; }
     }
 }
-
-
-
-
-
-
-

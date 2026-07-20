@@ -28,7 +28,10 @@ namespace MixOverlays.Services
                     return JsonConvert.DeserializeObject<AppSettings>(json) ?? new AppSettings();
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                App.Log($"[Settings] Lecture impossible, valeurs par défaut utilisées : {ex.Message}");
+            }
             return new AppSettings();
         }
 
@@ -40,7 +43,10 @@ namespace MixOverlays.Services
                 var json = JsonConvert.SerializeObject(Current, Formatting.Indented);
                 File.WriteAllText(SettingsPath, json);
             }
-            catch { }
+            catch (Exception ex)
+            {
+                App.Log($"[Settings] Sauvegarde impossible : {ex.Message}");
+            }
         }
 
         public static readonly string[] Regions = { "EUW1", "EUN1", "NA1", "KR", "JP1", "BR1", "LA1", "LA2", "OC1", "TR1", "RU" };

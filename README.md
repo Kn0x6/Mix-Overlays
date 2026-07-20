@@ -18,7 +18,7 @@ Overlay pour League of Legends — affiche les stats des joueurs en temps réel 
 ## Installation
 
 ### Prérequis
-- .NET 8 SDK : https://dotnet.microsoft.com/download/dotnet/8
+- .NET 10 SDK : https://dotnet.microsoft.com/download/dotnet/10
 - Visual Studio 2022+ ou Rider
 - Clé API Riot Developer : https://developer.riotgames.com
 
@@ -240,9 +240,8 @@ L'historique des parties peut maintenant se déplier pour afficher les autres jo
 
 ## Notes de développement
 
-- L'API LCU est sondée toutes les **3 secondes**
+- L'API LCU est sondée de manière séquentielle toutes les **3 secondes**, puis toutes les **10 secondes** une fois les données de partie chargées
 - Les certificats auto-signés du client LoL sont acceptés (`ServerCertificateCustomValidationCallback`)
 - Data Dragon est utilisé pour les icônes de champions et de profil
 - L'overlay in-game est une fenêtre `AllowsTransparency=True` avec `Topmost=True`
-
- 
+- Les journaux d'exécution sont enregistrés dans `%LocalAppData%\MixOverlays\Logs\MixOverlays.log`

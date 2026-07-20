@@ -37,10 +37,15 @@ namespace MixOverlays.Services
 
         private HttpClient?  _client;
         private string?      _baseUrl;
-        private Timer?       _pollTimer;
+        private readonly CancellationTokenSource _pollCancellation = new();
+        private readonly Task _pollingTask;
         private string       _lastGameflowPhase = string.Empty;
         private bool         _inGameDataLoaded  = false;
-        private bool         _disposed;
+        private int          _disposed;
+
+        private static readonly TimeSpan DisconnectedPollInterval = TimeSpan.FromSeconds(3);
+        private static readonly TimeSpan ConnectedPollInterval    = TimeSpan.FromSeconds(3);
+        private static readonly TimeSpan InGamePollInterval       = TimeSpan.FromSeconds(10);
 
         private static readonly JsonSerializerSettings _champSelectJsonSettings = new()
         {
@@ -59,22 +64,50 @@ namespace MixOverlays.Services
 
         public LcuService()
         {
-            L("LcuService créé — poll toutes les 3s");
-            _pollTimer = new Timer(PollTick, null, TimeSpan.Zero, TimeSpan.FromSeconds(3));
+            L("LcuService créé — démarrage du polling séquentiel");
+            _pollingTask = PollLoopAsync(_pollCancellation.Token);
         }
 
-        private async void PollTick(object? _)
+        private async Task PollLoopAsync(CancellationToken cancellationToken)
         {
-            if (_disposed) return;
-            try
+            while (!cancellationToken.IsCancellationRequested)
             {
-                if (!IsConnected) await TryConnect();
-                else              await PollGameflow();
+                try
+                {
+                    if (!IsConnected)
+                        await TryConnect(cancellationToken);
+                    else
+                        await PollGameflow(cancellationToken);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    L($"Poll exception: {ex.Message}");
+                }
+
+                try
+                {
+                    await Task.Delay(GetPollInterval(), cancellationToken);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
             }
-            catch (Exception ex) { L($"PollTick exception: {ex.Message}"); }
+
+            L("Polling arrêté.");
         }
 
-        private async Task TryConnect()
+        private TimeSpan GetPollInterval() => CurrentState == LcuState.InGame && _inGameDataLoaded
+            ? InGamePollInterval
+            : IsConnected
+                ? ConnectedPollInterval
+                : DisconnectedPollInterval;
+
+        private async Task TryConnect(CancellationToken cancellationToken)
         {
             SetState(LcuState.Connecting);
             var lockfileData = FindLockfile();
@@ -101,16 +134,18 @@ namespace MixOverlays.Services
 
             try
             {
-                var resp = await _client.GetAsync("/lol-summoner/v1/current-summoner");
+                using var resp = await _client.GetAsync("/lol-summoner/v1/current-summoner", cancellationToken);
                 L($"Test connexion LCU → HTTP {(int)resp.StatusCode}");
                 if (resp.IsSuccessStatusCode)
                 {
-                    var body = await resp.Content.ReadAsStringAsync();
-                    L($"Summoner JSON: {body[..Math.Min(200, body.Length)]}");
                     SetState(LcuState.Connected);
-                    await PollGameflow();
+                    await PollGameflow(cancellationToken);
                     return;
                 }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception ex) { L($"TryConnect exception: {ex.Message}"); }
 
@@ -119,23 +154,28 @@ namespace MixOverlays.Services
             SetState(LcuState.Disconnected);
         }
 
-        private async Task PollGameflow()
+        private async Task PollGameflow(CancellationToken cancellationToken)
         {
             if (_client == null) return;
             try
             {
-                var phaseResp = await _client.GetAsync("/lol-gameflow/v1/gameflow-phase");
+                using var phaseResp = await _client.GetAsync("/lol-gameflow/v1/gameflow-phase", cancellationToken);
                 if (!phaseResp.IsSuccessStatusCode)
                 {
                     L($"gameflow-phase HTTP {(int)phaseResp.StatusCode} → Disconnected");
                     SetState(LcuState.Disconnected);
+                    _client.Dispose();
+                    _client = null;
+                    _lastGameflowPhase = string.Empty;
+                    _inGameDataLoaded = false;
                     return;
                 }
 
                 var phase = (await phaseResp.Content.ReadAsStringAsync()).Trim('"');
                 bool phaseChanged = phase != _lastGameflowPhase;
 
-                L($"Phase={phase} (changed={phaseChanged}, loaded={_inGameDataLoaded})");
+                if (phaseChanged)
+                    L($"Phase: {_lastGameflowPhase} → {phase}");
 
                 if (phaseChanged) _lastGameflowPhase = phase;
 
@@ -162,8 +202,7 @@ namespace MixOverlays.Services
                             await FetchInGameDataAsync();
                         else
                         {
-                            // En phase InGame, réduire le polling à 10s pour éviter les appels inutiles
-                            // Le polling est toujours utile pour détecter la fin de partie
+                            // L'intervalle passe réellement à 10 secondes via GetPollInterval().
                         }
                         break;
 
@@ -186,6 +225,10 @@ namespace MixOverlays.Services
                         L($"Phase inconnue: '{phase}'");
                         break;
                 }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -308,7 +351,7 @@ namespace MixOverlays.Services
                              : string.Empty;
                     if (!string.IsNullOrEmpty(name))
                         m.summonerName = string.IsNullOrEmpty(s.tagLine) ? name : $"{name}#{s.tagLine}";
-                    L($"  Nom résolu: summonerId={m.summonerId} → '{m.summonerName}'");
+                    L("Nom de joueur manquant résolu via LCU.");
                 }
             }
         }
@@ -318,30 +361,15 @@ namespace MixOverlays.Services
             if (_client == null) return null;
             try
             {
-                var resp = await _client.GetAsync("/lol-gameflow/v1/session");
+                using var resp = await _client.GetAsync("/lol-gameflow/v1/session");
                 L($"LCU session HTTP {(int)resp.StatusCode}");
                 if (!resp.IsSuccessStatusCode) return null;
                 var json = await resp.Content.ReadAsStringAsync();
-                L($"LCU session JSON (400c): {json[..Math.Min(400, json.Length)]}");
-                
-                // DEBUG: Inspect JSON keys
-                var root = JObject.Parse(json);
-                L($"[DEBUG JSON keys] {string.Join(", ", root.Children().Select(c => c.Path))}");
-                
+
                 var gd = ExtractGameData(json);
                 if (gd == null) return null;
                 L($"LCU session → t1={gd.teamOne.Count} t2={gd.teamTwo.Count} pcs={gd.playerChampionSelections.Count}");
-                
-                // DEBUG: Log playerChampionSelections content
-                if (gd != null)
-                {
-                    L($"[DEBUG] playerChampionSelections count={gd.playerChampionSelections.Count}");
-                    foreach (var pcs in gd.playerChampionSelections)
-                        L($"  PCS: puuid={pcs.puuid?[..Math.Min(8, pcs.puuid?.Length ?? 0)]}... champId={pcs.championId} spell1={pcs.spell1Id} spell2={pcs.spell2Id}");
-                }
-                
-                foreach (var m in gd.teamOne) L($"  T1: sid={m.summonerId} puuid={m.puuid?[..Math.Min(8, m.puuid?.Length ?? 0)]}...");
-                foreach (var m in gd.teamTwo) L($"  T2: sid={m.summonerId} puuid={m.puuid?[..Math.Min(8, m.puuid?.Length ?? 0)]}...");
+
                 await ResolveMissingPuuidsAsync(gd.teamOne);
                 await ResolveMissingPuuidsAsync(gd.teamTwo);
                 return gd;
@@ -354,39 +382,32 @@ namespace MixOverlays.Services
         {
             try
             {
-                var resp = await _liveClient.GetAsync("https://127.0.0.1:2999/liveclientdata/playerlist");
+                using var resp = await _liveClient.GetAsync("https://127.0.0.1:2999/liveclientdata/playerlist");
                 L($"Port2999 /playerlist HTTP {(int)resp.StatusCode}");
                 if (!resp.IsSuccessStatusCode) return null;
 
                 var json    = await resp.Content.ReadAsStringAsync();
-                L($"Port2999 JSON ({json.Length}c): {json[..Math.Min(300, json.Length)]}");
-
                 var players = JsonConvert.DeserializeObject<List<Port2999Player>>(json);
                 L($"Port2999 players count={players?.Count ?? -1}");
                 if (players == null || players.Count == 0) return null;
 
-                foreach (var p in players)
-                    L($"  Player: riotId={p.riotId} name={p.summonerName} team={p.team} puuid={p.puuid?[..Math.Min(8, p.puuid?.Length ?? 0)]}...");
-
                 string myTeam = "ORDER";
                 try
                 {
-                    var aResp = await _liveClient.GetAsync("https://127.0.0.1:2999/liveclientdata/activeplayer");
+                    using var aResp = await _liveClient.GetAsync("https://127.0.0.1:2999/liveclientdata/activeplayer");
                     L($"Port2999 /activeplayer HTTP {(int)aResp.StatusCode}");
                     if (aResp.IsSuccessStatusCode)
                     {
                         var aJson  = await aResp.Content.ReadAsStringAsync();
-                        L($"ActivePlayer JSON ({aJson.Length}c): {aJson[..Math.Min(200, aJson.Length)]}");
                         var aObj   = JObject.Parse(aJson);
                         var myName = aObj["summonerName"]?.ToString()
                                   ?? aObj["riotId"]?.ToString()
                                   ?? string.Empty;
-                        L($"ActivePlayer name='{myName}'");
                         var me = players.FirstOrDefault(p =>
                             string.Equals(p.summonerName, myName, StringComparison.OrdinalIgnoreCase) ||
                             string.Equals(p.riotId,       myName, StringComparison.OrdinalIgnoreCase));
                         if (me != null) { myTeam = me.team ?? "ORDER"; L($"Mon équipe = {myTeam}"); }
-                        else L($"Joueur actif '{myName}' non trouvé dans la liste");
+                        else L("Joueur actif non trouvé dans la liste live.");
                     }
                 }
                 catch (Exception ex) { L($"Port2999 activeplayer ex: {ex.Message}"); }
@@ -415,14 +436,14 @@ namespace MixOverlays.Services
                         {
                             var parts = riotId.Split('#', 2);
                             var summ  = await GetAsync<LcuSummoner>($"/lol-summoner/v1/summoners?name={Uri.EscapeDataString(parts[0])}");
-                            if (summ?.puuid is { Length: > 5 } pu1) { p.puuid = pu1; L($"PUUID résolu par name → {pu1[..8]}..."); return; }
+                            if (summ?.puuid is { Length: > 5 } pu1) { p.puuid = pu1; return; }
                         }
                         // Essai 2 : summoner par displayName
                         var name = p.summonerName ?? string.Empty;
                         if (!string.IsNullOrEmpty(name))
                         {
                             var summ = await GetAsync<LcuSummoner>($"/lol-summoner/v1/summoners?name={Uri.EscapeDataString(name)}");
-                            if (summ?.puuid is { Length: > 5 } pu2) { p.puuid = pu2; L($"PUUID résolu par summonerName → {pu2[..8]}..."); }
+                            if (summ?.puuid is { Length: > 5 } pu2) p.puuid = pu2;
                         }
                     }
                     catch (Exception ex) { L($"ResolvePuuid ex: {ex.Message}"); }
@@ -435,10 +456,6 @@ namespace MixOverlays.Services
                     {
                         var raw1 = p.summonerSpells?.summonerSpellOne?.rawDisplayName;
                         var raw2 = p.summonerSpells?.summonerSpellTwo?.rawDisplayName;
-                        System.Diagnostics.Debug.WriteLine(
-                            $"[DEBUG ToTeam] {p.riotId} raw1='{raw1}' raw2='{raw2}' " +
-                            $"→ id1={SpellNameToId(raw1)} id2={SpellNameToId(raw2)}");
-
                         return new LcuTeamMember
                         {
                             puuid        = p.puuid        ?? string.Empty,
@@ -471,7 +488,7 @@ namespace MixOverlays.Services
 
             // Amélioration : ajout de variants et normalisation
             name = name.ToLower().Trim();
-            
+
             return name switch
             {
                 "summonerflash"        => 4,
@@ -568,10 +585,9 @@ namespace MixOverlays.Services
                 if (m.summonerId <= 0) continue;
                 try
                 {
-                    L($"Résolution PUUID pour summonerId={m.summonerId}...");
                     var s = await GetAsync<LcuSummoner>($"/lol-summoner/v1/summoners/{m.summonerId}");
-                    if (s?.puuid is { Length: > 0 } p) { m.puuid = p; L($"  → {p[..8]}..."); }
-                    else L("  → échec");
+                    if (s?.puuid is { Length: > 0 } p)
+                        m.puuid = p;
                 }
                 catch { }
             }
@@ -582,11 +598,10 @@ namespace MixOverlays.Services
             try
             {
                 if (_client == null) return null;
-                var resp = await _client.GetAsync("/lol-champ-select/v1/session");
+                using var resp = await _client.GetAsync("/lol-champ-select/v1/session");
                 L($"ChampSelect session HTTP {(int)resp.StatusCode}");
                 if (!resp.IsSuccessStatusCode) return null;
                 var json = await resp.Content.ReadAsStringAsync();
-                L($"ChampSelect JSON ({json.Length}c): {json[..Math.Min(300, json.Length)]}");
                 var s = JsonConvert.DeserializeObject<LcuChampSelectSession>(json, _champSelectJsonSettings);
                 if (s == null) { L("ChampSelect deserialize null"); return null; }
                 L($"ChampSelect myTeam={s.myTeam.Count} theirTeam={s.theirTeam.Count}");
@@ -809,9 +824,23 @@ namespace MixOverlays.Services
 
         public void Dispose()
         {
-            _disposed = true;
-            _pollTimer?.Dispose();
-            _client?.Dispose();
+            if (Interlocked.Exchange(ref _disposed, 1) != 0)
+                return;
+
+            _pollCancellation.Cancel();
+            // Ne pas bloquer le thread UI : un callback LCU peut être en attente du Dispatcher.
+            _ = _pollingTask.ContinueWith(
+                task =>
+                {
+                    _client?.Dispose();
+                    _client = null;
+                    if (task.IsFaulted)
+                        L($"Erreur pendant l'arrêt du polling: {task.Exception?.GetBaseException().Message}");
+                    _pollCancellation.Dispose();
+                },
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
         }
     }
 }

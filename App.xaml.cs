@@ -6,6 +6,8 @@ using System.Windows.Controls;
 using H.NotifyIcon;
 using MixOverlays.Services;
 using MixOverlays.Views;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace MixOverlays
 {
@@ -22,16 +24,27 @@ namespace MixOverlays
         public static bool IsReallyClosing { get; private set; } = false;
 
         // ─── Log ──────────────────────────────────────────────────────────────
-        private static readonly string LogPath = Path.Combine(
-            AppDomain.CurrentDomain.BaseDirectory, "MixOverlays_debug.log");
+        private static readonly string LogFolder = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "MixOverlays", "Logs");
+        private static readonly string LogPath = Path.Combine(LogFolder, "MixOverlays.log");
+        private static readonly object LogLock = new();
         private static StreamWriter? _logWriter;
+        private static int _resourcesDisposed;
 
         public static void Log(string message)
         {
             var line = $"[{DateTime.Now:HH:mm:ss.fff}] {message}";
             Debug.WriteLine(line);
-            try { lock (LogPath) { _logWriter?.WriteLine(line); _logWriter?.Flush(); } }
-            catch { }
+            try
+            {
+                lock (LogLock)
+                    _logWriter?.WriteLine(line);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[Log] Échec écriture: {ex.Message}");
+            }
         }
 
         // ─── Démarrage ────────────────────────────────────────────────────────
@@ -40,15 +53,25 @@ namespace MixOverlays
         {
             try
             {
+                Directory.CreateDirectory(LogFolder);
                 _logWriter = new StreamWriter(LogPath, append: false) { AutoFlush = true };
                 Log("=== MixOverlays démarré ===");
                 Log($"OS: {Environment.OSVersion}");
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[Startup] Impossible d'initialiser le fichier de log: {ex.Message}");
+            }
 
-            Trace.Listeners.Add(new TextWriterTraceListener(LogPath, "fileListener"));
             AppDomain.CurrentDomain.UnhandledException +=
                 (s, ex) => Log($"[CRASH] {ex.ExceptionObject}");
+            DispatcherUnhandledException += (_, ex) =>
+                Log($"[UI CRASH] {ex.Exception}");
+            TaskScheduler.UnobservedTaskException += (_, ex) =>
+            {
+                Log($"[TASK CRASH] {ex.Exception}");
+                ex.SetObserved();
+            };
 
             // Créer le tray en code-behind (évite l'erreur pack URI en XAML)
             try
@@ -117,12 +140,6 @@ namespace MixOverlays
             IsReallyClosing = true;
             Current.Dispatcher.Invoke(() =>
             {
-                var app = (App)Current;
-                if (app._trayIcon != null)
-                {
-                    app._trayIcon.Dispose();
-                    app._trayIcon = null;
-                }
                 Current.Shutdown();
             });
         }
@@ -131,9 +148,47 @@ namespace MixOverlays
         protected override void OnExit(ExitEventArgs e)
         {
             Log("=== MixOverlays fermé ===");
-            _trayIcon?.Dispose();
-            _logWriter?.Close();
+            DisposeResources();
             base.OnExit(e);
+        }
+
+        private void DisposeResources()
+        {
+            if (Interlocked.Exchange(ref _resourcesDisposed, 1) != 0)
+                return;
+
+            try
+            {
+                if (MainWindow?.DataContext is IDisposable disposableViewModel)
+                    disposableViewModel.Dispose();
+
+                if (OverlayWindow != null)
+                {
+                    OverlayWindow.Close();
+                    OverlayWindow = null;
+                }
+
+                LcuService?.Dispose();
+                LcuService = null;
+
+                RiotApiService?.Dispose();
+                RiotApiService = null;
+
+                _trayIcon?.Dispose();
+                _trayIcon = null;
+            }
+            catch (Exception ex)
+            {
+                Log($"[Shutdown] Erreur de libération: {ex}");
+            }
+            finally
+            {
+                lock (LogLock)
+                {
+                    _logWriter?.Dispose();
+                    _logWriter = null;
+                }
+            }
         }
     }
 }

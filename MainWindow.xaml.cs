@@ -67,6 +67,7 @@ namespace MixOverlays.Views
         private void MainWindow_Closed(object? sender, EventArgs e)
         {
             DisposeGlobalHotkey();
+            _vm?.Dispose();
         }
 
         /// <summary>
