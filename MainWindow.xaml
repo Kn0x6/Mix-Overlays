@@ -1779,6 +1779,9 @@
                                                                FontSize="12" Margin="0,4,0,0">
                                                         <Run Text="Score de performance : "/>
                                                         <Run Text="{Binding PerformanceScore}"/>
+                                                         <Run Text=" · "/>
+                                                         <Run Text="{Binding PerformanceRankDisplay}"/>
+                                                         <Run Text=" de la partie"/>
                                                     </TextBlock>
                                                 </StackPanel>
 
@@ -1823,6 +1826,95 @@
                                                 </UniformGrid>
                                             </Grid>
                                         </Border>
+
+                                         <!-- Stats avancées -->
+                                         <UniformGrid Columns="5" Margin="0,0,0,14">
+                                             <Border Background="{StaticResource BgCardBrush}"
+                                                     BorderBrush="{StaticResource BorderBrush}"
+                                                     BorderThickness="1"
+                                                     CornerRadius="10"
+                                                     Padding="12"
+                                                     Margin="0,0,6,0">
+                                                 <StackPanel>
+                                                     <TextBlock Text="PARTICIPATION" Style="{StaticResource SectionLabel}"/>
+                                                     <TextBlock Text="{Binding KillParticipationDisplay}"
+                                                                Foreground="{StaticResource TextPrimaryBrush}"
+                                                                FontSize="20" FontWeight="SemiBold" Margin="0,6,0,0"/>
+                                                     <TextBlock Foreground="{StaticResource TextMutedBrush}" FontSize="11">
+                                                         <Run Text="Sur "/>
+                                                         <Run Text="{Binding TeamKillsDisplay}"/>
+                                                         <Run Text=" kills équipe"/>
+                                                     </TextBlock>
+                                                 </StackPanel>
+                                             </Border>
+
+                                             <Border Background="{StaticResource BgCardBrush}"
+                                                     BorderBrush="{StaticResource BorderBrush}"
+                                                     BorderThickness="1"
+                                                     CornerRadius="10"
+                                                     Padding="12"
+                                                     Margin="3,0,6,0">
+                                                 <StackPanel>
+                                                     <TextBlock Text="DÉGÂTS / MIN" Style="{StaticResource SectionLabel}"/>
+                                                     <TextBlock Text="{Binding DamagePerMinDisplay}"
+                                                                Foreground="{StaticResource TextPrimaryBrush}"
+                                                                FontSize="20" FontWeight="SemiBold" Margin="0,6,0,0"/>
+                                                     <TextBlock Text="{Binding DamageRankDisplay, StringFormat={}Rang {0} dégâts}"
+                                                                Foreground="{StaticResource TextMutedBrush}" FontSize="11"/>
+                                                 </StackPanel>
+                                             </Border>
+
+                                             <Border Background="{StaticResource BgCardBrush}"
+                                                     BorderBrush="{StaticResource BorderBrush}"
+                                                     BorderThickness="1"
+                                                     CornerRadius="10"
+                                                     Padding="12"
+                                                     Margin="3,0,6,0">
+                                                 <StackPanel>
+                                                     <TextBlock Text="GOLD / MIN" Style="{StaticResource SectionLabel}"/>
+                                                     <TextBlock Text="{Binding GoldPerMinDisplay}"
+                                                                Foreground="{StaticResource TextPrimaryBrush}"
+                                                                FontSize="20" FontWeight="SemiBold" Margin="0,6,0,0"/>
+                                                     <TextBlock Text="{Binding GoldRankDisplay, StringFormat={}Rang {0} gold}"
+                                                                Foreground="{StaticResource TextMutedBrush}" FontSize="11"/>
+                                                 </StackPanel>
+                                             </Border>
+
+                                             <Border Background="{StaticResource BgCardBrush}"
+                                                     BorderBrush="{StaticResource BorderBrush}"
+                                                     BorderThickness="1"
+                                                     CornerRadius="10"
+                                                     Padding="12"
+                                                     Margin="3,0,6,0">
+                                                 <StackPanel>
+                                                     <TextBlock Text="VISION / MIN" Style="{StaticResource SectionLabel}"/>
+                                                     <TextBlock Text="{Binding VisionPerMinDisplay}"
+                                                                Foreground="{StaticResource TextPrimaryBrush}"
+                                                                FontSize="20" FontWeight="SemiBold" Margin="0,6,0,0"/>
+                                                     <TextBlock Text="{Binding VisionRankDisplay, StringFormat={}Rang {0} vision}"
+                                                                Foreground="{StaticResource TextMutedBrush}" FontSize="11"/>
+                                                 </StackPanel>
+                                             </Border>
+
+                                             <Border Background="{StaticResource BgCardBrush}"
+                                                     BorderBrush="{StaticResource BorderBrush}"
+                                                     BorderThickness="1"
+                                                     CornerRadius="10"
+                                                     Padding="12"
+                                                     Margin="3,0,0,0">
+                                                 <StackPanel>
+                                                     <TextBlock Text="KILLS ÉQUIPES" Style="{StaticResource SectionLabel}"/>
+                                                     <TextBlock Foreground="{StaticResource TextPrimaryBrush}"
+                                                                FontSize="20" FontWeight="SemiBold" Margin="0,6,0,0">
+                                                         <Run Text="{Binding TeamKillsDisplay}" Foreground="#3FB950"/>
+                                                         <Run Text=" - " Foreground="{StaticResource TextMutedBrush}"/>
+                                                         <Run Text="{Binding EnemyTeamKillsDisplay}" Foreground="#F85149"/>
+                                                     </TextBlock>
+                                                     <TextBlock Text="Votre équipe / adversaires"
+                                                                Foreground="{StaticResource TextMutedBrush}" FontSize="11"/>
+                                                 </StackPanel>
+                                             </Border>
+                                         </UniformGrid>
 
                                         <!-- Highlights -->
                                         <UniformGrid Columns="3" Margin="0,0,0,14">
