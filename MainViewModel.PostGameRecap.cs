@@ -81,6 +81,14 @@ namespace MixOverlays.ViewModels
 
             WinningTeam = Participants.Where(p => p.Win).ToList();
             LosingTeam  = Participants.Where(p => !p.Win).ToList();
+
+            TeamKills = Participants
+                .Where(p => p.Win == Player.Win)
+                .Sum(p => p.Kills);
+
+            EnemyTeamKills = Participants
+                .Where(p => p.Win != Player.Win)
+                .Sum(p => p.Kills);
         }
 
         public MatchSummary Match { get; }
@@ -89,6 +97,8 @@ namespace MixOverlays.ViewModels
         public IReadOnlyList<MatchParticipantSummary> Participants { get; }
         public IReadOnlyList<MatchParticipantSummary> WinningTeam { get; }
         public IReadOnlyList<MatchParticipantSummary> LosingTeam { get; }
+        public int TeamKills { get; }
+        public int EnemyTeamKills { get; }
 
         public bool IsWin => Player.Win;
         public string ResultText => IsWin ? "VICTOIRE" : "DÉFAITE";
@@ -112,6 +122,22 @@ namespace MixOverlays.ViewModels
         public int PerformanceScore => Player.PerformanceScore;
         public double KDA => Player.KDA;
 
+        private double GameMinutes => GameDuration > 0 ? GameDuration / 60.0 : 0;
+
+        public double KillParticipation => TeamKills > 0
+            ? (Kills + Assists) * 100.0 / TeamKills
+            : 0;
+
+        public double DamagePerMin => GameMinutes > 0 ? TotalDamage / GameMinutes : 0;
+        public double GoldPerMin => GameMinutes > 0 ? GoldEarned / GameMinutes : 0;
+        public double VisionPerMin => GameMinutes > 0 ? VisionScore / GameMinutes : 0;
+
+        public int DamageRank => GetRank(Participants, Player, p => p.TotalDamage);
+        public int GoldRank => GetRank(Participants, Player, p => p.GoldEarned);
+        public int VisionRank => GetRank(Participants, Player, p => p.VisionScore);
+        public int KdaRank => GetRank(Participants, Player, p => p.KDA);
+        public int PerformanceRank => GetRank(Participants, Player, p => p.PerformanceScore);
+
         public double CSPerMin
         {
             get
@@ -126,9 +152,33 @@ namespace MixOverlays.ViewModels
         public string DamageDisplay => TotalDamage > 0 ? TotalDamage.ToString("N0") : "—";
         public string GoldDisplay => GoldEarned > 0 ? GoldEarned.ToString("N0") : "—";
         public string VisionDisplay => VisionScore > 0 ? VisionScore.ToString() : "—";
+        public string KillParticipationDisplay => TeamKills > 0 ? $"{KillParticipation:F0}%" : "—";
+        public string DamagePerMinDisplay => TotalDamage > 0 ? $"{DamagePerMin:F0}/min" : "—";
+        public string GoldPerMinDisplay => GoldEarned > 0 ? $"{GoldPerMin:F0}/min" : "—";
+        public string VisionPerMinDisplay => VisionScore > 0 ? $"{VisionPerMin:F1}/min" : "—";
+        public string DamageRankDisplay => FormatRank(DamageRank);
+        public string GoldRankDisplay => FormatRank(GoldRank);
+        public string VisionRankDisplay => FormatRank(VisionRank);
+        public string KdaRankDisplay => FormatRank(KdaRank);
+        public string PerformanceRankDisplay => FormatRank(PerformanceRank);
+        public string TeamKillsDisplay => TeamKills > 0 ? TeamKills.ToString() : "—";
+        public string EnemyTeamKillsDisplay => EnemyTeamKills > 0 ? EnemyTeamKills.ToString() : "—";
 
         public MatchParticipantSummary? BestDamagePlayer => Participants.OrderByDescending(p => p.TotalDamage).FirstOrDefault();
         public MatchParticipantSummary? BestKdaPlayer => Participants.OrderByDescending(p => p.KDA).FirstOrDefault();
         public MatchParticipantSummary? BestVisionPlayer => Participants.OrderByDescending(p => p.VisionScore).FirstOrDefault();
+
+        private static int GetRank<T>(IEnumerable<MatchParticipantSummary> participants, MatchParticipantSummary player, Func<MatchParticipantSummary, T> selector)
+            where T : IComparable<T>
+        {
+            var ranked = participants
+                .OrderByDescending(selector)
+                .ToList();
+
+            var index = ranked.FindIndex(p => string.Equals(p.Puuid, player.Puuid, StringComparison.OrdinalIgnoreCase));
+            return index >= 0 ? index + 1 : 0;
+        }
+
+        private static string FormatRank(int rank) => rank > 0 ? $"#{rank}" : "—";
     }
 }

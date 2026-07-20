@@ -78,6 +78,8 @@
 
                     <!-- Window controls -->
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Content="⚙" Style="{StaticResource WindowChromeButton}"
+                                Click="SettingsButton_Click" FontSize="13" ToolTip="Paramètres"/>
                         <Button Content="─" Style="{StaticResource WindowChromeButton}"
                                 Click="MinimizeButton_Click" FontSize="14"/>
                         <Button x:Name="BtnFullscreen" Content="⛶" Style="{StaticResource WindowChromeButton}"
@@ -93,12 +95,13 @@
             <!-- ══════════════════════════════════════════════════════ -->
             <Grid Grid.Row="1" Background="{StaticResource BgDeepBrush}">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>   <!-- Top nav bar -->
+                    <RowDefinition Height="0"/>      <!-- Ancienne barre d'onglets masquée -->
                     <RowDefinition Height="*"/>      <!-- Content -->
                 </Grid.RowDefinitions>
 
-                <!-- ─── TOP NAV BAR ─── -->
+                <!-- ─── TOP NAV BAR masquée : Mon Compte devient la page principale ─── -->
                 <Border Grid.Row="0"
+                        Visibility="Collapsed"
                         Background="{StaticResource BgPrimaryBrush}"
                         BorderBrush="{StaticResource BorderBrush}"
                         BorderThickness="0,0,0,1">
@@ -155,21 +158,29 @@
                         <Border Grid.Row="0" Background="{StaticResource BgPrimaryBrush}"
                                 BorderBrush="{StaticResource BorderBrush}"
                                 BorderThickness="0,0,0,1" Padding="16,10">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Live Session"
-                                           Foreground="{StaticResource TextPrimaryBrush}"
-                                           Style="{StaticResource PageTitle}"
-                                           VerticalAlignment="Center"/>
-                                <Border Margin="12,0,0,0" Padding="8,3" CornerRadius="12"
-                                        Background="{StaticResource BgCardBrush}">
-                                    <TextBlock FontSize="11" Foreground="{StaticResource TextSecondaryBrush}">
-                                        <Run Text="{Binding AllyTeam.Count, Mode=OneWay}"/>
-                                        <Run Text=" alliés ·"/>
-                                        <Run Text="{Binding EnemyTeam.Count, Mode=OneWay}"/>
-                                        <Run Text=" ennemis"/>
-                                    </TextBlock>
-                                </Border>
-                            </StackPanel>
+                            <Grid>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="Live Session"
+                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                               Style="{StaticResource PageTitle}"
+                                               VerticalAlignment="Center"/>
+                                    <Border Margin="12,0,0,0" Padding="8,3" CornerRadius="12"
+                                            Background="{StaticResource BgCardBrush}">
+                                        <TextBlock FontSize="11" Foreground="{StaticResource TextSecondaryBrush}">
+                                            <Run Text="{Binding AllyTeam.Count, Mode=OneWay}"/>
+                                            <Run Text=" alliés ·"/>
+                                            <Run Text="{Binding EnemyTeam.Count, Mode=OneWay}"/>
+                                            <Run Text=" ennemis"/>
+                                        </TextBlock>
+                                    </Border>
+                                </StackPanel>
+
+                                <Button Content="←  Mon Compte"
+                                        Style="{StaticResource GhostButton}"
+                                        Click="BackToMyAccountButton_Click"
+                                        HorizontalAlignment="Right"
+                                        Padding="10,5"/>
+                            </Grid>
                         </Border>
 
                         <!-- Recommandations Champion Select -->
@@ -423,11 +434,68 @@
                                 BorderBrush="{StaticResource BorderBrush}"
                                 BorderThickness="0,0,0,1" Padding="16,10">
                             <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
                                 <TextBlock Text="Mon Compte"
+                                           Grid.Column="0"
                                            Foreground="{StaticResource TextPrimaryBrush}"
                                            Style="{StaticResource PageTitle}"
                                            VerticalAlignment="Center"/>
-                                <Button Content="🔄  Actualiser"
+
+                                <Button Grid.Column="1" Content="🎮  Live"
+                                        Style="{StaticResource GhostButton}"
+                                        Click="OpenLiveSessionButton_Click"
+                                        Visibility="{Binding IsLiveSessionAvailable, Converter={StaticResource BoolVis}}"
+                                        ToolTip="Afficher la Live Session"
+                                        Padding="10,5" Margin="0,0,6,0"/>
+
+                                <TextBox Grid.Column="2"
+                                         Width="220"
+                                         Text="{Binding SearchInput, UpdateSourceTrigger=PropertyChanged}"
+                                         Margin="0,0,6,0"
+                                         VerticalAlignment="Center"
+                                         KeyDown="SearchBox_KeyDown">
+                                    <TextBox.Style>
+                                        <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                                            <Style.Resources>
+                                                <VisualBrush x:Key="HeaderSearchPlaceholderBrush" AlignmentX="Left" AlignmentY="Center" Stretch="None">
+                                                    <VisualBrush.Visual>
+                                                        <TextBlock Text="Rechercher un joueur"
+                                                                   Foreground="{StaticResource TextMutedBrush}"
+                                                                   Margin="10,0"/>
+                                                    </VisualBrush.Visual>
+                                                </VisualBrush>
+                                            </Style.Resources>
+                                            <Style.Triggers>
+                                                <Trigger Property="Text" Value="">
+                                                    <Setter Property="Background" Value="{StaticResource HeaderSearchPlaceholderBrush}"/>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBox.Style>
+                                </TextBox>
+
+                                <Button Grid.Column="3" Content="🔍"
+                                        Style="{StaticResource AccentButton}"
+                                        Click="SearchPlayerButton_Click"
+                                        ToolTip="Rechercher"
+                                        Width="36" Padding="0" Margin="0,0,6,0"/>
+
+                                <Button Grid.Column="4" Content="✕"
+                                        Style="{StaticResource GhostButton}"
+                                        Width="36" Padding="0" Margin="0,0,6,0"
+                                        Command="{Binding ClearSearchCommand}"
+                                        ToolTip="Effacer la recherche"
+                                        Visibility="{Binding HasSearchResult, Converter={StaticResource BoolVis}}"/>
+
+                                <Button Grid.Column="5" Content="🔄  Actualiser"
                                         Style="{StaticResource GhostButton}"
                                         Command="{Binding RefreshMyAccountCommand}"
                                         HorizontalAlignment="Right"
@@ -443,44 +511,167 @@
                             <ScrollViewer Grid.Column="0"
                                           VerticalScrollBarVisibility="Auto"
                                           Style="{StaticResource SlimScrollViewer}">
-                                <Grid Margin="16">
-                                    <!-- Loading skeleton -->
-                                    <StackPanel Visibility="{Binding IsLoadingMyAccount, Converter={StaticResource BoolVis}}"
-                                                HorizontalAlignment="Center" VerticalAlignment="Top"
-                                                Margin="0,40" Opacity="0.6">
-                                        <TextBlock Text="⏳ Chargement..."
-                                                   Foreground="{StaticResource TextSecondaryBrush}"
-                                                   FontSize="13" HorizontalAlignment="Center"/>
-                                    </StackPanel>
-                                    <!-- Error -->
-                                    <Border Visibility="{Binding HasMyAccountError, Converter={StaticResource BoolVis}}"
-                                            Background="#1AF85149" BorderBrush="#F85149" BorderThickness="1"
-                                            CornerRadius="8" Padding="16" Margin="0,20">
-                                        <TextBlock Text="{Binding MyAccountError}"
-                                                   Foreground="#F85149" FontSize="13" TextWrapping="Wrap"/>
+                                <StackPanel Margin="16">
+                                    <Grid>
+                                        <!-- Loading skeleton -->
+                                        <StackPanel Visibility="{Binding IsLoadingMyAccount, Converter={StaticResource BoolVis}}"
+                                                    HorizontalAlignment="Center" VerticalAlignment="Top"
+                                                    Margin="0,40" Opacity="0.6">
+                                            <TextBlock Text="⏳ Chargement..."
+                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                       FontSize="13" HorizontalAlignment="Center"/>
+                                        </StackPanel>
+                                        <!-- Error -->
+                                        <Border Visibility="{Binding HasMyAccountError, Converter={StaticResource BoolVis}}"
+                                                Background="#1AF85149" BorderBrush="#F85149" BorderThickness="1"
+                                                CornerRadius="8" Padding="16" Margin="0,20">
+                                            <TextBlock Text="{Binding MyAccountError}"
+                                                       Foreground="#F85149" FontSize="13" TextWrapping="Wrap"/>
+                                        </Border>
+                                        <!-- Not connected -->
+                                        <StackPanel Visibility="{Binding HasMyAccount, Converter={StaticResource InvBoolVis}}"
+                                                    HorizontalAlignment="Center" VerticalAlignment="Top"
+                                                    Margin="0,60" Opacity="0.72">
+                                            <TextBlock Text="🔌" FontSize="48" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="Client LoL non connecté"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                       FontSize="14" HorizontalAlignment="Center" Margin="0,12,0,0"/>
+                                            <TextBlock Text="Lancez le client League of Legends"
+                                                       Foreground="{StaticResource TextMutedBrush}"
+                                                       FontSize="12" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                                            <TextBlock Text="Dernier profil connu affiché en mode hors-ligne"
+                                                       Foreground="{StaticResource TextMutedBrush}"
+                                                       FontSize="11" HorizontalAlignment="Center" Margin="0,4,0,0"
+                                                       Visibility="{Binding IsConnected, Converter={StaticResource InvBoolVis}}"/>
+                                        </StackPanel>
+                                        <!-- Fiche joueur -->
+                                        <views:PlayerCard DataContext="{Binding MyAccount}"
+                                                          Visibility="{Binding DataContext.HasMyAccount,
+                                               RelativeSource={RelativeSource AncestorType=ScrollViewer},
+                                               Converter={StaticResource BoolVis}}"/>
+                                    </Grid>
+
+                                    <!-- Résultat de recherche masqué ici : la recherche s'affiche en premier plan via PageSearch -->
+                                    <Border Visibility="Collapsed"
+                                            Background="{StaticResource BgPrimaryBrush}"
+                                            BorderBrush="{StaticResource BorderBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="10"
+                                            Padding="12"
+                                            Margin="0,16,0,0">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsSearching}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding HasSearchResult}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding HasSearchHistory}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+
+                                        <StackPanel>
+                                            <TextBlock Text="RECHERCHE JOUEUR"
+                                                       Style="{StaticResource SectionLabel}"
+                                                       Margin="0,0,0,10"/>
+
+                                            <StackPanel Visibility="{Binding IsSearching, Converter={StaticResource BoolVis}}"
+                                                        HorizontalAlignment="Center"
+                                                        Margin="0,18">
+                                                <TextBlock Text="⏳ Chargement des données..."
+                                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                                           FontSize="14" HorizontalAlignment="Center"/>
+                                            </StackPanel>
+
+                                            <views:PlayerCard DataContext="{Binding SearchedPlayer}"
+                                                              Visibility="{Binding DataContext.HasSearchResult,
+                                                   RelativeSource={RelativeSource AncestorType=ScrollViewer},
+                                                   Converter={StaticResource BoolVis}}"/>
+
+                                            <Border Visibility="{Binding ShowSearchHistory, Converter={StaticResource BoolVis}}"
+                                                    Background="{StaticResource BgCardBrush}"
+                                                    BorderBrush="{StaticResource BorderBrush}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="8"
+                                                    Padding="10"
+                                                    Margin="0,12,0,0">
+                                                <StackPanel>
+                                                    <TextBlock Text="HISTORIQUE DES RECHERCHES"
+                                                               Style="{StaticResource SectionLabel}"
+                                                               Margin="0,0,0,8"/>
+
+                                                    <ListBox ItemsSource="{Binding SearchHistory}"
+                                                             SelectedItem="{Binding SelectedHistoryPlayer, Mode=TwoWay}"
+                                                             Background="Transparent"
+                                                             BorderThickness="0"
+                                                             Padding="0"
+                                                             MaxHeight="170"
+                                                             HorizontalContentAlignment="Stretch"
+                                                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                                        <ListBox.ItemContainerStyle>
+                                                            <Style TargetType="ListBoxItem">
+                                                                <Setter Property="Margin" Value="0,0,0,6"/>
+                                                                <Setter Property="Padding" Value="0"/>
+                                                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                                                <Setter Property="Cursor" Value="Hand"/>
+                                                                <Setter Property="Template">
+                                                                    <Setter.Value>
+                                                                        <ControlTemplate TargetType="ListBoxItem">
+                                                                            <ContentPresenter/>
+                                                                        </ControlTemplate>
+                                                                    </Setter.Value>
+                                                                </Setter>
+                                                            </Style>
+                                                        </ListBox.ItemContainerStyle>
+                                                        <ListBox.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Border BorderBrush="{StaticResource BorderBrush}"
+                                                                        BorderThickness="1"
+                                                                        CornerRadius="8"
+                                                                        Padding="10,8">
+                                                                    <Border.Style>
+                                                                        <Style TargetType="Border">
+                                                                            <Setter Property="Background" Value="{StaticResource BgPrimaryBrush}"/>
+                                                                            <Style.Triggers>
+                                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                                    <Setter Property="Background" Value="{StaticResource BgHoverBrush}"/>
+                                                                                </Trigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </Border.Style>
+                                                                    <StackPanel Orientation="Horizontal">
+                                                                        <Border Width="34" Height="34"
+                                                                                CornerRadius="17"
+                                                                                BorderBrush="{StaticResource AccentBlueLightBrush}"
+                                                                                BorderThickness="1"
+                                                                                ClipToBounds="True"
+                                                                                Margin="0,0,10,0">
+                                                                            <Image Source="{Binding ProfileIconUrl, Converter={StaticResource UrlToImgWithFallback}}"
+                                                                                   Stretch="UniformToFill"/>
+                                                                        </Border>
+
+                                                                        <TextBlock Text="{Binding DisplayName}"
+                                                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                                                   FontSize="13"
+                                                                                   FontWeight="SemiBold"
+                                                                                   VerticalAlignment="Center"
+                                                                                   TextTrimming="CharacterEllipsis"/>
+                                                                    </StackPanel>
+                                                                </Border>
+                                                            </DataTemplate>
+                                                        </ListBox.ItemTemplate>
+                                                    </ListBox>
+                                                </StackPanel>
+                                            </Border>
+                                        </StackPanel>
                                     </Border>
-                                    <!-- Not connected -->
-                                    <StackPanel Visibility="{Binding HasMyAccount, Converter={StaticResource InvBoolVis}}"
-                                                HorizontalAlignment="Center" VerticalAlignment="Top"
-                                                Margin="0,60" Opacity="0.72">
-                                        <TextBlock Text="🔌" FontSize="48" HorizontalAlignment="Center"/>
-                                        <TextBlock Text="Client LoL non connecté"
-                                                   Foreground="{StaticResource TextSecondaryBrush}"
-                                                   FontSize="14" HorizontalAlignment="Center" Margin="0,12,0,0"/>
-                                        <TextBlock Text="Lancez le client League of Legends"
-                                                   Foreground="{StaticResource TextMutedBrush}"
-                                                   FontSize="12" HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                                        <TextBlock Text="Dernier profil connu affiché en mode hors-ligne"
-                                                   Foreground="{StaticResource TextMutedBrush}"
-                                                   FontSize="11" HorizontalAlignment="Center" Margin="0,4,0,0"
-                                                   Visibility="{Binding IsConnected, Converter={StaticResource InvBoolVis}}"/>
-                                    </StackPanel>
-                                    <!-- Fiche joueur -->
-                                    <views:PlayerCard DataContext="{Binding MyAccount}"
-                                                      Visibility="{Binding DataContext.HasMyAccount,
-                                           RelativeSource={RelativeSource AncestorType=ScrollViewer},
-                                           Converter={StaticResource BoolVis}}"/>
-                                </Grid>
+                                </StackPanel>
                             </ScrollViewer>
                         </Grid>
                     </Grid>
@@ -496,9 +687,17 @@
                         <Border Grid.Row="0" Background="{StaticResource BgPrimaryBrush}"
                                 BorderBrush="{StaticResource BorderBrush}"
                                 BorderThickness="0,0,0,1" Padding="16,10">
-                            <TextBlock Text="Rechercher un joueur"
-                                       Foreground="{StaticResource TextPrimaryBrush}"
-                                       Style="{StaticResource PageTitle}"/>
+                            <Grid>
+                                <TextBlock Text="Joueur recherché"
+                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                           Style="{StaticResource PageTitle}"
+                                           VerticalAlignment="Center"/>
+                                <Button Content="←  Mon Compte"
+                                        Style="{StaticResource GhostButton}"
+                                        Click="BackToMyAccountButton_Click"
+                                        HorizontalAlignment="Right"
+                                        Padding="10,5"/>
+                            </Grid>
                         </Border>
 
                         <!-- Search bar -->
@@ -539,7 +738,7 @@
 
                                 <Button Grid.Column="1" Content="Rechercher"
                                         Style="{StaticResource AccentButton}"
-                                        Command="{Binding SearchPlayerCommand}"
+                                        Click="SearchPlayerButton_Click"
                                         Margin="0,0,6,0"/>
 
                                 <Button Grid.Column="2" Content="✕"
@@ -684,9 +883,17 @@
                         <Border Grid.Row="0" Background="{StaticResource BgPrimaryBrush}"
                                 BorderBrush="{StaticResource BorderBrush}"
                                 BorderThickness="0,0,0,1" Padding="16,10">
-                            <TextBlock Text="Paramètres"
-                                       Foreground="{StaticResource TextPrimaryBrush}"
-                                       Style="{StaticResource PageTitle}"/>
+                            <Grid>
+                                <TextBlock Text="Paramètres"
+                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                           Style="{StaticResource PageTitle}"
+                                           VerticalAlignment="Center"/>
+                                <Button Content="←  Retour Mon Compte"
+                                        Style="{StaticResource GhostButton}"
+                                        Click="BackToMyAccountButton_Click"
+                                        HorizontalAlignment="Right"
+                                        Padding="10,5"/>
+                            </Grid>
                         </Border>
 
                         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
@@ -1572,6 +1779,9 @@
                                                                FontSize="12" Margin="0,4,0,0">
                                                         <Run Text="Score de performance : "/>
                                                         <Run Text="{Binding PerformanceScore}"/>
+                                                         <Run Text=" · "/>
+                                                         <Run Text="{Binding PerformanceRankDisplay}"/>
+                                                         <Run Text=" de la partie"/>
                                                     </TextBlock>
                                                 </StackPanel>
 
@@ -1616,6 +1826,95 @@
                                                 </UniformGrid>
                                             </Grid>
                                         </Border>
+
+                                         <!-- Stats avancées -->
+                                         <UniformGrid Columns="5" Margin="0,0,0,14">
+                                             <Border Background="{StaticResource BgCardBrush}"
+                                                     BorderBrush="{StaticResource BorderBrush}"
+                                                     BorderThickness="1"
+                                                     CornerRadius="10"
+                                                     Padding="12"
+                                                     Margin="0,0,6,0">
+                                                 <StackPanel>
+                                                     <TextBlock Text="PARTICIPATION" Style="{StaticResource SectionLabel}"/>
+                                                     <TextBlock Text="{Binding KillParticipationDisplay}"
+                                                                Foreground="{StaticResource TextPrimaryBrush}"
+                                                                FontSize="20" FontWeight="SemiBold" Margin="0,6,0,0"/>
+                                                     <TextBlock Foreground="{StaticResource TextMutedBrush}" FontSize="11">
+                                                         <Run Text="Sur "/>
+                                                         <Run Text="{Binding TeamKillsDisplay}"/>
+                                                         <Run Text=" kills équipe"/>
+                                                     </TextBlock>
+                                                 </StackPanel>
+                                             </Border>
+
+                                             <Border Background="{StaticResource BgCardBrush}"
+                                                     BorderBrush="{StaticResource BorderBrush}"
+                                                     BorderThickness="1"
+                                                     CornerRadius="10"
+                                                     Padding="12"
+                                                     Margin="3,0,6,0">
+                                                 <StackPanel>
+                                                     <TextBlock Text="DÉGÂTS / MIN" Style="{StaticResource SectionLabel}"/>
+                                                     <TextBlock Text="{Binding DamagePerMinDisplay}"
+                                                                Foreground="{StaticResource TextPrimaryBrush}"
+                                                                FontSize="20" FontWeight="SemiBold" Margin="0,6,0,0"/>
+                                                     <TextBlock Text="{Binding DamageRankDisplay, StringFormat={}Rang {0} dégâts}"
+                                                                Foreground="{StaticResource TextMutedBrush}" FontSize="11"/>
+                                                 </StackPanel>
+                                             </Border>
+
+                                             <Border Background="{StaticResource BgCardBrush}"
+                                                     BorderBrush="{StaticResource BorderBrush}"
+                                                     BorderThickness="1"
+                                                     CornerRadius="10"
+                                                     Padding="12"
+                                                     Margin="3,0,6,0">
+                                                 <StackPanel>
+                                                     <TextBlock Text="GOLD / MIN" Style="{StaticResource SectionLabel}"/>
+                                                     <TextBlock Text="{Binding GoldPerMinDisplay}"
+                                                                Foreground="{StaticResource TextPrimaryBrush}"
+                                                                FontSize="20" FontWeight="SemiBold" Margin="0,6,0,0"/>
+                                                     <TextBlock Text="{Binding GoldRankDisplay, StringFormat={}Rang {0} gold}"
+                                                                Foreground="{StaticResource TextMutedBrush}" FontSize="11"/>
+                                                 </StackPanel>
+                                             </Border>
+
+                                             <Border Background="{StaticResource BgCardBrush}"
+                                                     BorderBrush="{StaticResource BorderBrush}"
+                                                     BorderThickness="1"
+                                                     CornerRadius="10"
+                                                     Padding="12"
+                                                     Margin="3,0,6,0">
+                                                 <StackPanel>
+                                                     <TextBlock Text="VISION / MIN" Style="{StaticResource SectionLabel}"/>
+                                                     <TextBlock Text="{Binding VisionPerMinDisplay}"
+                                                                Foreground="{StaticResource TextPrimaryBrush}"
+                                                                FontSize="20" FontWeight="SemiBold" Margin="0,6,0,0"/>
+                                                     <TextBlock Text="{Binding VisionRankDisplay, StringFormat={}Rang {0} vision}"
+                                                                Foreground="{StaticResource TextMutedBrush}" FontSize="11"/>
+                                                 </StackPanel>
+                                             </Border>
+
+                                             <Border Background="{StaticResource BgCardBrush}"
+                                                     BorderBrush="{StaticResource BorderBrush}"
+                                                     BorderThickness="1"
+                                                     CornerRadius="10"
+                                                     Padding="12"
+                                                     Margin="3,0,0,0">
+                                                 <StackPanel>
+                                                     <TextBlock Text="KILLS ÉQUIPES" Style="{StaticResource SectionLabel}"/>
+                                                     <TextBlock Foreground="{StaticResource TextPrimaryBrush}"
+                                                                FontSize="20" FontWeight="SemiBold" Margin="0,6,0,0">
+                                                         <Run Text="{Binding TeamKillsDisplay}" Foreground="#3FB950"/>
+                                                         <Run Text=" - " Foreground="{StaticResource TextMutedBrush}"/>
+                                                         <Run Text="{Binding EnemyTeamKillsDisplay}" Foreground="#F85149"/>
+                                                     </TextBlock>
+                                                     <TextBlock Text="Votre équipe / adversaires"
+                                                                Foreground="{StaticResource TextMutedBrush}" FontSize="11"/>
+                                                 </StackPanel>
+                                             </Border>
+                                         </UniformGrid>
 
                                         <!-- Highlights -->
                                         <UniformGrid Columns="3" Margin="0,0,0,14">
