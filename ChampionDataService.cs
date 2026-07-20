@@ -15,6 +15,8 @@ namespace MixOverlays.Services
         private Dictionary<string, int> _nameToId = new();
         private Dictionary<string, string> _nameToKey = new(); // display name -> DDragon key
         private bool _loaded = false;
+        private readonly object _loadGate = new();
+        private Task? _loadingTask;
         private string _latestVersion = "15.1.1";
 
         // Shared spell ID -> DDragon spell name mapping, populated dynamically
@@ -37,6 +39,24 @@ namespace MixOverlays.Services
         public async Task EnsureLoadedAsync()
         {
             if (_loaded) return;
+
+            Task loadingTask;
+            lock (_loadGate)
+            {
+                if (_loaded) return;
+                _loadingTask ??= LoadAsync();
+                loadingTask = _loadingTask;
+            }
+
+            await loadingTask;
+        }
+
+        /// <summary>
+        /// Une seule exécution est autorisée à la fois : l'écran principal, les cartes
+        /// et les recommandations peuvent tous demander les données au démarrage.
+        /// </summary>
+        private async Task LoadAsync()
+        {
             Instance = this; // ← déplacer ici pour être accessible dès le début
             try
             {
@@ -87,9 +107,18 @@ namespace MixOverlays.Services
 
                 _loaded = true;
             }
-            catch
+            catch (Exception ex)
             {
-                // Keep old behavior if the API call fails
+                App.Log($"[DataDragon] Chargement impossible : {ex.Message}");
+            }
+            finally
+            {
+                // Autorise une nouvelle tentative ultérieure si Data Dragon était indisponible.
+                if (!_loaded)
+                {
+                    lock (_loadGate)
+                        _loadingTask = null;
+                }
             }
         }
 

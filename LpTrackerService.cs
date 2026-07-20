@@ -426,7 +426,9 @@ namespace MixOverlays.Services
 
         private static int ComputeDelta(LpSnapshot pre, LpSnapshot post)
         {
-            if (pre.Tier == post.Tier && pre.Rank == post.Rank)
+            if ((string.Equals(pre.Tier, post.Tier, StringComparison.OrdinalIgnoreCase) &&
+                 string.Equals(pre.Rank, post.Rank, StringComparison.OrdinalIgnoreCase)) ||
+                (IsApexTier(pre.Tier) && IsApexTier(post.Tier)))
                 return post.LeaguePoints - pre.LeaguePoints;
 
             int rs = (TierVal(post.Tier) - TierVal(pre.Tier)) * 400
@@ -444,6 +446,11 @@ namespace MixOverlays.Services
         };
         private static int RankVal(string r) => r?.ToUpper() switch
         { "IV"=>0,"III"=>1,"II"=>2,"I"=>3,_=>0 };
+
+        // Les tiers Master+ sont régis par les seuils régionaux et non par des
+        // divisions de 100 LP : un changement de tier ne vaut donc pas +400 LP.
+        private static bool IsApexTier(string tier) => tier?.ToUpper() is
+            "MASTER" or "GRANDMASTER" or "CHALLENGER";
 
         // ─── Persistance ──────────────────────────────────────────────────────
 

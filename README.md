@@ -34,8 +34,12 @@ dotnet run
 ### Build release
 
 ```bash
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
+./publish-win-x64.ps1
 ```
+
+Cette commande produit `dist/win-x64/MixOverlays.exe`, une version **Windows x64 autonome** : le PC cible n'a pas besoin d'installer le runtime .NET.
+
+Pour le transférer, copiez le dossier `dist/win-x64` (ou archivez-le en ZIP) puis lancez `MixOverlays.exe` sur un PC Windows 10/11 64 bits. Au premier lancement, Windows SmartScreen peut demander une confirmation car l'application n'est pas signée numériquement.
 
 ## Configuration
 

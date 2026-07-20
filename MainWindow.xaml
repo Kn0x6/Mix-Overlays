@@ -4,9 +4,9 @@
         xmlns:vm="clr-namespace:MixOverlays.ViewModels"
         xmlns:views="clr-namespace:MixOverlays.Views"
         xmlns:conv="clr-namespace:MixOverlays.Converters"
-        Title="MixOverlays" Height="750" Width="980"
+        Title="MixOverlays" Icon="/Icone.ico" Height="750" Width="980"
         MinWidth="860" MinHeight="600"
-        Background="{StaticResource BgDeepBrush}"
+        Background="Transparent"
         FontFamily="{StaticResource PrimaryFont}"
         WindowStyle="None" AllowsTransparency="True"
         ShowInTaskbar="True"
@@ -29,7 +29,10 @@
         <conv:WinLossBrushConverter             x:Key="WinLossBrush"/>
     </Window.Resources>
 
-    <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="14">
+    <Border x:Name="MainWindowRoot"
+            Background="{StaticResource BgDeepBrush}"
+            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="14"
+            SizeChanged="MainWindowRoot_SizeChanged">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="44"/>

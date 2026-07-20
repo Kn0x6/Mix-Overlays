@@ -23,6 +23,7 @@ namespace MixOverlays.ViewModels
     {
         // Limite le nombre de joueurs chargés en parallèle (évite le quota 80/2min Riot)
         private readonly SemaphoreSlim _playerLoadSem = new(3, 3);
+        private string _lastChampSelectSignature = string.Empty;
 
         // ─── Équipes en cours ─────────────────────────────────────────────────
         private ObservableCollection<PlayerViewModel> _allyTeam = new();
@@ -161,6 +162,19 @@ namespace MixOverlays.ViewModels
         private async Task LoadChampSelectDataAsync(LcuChampSelectSession session)
         {
             _ = UpdateLockedChampionRecommendationAsync(session);
+
+            // LCU republie la même session toutes les trois secondes. Réagir seulement
+            // à un changement réel évite de reconstruire les cartes et de relancer les mêmes flux Riot.
+            var sessionSignature = string.Join("|", session.myTeam
+                .Select(m => $"M:{m.summonerId}:{m.puuid}:{m.teamId}:{m.championId}")
+                .Concat(session.theirTeam.Select(m => $"T:{m.summonerId}:{m.puuid}:{m.teamId}:{m.championId}"))
+                .OrderBy(value => value));
+            if (string.Equals(sessionSignature, _lastChampSelectSignature, StringComparison.Ordinal))
+            {
+                App.Log("[InGame|ChampSelect] Session inchangée — rechargement joueurs ignoré.");
+                return;
+            }
+            _lastChampSelectSignature = sessionSignature;
 
             bool isAram = !session.theirTeam.Any() && session.myTeam.Count > 5;
             App.Log($"[InGame|ChampSelect] my={session.myTeam.Count} their={session.theirTeam.Count} aram={isAram}");
@@ -827,6 +841,7 @@ namespace MixOverlays.ViewModels
             ObservableCollection<PlayerViewModel> collection)
         {
             var tag = $"[RANK|{pd.GameName}]";
+            PlayerData? rankData = null;
 
             if (string.IsNullOrEmpty(_settings.Current.RiotApiKey))
             {
@@ -839,10 +854,14 @@ namespace MixOverlays.ViewModels
                 return;
             }
 
+            await _playerLoadSem.WaitAsync();
+            try
+            {
+
             // ── ÉTAPE 1 : Rang seul (2 appels) — rapide et prioritaire ────────
             try
             {
-                var rankData = await _riot.LoadRankPlayerDataAsync(pd.Puuid, pd.GameName, pd.TagLine);
+                rankData = await _riot.LoadRankPlayerDataAsync(pd.Puuid, pd.GameName, pd.TagLine);
 
                 // Conserver les données live déjà résolues pour l'overlay / Live session.
                 rankData.TeamId              = pd.TeamId;
@@ -871,32 +890,60 @@ namespace MixOverlays.ViewModels
                 App.Log($"{tag} ❌ Erreur LoadRankOnly : {ex.Message}");
             }
 
-            // ── ÉTAPE 2 : Masteries (optionnel, non bloquant) ─────────────────
-            // Pas critique pour l'affichage principal, on peut s'arrêter ici
-            // si tu veux juste le rang. Décommente si tu veux les masteries :
-            /*
+            // ── ÉTAPE 2 : maîtrise du champion sélectionné ────────────────────
             try
             {
-                var masteries = await _riot.GetTopMasteriesByPuuidAsync(pd.Puuid, 5);
-                if (masteries != null)
+                if (rankData is not { ChampionId: > 0 })
                 {
-                    foreach (var m in masteries)
-                        m.ChampionName = _champions.GetName(m.championId);
+                    App.Log($"[MasteryDiag|Load] Impossible de charger la maîtrise : joueur={pd.GameName}#{pd.TagLine}, championId={rankData?.ChampionId ?? 0}");
+                    return;
+                }
+
+                App.Log($"[MasteryDiag|Load] Début : joueur={rankData.GameName}#{rankData.TagLine}, puuidApi={ShortPuuid(rankData.Puuid)}, puuidCarte={ShortPuuid(pd.Puuid)}, championId={rankData.ChampionId}, champion={rankData.ChampionName}");
+
+                var mastery = await _riot.GetChampionMasteryAsync(rankData.Puuid, rankData.ChampionId);
+                if (mastery != null)
+                {
+                    mastery.ChampionName = _champions.GetName(mastery.championId);
 
                     Application.Current.Dispatcher.Invoke(() =>
                     {
-                        var vm = collection.FirstOrDefault(v => v.Data.Puuid == pd.Puuid);
+                        var vm = collection.FirstOrDefault(v => v.Data.Puuid == rankData.Puuid)
+                              ?? collection.FirstOrDefault(v => v.Data.Puuid == pd.Puuid)
+                              ?? collection.FirstOrDefault(v =>
+                                  v.Data.GameName == rankData.GameName &&
+                                  v.Data.TagLine == rankData.TagLine);
                         if (vm != null)
                         {
-                            vm.Data.TopMasteries = masteries;
+                            vm.Data.TopMasteries = new List<ChampionMastery> { mastery };
                             vm.UpdateData(vm.Data);
+                            App.Log($"[MasteryDiag|UI] Carte mise à jour : carte={vm.GameName}#{vm.TagLine}, carteChampionId={vm.Data.ChampionId}, masteryChampionId={mastery.championId}, pointsReçus={mastery.championPoints}, pointsAffichés={vm.CurrentChampionMasteryPoints}");
+                        }
+                        else
+                        {
+                            App.Log($"[MasteryDiag|UI] Carte introuvable : puuidApi={ShortPuuid(rankData.Puuid)}, puuidInitial={ShortPuuid(pd.Puuid)}, riotId={rankData.GameName}#{rankData.TagLine}");
                         }
                     });
                 }
+                else
+                {
+                    App.Log($"[MasteryDiag|Load] Riot ne retourne aucune maîtrise : championId={rankData.ChampionId}, erreur='{_riot.LastHttpError}'");
+                }
             }
-            catch { }
-            */
+            catch (Exception ex)
+            {
+                App.Log($"{tag} ⚠️ Maîtrise non chargée : {ex.Message}");
+            }
+            }
+            finally
+            {
+                _playerLoadSem.Release();
+            }
         }
+
+        private static string ShortPuuid(string? puuid) =>
+            string.IsNullOrWhiteSpace(puuid) ? "<vide>" :
+            puuid.Length <= 12 ? puuid : $"{puuid[..8]}…{puuid[^4..]}";
 
         // ══════════════════════════════════════════════════════════════════════
         //  HELPER — Tri par lane (TOP → JUNGLE → MID → ADC → SUPPORT)

@@ -8,6 +8,9 @@
     <UseWPF>true</UseWPF>
     <AssemblyName>MixOverlays</AssemblyName>
     <RootNamespace>MixOverlays</RootNamespace>
+    <!-- Smart App Control blocks the unsigned native apphost produced for local Debug builds.
+         Run the managed DLL through the trusted dotnet host instead. -->
+    <UseAppHost>false</UseAppHost>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ApplicationIcon>Icone.ico</ApplicationIcon>
     <!-- Le projet est situé à la racine : empêcher MSBuild d'inclure les

@@ -408,7 +408,12 @@ namespace MixOverlays.ViewModels
                     else
                         await Task.Delay(TimeSpan.FromSeconds(4));
 
-                    var latestIds = await _riot.GetMatchIdsByPuuidAsync(puuid, count: 1);
+                    // Le contrôle post-game ne doit jamais relire la page mise en cache :
+                    // Riot peut publier le nouveau match quelques secondes après la fin.
+                    var latestIds = await _riot.GetMatchIdsByPuuidAsync(
+                        puuid,
+                        count: 1,
+                        cacheMode: RiotCacheMode.Refresh);
                     var latestMatchId = latestIds?.FirstOrDefault() ?? string.Empty;
 
                     App.Log($"[PostGameHistory] Tentative {attempt}/{maxAttempts} — latest={latestMatchId}");
@@ -419,6 +424,9 @@ namespace MixOverlays.ViewModels
                     if (latestMatchId == currentLatestMatchId || latestMatchId == _lastPostGameHistoryRefreshMatchId)
                         continue;
 
+                    // La nouvelle partie modifie potentiellement rang, maîtrises et première page de l'historique.
+                    // Les détails des anciennes parties restent en cache (ils sont immuables).
+                    _riot.InvalidatePlayerDynamicData(puuid);
                     var refreshedData = await _riot.LoadFullPlayerDataAsync(puuid, gameName, tagLine);
                     if (refreshedData == null || refreshedData.RecentMatches.Count == 0)
                     {
@@ -1108,6 +1116,7 @@ if (me != null && !string.IsNullOrEmpty(me.gameName))
         public ObservableCollection<PlayerViewModel> EnemyTeam { get; } = new();
     }
 }
+
 
 
 

@@ -65,6 +65,17 @@ namespace MixOverlays.Views
             SetActiveNav("MyAccount");
         }
 
+        private void MainWindowRoot_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (sender is not Border root)
+                return;
+
+            root.Clip = new RectangleGeometry(
+                new Rect(0, 0, root.ActualWidth, root.ActualHeight),
+                14,
+                14);
+        }
+
         private void MainWindow_Closed(object? sender, EventArgs e)
         {
             if (_vm != null)
@@ -105,29 +116,42 @@ namespace MixOverlays.Views
         // ─── Nouveau ToggleOverlay — conditionné à LcuState.InGame ────────────
         private void ToggleOverlay()
         {
-            Application.Current.Dispatcher.Invoke(() =>
+            try
             {
-                if (App.OverlayWindow == null)
-                    App.OverlayWindow = new OverlayWindow();
-
-                App.OverlayWindow.ApplySettings();
-                App.OverlayWindow.SetTeamData(_vm.AllyTeam, _vm.EnemyTeam);
-
-                if (App.OverlayWindow.IsVisible)
+                // HotkeyPressed est déjà envoyé sur le Dispatcher par GlobalHotkeyService.
+                // BeginInvoke évite un Invoke synchrone imbriqué et laisse le hook clavier retourner immédiatement.
+                Application.Current.Dispatcher.BeginInvoke(() =>
                 {
-                    // Fermeture toujours autorisée
-                    App.OverlayWindow.Hide();
-                }
-                else
-                {
-                    // Ouverture uniquement si LoL est en cours de partie
-                    if (_vm.ClientState == LcuState.InGame && _vm.Settings.ShowOverlayInGame)
+                    try
                     {
-                        App.OverlayWindow.Show();
+                        if (App.OverlayWindow == null)
+                            App.OverlayWindow = new OverlayWindow();
+
+                        App.OverlayWindow.ApplySettings();
+                        App.OverlayWindow.SetTeamData(_vm.AllyTeam, _vm.EnemyTeam);
+
+                        if (App.OverlayWindow.IsVisible)
+                        {
+                            // Fermeture toujours autorisée
+                            App.OverlayWindow.Hide();
+                        }
+                        else if (_vm.ClientState == LcuState.InGame && _vm.Settings.ShowOverlayInGame)
+                        {
+                            // Ouverture uniquement si LoL est en cours de partie
+                            App.OverlayWindow.Show();
+                        }
                     }
-                    // Silencieux hors-jeu : pas de message parasite
-                }
-            });
+                    catch (Exception ex)
+                    {
+                        App.Log($"[Overlay] Impossible de basculer l'overlay : {ex}");
+                        App.OverlayWindow = null;
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                App.Log($"[Overlay] Impossible de planifier l'affichage : {ex}");
+            }
         }
 
         // ─── Hotkey local (MixOverlays au premier plan) ───────────────────────

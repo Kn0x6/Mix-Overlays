@@ -61,20 +61,18 @@ namespace MixOverlays.Views
 
             int idx = Math.Max(0, Math.Min(n - 1, (int)Math.Round((pos.X - PadLeft) / cW * (n - 1))));
 
-            var    values      = BuildCumulative(_snapshots);
-            double minGrid     = Math.Floor(values.Min() / 25.0) * 25.0;
-            double maxGrid     = Math.Ceiling(values.Max() / 25.0) * 25.0;
+            var    values  = BuildCumulative(_snapshots);
+            double minGrid = Math.Floor(values.Min() / 25.0) * 25.0;
+            double maxGrid = Math.Ceiling(values.Max() / 25.0) * 25.0;
             if (maxGrid <= minGrid) maxGrid = minGrid + 25;
-            double range       = maxGrid - minGrid;
+            double range = maxGrid - minGrid;
 
-            // ── Rang calculé via ComputeRankLabel (déjà correct dans le code) ────────
-            double deltaFromBase = values[idx] - values[0];
-            string rankLabel     = ComputeRankLabel(_snapshots[0], deltaFromBase);
-
-            // ── Remplir le tooltip (date + rang/LP seulement, pas de gain) ────────────
+            // ── Remplir le tooltip depuis le snapshot réel ────────────────────────────
+            // Les seuils Master+ sont régionaux : ils ne peuvent pas être déduits d'un
+            // nombre fixe de LP. Utiliser le tier capturé évite une promotion fictive GM.
             var snap = _snapshots[idx];
             TipDate.Text = snap.Timestamp.ToLocalTime().ToString("dd/MM");
-            TipRank.Text = $"{rankLabel} — {ComputeLpWithinRank(_snapshots[0], values[idx])} LP";
+            TipRank.Text = $"{FormatRankLabel(snap)} — {snap.LeaguePoints} LP";
 
             // ── Position du tooltip ───────────────────────────────────────────────────
             double cx  = PadLeft + idx * cW / Math.Max(n - 1, 1);
@@ -106,42 +104,6 @@ namespace MixOverlays.Views
         {
             TooltipBorder.Visibility = Visibility.Collapsed;
             Redraw();
-        }
-
-        // ── Calcule le rang correct depuis la valeur LP cumulée ──────────────────
-        // Le snapshot[0] est le plus récent (position de référence réelle)
-        private static string ComputeRankDisplay(LpSnapshot reference, double cumulativeValue)
-        {
-            // LP absolu = LP du snap[0] + delta cumulé par rapport à snap[0]
-            // Attention : _snapshots est ordonné récent→ancien, values[0]=snap[0].LP
-            // donc cumulativeValue est déjà l'absolu LP relatif
-            double absoluteLp = cumulativeValue;
-
-            string[] tiers = { "Iron", "Bronze", "Silver", "Gold", "Platinum", "Emerald", "Diamond" };
-            string[] divs  = { "IV", "III", "II", "I" };
-
-            int baseTier = TierVal(reference.Tier);
-            int baseDiv  = RankVal(reference.Rank);
-            int baseLp   = reference.LeaguePoints;
-
-            // LP total absolu depuis Iron IV 0
-            int baseAbsolute = baseTier * 400 + baseDiv * 100 + baseLp;
-            int absTotal     = (int)Math.Round(baseAbsolute + (absoluteLp - baseLp));
-
-            // Clamp
-            absTotal = Math.Max(0, absTotal);
-
-            int tier = Math.Min(absTotal / 400, tiers.Length - 1);
-            int rem  = absTotal % 400;
-            int div  = Math.Min(rem / 100, 3);
-            int lp   = rem % 100;
-
-            string tierAbbr = tier switch
-            {
-                0 => "F", 1 => "B", 2 => "S", 3 => "G", 4 => "P", 5 => "E", 6 => "D", _ => "?"
-            };
-
-            return $"{tierAbbr}{div + 1} — {lp} LP";
         }
 
         private static double BuildMinGrid(List<double> values)
@@ -203,7 +165,7 @@ namespace MixOverlays.Views
             double py(double v) => padTop  + cH - (v - minGrid) / range * cH;
 
             // ── Axe Y : lignes tous les 25 LP + labels rang ───────────────────
-            DrawYAxis(w, padLeft, padRight, padTop, cH, minGrid, maxGrid, values[0]);
+            DrawYAxis(w, padLeft, padRight, padTop, cH, minGrid, maxGrid, _snapshots[0]);
 
             // ── Remplissage dégradé ───────────────────────────────────────────
             var pts = Enumerable.Range(0, values.Count)
@@ -274,7 +236,7 @@ namespace MixOverlays.Views
 
         private void DrawYAxis(double w, double padLeft, double padRight,
                                double padTop, double cH,
-                               double minGrid, double maxGrid, double baseValue)
+                               double minGrid, double maxGrid, LpSnapshot baseSnapshot)
         {
             double range = maxGrid - minGrid;
 
@@ -299,8 +261,7 @@ namespace MixOverlays.Views
                 });
 
                 // Label rang à gauche
-                double deltaFromBase = lp - baseValue;
-                string label = ComputeRankLabel(_snapshots[0], deltaFromBase);
+                string label = ComputeRankLabel(baseSnapshot, lp);
                 var brush  = RankLabelBrush(label);
 
                 var tb = new TextBlock
@@ -361,18 +322,22 @@ namespace MixOverlays.Views
         // ═════════════════════════════════════════════════════════════════════
 
         /// <summary>
-        /// Calcule le label rang (ex: "P4", "E1", "D3") à partir d'un snapshot
-        /// de base et d'un delta LP cumulé depuis ce snapshot.
+        /// Calcule le label rang pour une position de graphe. Les tiers Master+ ne
+        /// sont pas déduits d'un seuil LP fixe ; le tier réel le plus récent est utilisé.
         /// </summary>
-        private static string ComputeRankLabel(LpSnapshot baseSnap, double deltaFromBase)
+        private string ComputeRankLabel(LpSnapshot baseSnap, double chartValue)
         {
-            int baseAbsLp = TierVal(baseSnap.Tier) * 400
-                          + RankVal(baseSnap.Rank)  * 100
-                          + baseSnap.LeaguePoints;
+            int absLp = Math.Max(0, (int)Math.Round(chartValue));
 
-            int absLp = Math.Max(0, baseAbsLp + (int)deltaFromBase);
+            // Les valeurs à partir de Master n'identifient pas à elles seules GM/C.
+            // On garde donc le dernier tier apex réellement reçu de Riot/LCU.
+            if (absLp >= 7 * 400)
+            {
+                var apexSnapshot = _snapshots.LastOrDefault(s => IsApexTier(s.Tier));
+                return apexSnapshot == null ? "M" : TierAbbreviation(apexSnapshot.Tier);
+            }
 
-            int tier = Math.Min(absLp / 400, 9);
+            int tier = Math.Min(absLp / 400, 6);
             int rank = Math.Min((absLp % 400) / 100, 3);
 
             string tierAbbr = tier switch
@@ -384,45 +349,35 @@ namespace MixOverlays.Views
                 4 => "P",   // Platinum
                 5 => "E",   // Emerald
                 6 => "D",   // Diamond
-                7 => "M",   // Master
-                8 => "GM",  // GrandMaster
-                9 => "C",   // Challenger
                 _ => "?"
             };
 
-            // Master+ n'a pas de divisions
-            string rankAbbr = tier >= 7 ? "" : (rank switch
+            string rankAbbr = rank switch
             {
                 0 => "4",
                 1 => "3",
                 2 => "2",
                 3 => "1",
                 _ => ""
-            });
+            };
 
-            return tierAbbr + rankAbbr; // ex: "P4", "E1", "D3", "M"
+            return tierAbbr + rankAbbr;
         }
 
-        /// <summary>
-        /// Retourne les LP à afficher dans la division calculée, en utilisant le même
-        /// référentiel absolu que ComputeRankLabel. Évite les valeurs incorrectes dues
-        /// à un simple modulo sur une courbe cumulative.
-        /// </summary>
-        private static int ComputeLpWithinRank(LpSnapshot baseSnap, double cumulativeValue)
+        private static string FormatRankLabel(LpSnapshot snapshot) =>
+            string.IsNullOrWhiteSpace(snapshot.Tier) ? "?" :
+            IsApexTier(snapshot.Tier) ? TierAbbreviation(snapshot.Tier) :
+            $"{TierAbbreviation(snapshot.Tier)}{RankNumber(snapshot.Rank)}";
+
+        private static string TierAbbreviation(string tier) => tier?.ToUpper() switch
         {
-            int baseAbsLp = TierVal(baseSnap.Tier) * 400
-                          + RankVal(baseSnap.Rank)  * 100
-                          + baseSnap.LeaguePoints;
+            "IRON" => "I", "BRONZE" => "B", "SILVER" => "S", "GOLD" => "G",
+            "PLATINUM" => "P", "EMERALD" => "E", "DIAMOND" => "D",
+            "MASTER" => "M", "GRANDMASTER" => "GM", "CHALLENGER" => "C", _ => "?"
+        };
 
-            int absLp = Math.Max(0, baseAbsLp + (int)Math.Round(cumulativeValue - baseSnap.LeaguePoints));
-            int tier = Math.Min(absLp / 400, 9);
-
-            // Master+ n'a pas de divisions : on garde les LP totaux dans le tier.
-            if (tier >= 7)
-                return Math.Max(0, absLp - tier * 400);
-
-            return absLp % 100;
-        }
+        private static string RankNumber(string rank) => rank?.ToUpper() switch
+        { "IV" => "4", "III" => "3", "II" => "2", "I" => "1", _ => "" };
 
         /// <summary>Couleur associée au rang pour le label.</summary>
         private static Brush RankLabelBrush(string label)
@@ -481,15 +436,20 @@ namespace MixOverlays.Views
 
         private static List<double> BuildCumulative(List<LpSnapshot> snaps)
         {
-            var r = new List<double> { snaps[0].LeaguePoints };
-            for (int i = 1; i < snaps.Count; i++)
-            {
-                double d = snaps[i].LpDelta.HasValue
-                    ? snaps[i].LpDelta!.Value
-                    : snaps[i].LeaguePoints - snaps[i - 1].LeaguePoints;
-                r.Add(r.Last() + d);
-            }
-            return r;
+            // Chaque snapshot contient le rang et les LP réellement capturés. Cette
+            // projection ne dépend donc pas des anciens LpDelta, qui pouvaient traiter
+            // à tort un changement Master/Grandmaster comme une variation de 400 LP.
+            return snaps.Select(ToChartValue).ToList();
+        }
+
+        private static double ToChartValue(LpSnapshot snapshot)
+        {
+            // Diamond et les tiers inférieurs ont quatre divisions de 100 LP.
+            // Master+ partage le même point de départ visuel : les frontières GM/C
+            // sont régionales et ne sont pas dérivables à partir des seuls LP.
+            return IsApexTier(snapshot.Tier)
+                ? 7 * 400 + snapshot.LeaguePoints
+                : TierVal(snapshot.Tier) * 400 + RankVal(snapshot.Rank) * 100 + snapshot.LeaguePoints;
         }
 
         // ═════════════════════════════════════════════════════════════════════
@@ -506,5 +466,8 @@ namespace MixOverlays.Views
 
         private static int RankVal(string r) => r?.ToUpper() switch
         { "IV" => 0, "III" => 1, "II" => 2, "I" => 3, _ => 0 };
+
+        private static bool IsApexTier(string tier) => tier?.ToUpper() is
+            "MASTER" or "GRANDMASTER" or "CHALLENGER";
     }
 }

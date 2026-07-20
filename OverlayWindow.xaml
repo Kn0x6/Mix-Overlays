@@ -24,7 +24,7 @@
         MouseLeftButtonDown => DragMove pour déplacer la fenêtre.
     -->
     <Border x:Name="OverlayRoot"
-            Background="{StaticResource OverlayBgColor}"
+            Background="{StaticResource OverlayBgBrush}"
             BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
             CornerRadius="16"
             Padding="16,12"

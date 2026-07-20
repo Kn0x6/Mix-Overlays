@@ -11,6 +11,9 @@ using Newtonsoft.Json;
 
 namespace MixOverlays.Services
 {
+    /// <summary>Contrôle la lecture/écriture du cache pour une requête Riot ponctuelle.</summary>
+    public enum RiotCacheMode { Default, Bypass, Refresh }
+
     public class RiotApiService : IDisposable
     {
         private readonly SettingsService _settings;
@@ -26,9 +29,17 @@ namespace MixOverlays.Services
             _rateLimitGate?.Dispose();
         }
 
-        // ─── Cache simple (clé → (valeur sérialisée, expiration)) ────────────
-        private readonly ConcurrentDictionary<string, (string Json, DateTime Expires)> _cache = new();
-        private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(10); // 10min — les stats ne changent pas en live
+        // ─── Cache HTTP (JSON brut pour ne pas partager des DTO mutables) ───────
+        // Chaque endpoint a sa durée de vie : un match terminé ne change jamais,
+        // tandis que le classement et la partie en cours doivent rester frais.
+        private sealed record CachedResponse(string? Json, DateTime Expires);
+        private sealed record CachePolicy(TimeSpan Ttl, TimeSpan? NegativeTtl = null);
+        private sealed record FetchResult(string? Json, bool IsSuccess, bool IsNotFound = false);
+
+        private readonly ConcurrentDictionary<string, CachedResponse> _cache = new();
+        private readonly ConcurrentDictionary<string, Lazy<Task<FetchResult>>> _inflight = new();
+        private const int MaxCacheEntries = 500;
+        private int _cacheAccessCount;
 
         /// <summary>
         /// Nettoie les entrées expirées du cache. À appeler périodiquement.
@@ -39,6 +50,34 @@ namespace MixOverlays.Services
             foreach (var key in _cache.Keys.ToList())
                 if (_cache.TryGetValue(key, out var v) && v.Expires <= now)
                     _cache.TryRemove(key, out _);
+
+            // Évite qu'une longue session conserve indéfiniment des anciennes pages.
+            var overflow = _cache.Count - MaxCacheEntries;
+            if (overflow > 0)
+            {
+                foreach (var key in _cache.OrderBy(x => x.Value.Expires).Take(overflow).Select(x => x.Key))
+                    _cache.TryRemove(key, out _);
+            }
+        }
+
+        private static CachePolicy GetCachePolicy(string url)
+        {
+            if (url.Contains("/riot/account/", StringComparison.Ordinal))
+                return new CachePolicy(TimeSpan.FromHours(12));
+            if (url.Contains("/lol/summoner/", StringComparison.Ordinal))
+                return new CachePolicy(TimeSpan.FromHours(1));
+            if (url.Contains("/lol/league/", StringComparison.Ordinal))
+                return new CachePolicy(TimeSpan.FromMinutes(2));
+            if (url.Contains("/champion-mastery/", StringComparison.Ordinal))
+                return new CachePolicy(TimeSpan.FromMinutes(20), TimeSpan.FromMinutes(2));
+            if (url.Contains("/matches/by-puuid/", StringComparison.Ordinal))
+                return new CachePolicy(TimeSpan.FromSeconds(30));
+            if (url.Contains("/lol/match/v5/matches/", StringComparison.Ordinal))
+                return new CachePolicy(TimeSpan.FromDays(7));
+            if (url.Contains("/spectator/", StringComparison.Ordinal))
+                return new CachePolicy(TimeSpan.FromSeconds(8), TimeSpan.FromSeconds(4));
+
+            return new CachePolicy(TimeSpan.FromMinutes(5));
         }
 
         // ─── Token Bucket — respecte les limites Riot API dev key ────────────────
@@ -69,6 +108,30 @@ namespace MixOverlays.Services
             _client.DefaultRequestHeaders.Remove("X-Riot-Token");
             _client.DefaultRequestHeaders.Add("X-Riot-Token", _settings.Current.RiotApiKey);
             _cache.Clear(); // invalide le cache si la clé change
+        }
+
+        /// <summary>
+        /// Invalide uniquement les données qui peuvent évoluer à la suite d'une partie,
+        /// sans toucher aux profils, comptes ou détails de matchs déjà immuables.
+        /// </summary>
+        public void InvalidatePlayerDynamicData(string puuid)
+        {
+            if (string.IsNullOrWhiteSpace(puuid)) return;
+
+            foreach (var key in _cache.Keys)
+            {
+                if (!key.Contains(Uri.EscapeDataString(puuid), StringComparison.Ordinal)) continue;
+
+                if (key.Contains("/lol/league/", StringComparison.Ordinal) ||
+                    key.Contains("/champion-mastery/", StringComparison.Ordinal) ||
+                    key.Contains("/matches/by-puuid/", StringComparison.Ordinal) ||
+                    key.Contains("/spectator/", StringComparison.Ordinal))
+                {
+                    _cache.TryRemove(key, out _);
+                }
+            }
+
+            App.Log($"[RiotCache] INVALIDATE dynamic player data");
         }
 
         // ─── Account API ───────────────────────────────────────────────────────
@@ -115,13 +178,43 @@ namespace MixOverlays.Services
             return await GetAsync<List<ChampionMastery>>(url);
         }
 
+        /// <summary>
+        /// Retourne la maîtrise d'un champion précis. Contrairement au top des maîtrises,
+        /// cet endpoint fonctionne aussi lorsque le champion n'est pas parmi les cinq plus joués.
+        /// </summary>
+        public async Task<ChampionMastery?> GetChampionMasteryAsync(string puuid, int championId)
+        {
+            if (string.IsNullOrWhiteSpace(puuid) || championId <= 0)
+            {
+                App.Log($"[MasteryDiag|API] Requête ignorée : puuidVide={string.IsNullOrWhiteSpace(puuid)}, championId={championId}");
+                return null;
+            }
+
+            var url = $"{PlatformUrl}/lol/champion-mastery/v4/champion-masteries/by-puuid/{Uri.EscapeDataString(puuid)}/by-champion/{championId}";
+            App.Log($"[MasteryDiag|API] Demande Riot : region={_settings.Current.Region}, puuid={ShortId(puuid)}, championId={championId}");
+
+            var mastery = await GetAsync<ChampionMastery>(url);
+            App.Log(mastery == null
+                ? $"[MasteryDiag|API] Aucune maîtrise retournée : championId={championId}, erreur='{LastHttpError}'"
+                : $"[MasteryDiag|API] Réponse Riot : championId={mastery.championId}, points={mastery.championPoints}, niveau={mastery.championLevel}");
+            return mastery;
+        }
+
+        private static string ShortId(string value) =>
+            value.Length <= 12 ? value : $"{value[..8]}…{value[^4..]}";
+
         // ─── Match API v5 ──────────────────────────────────────────────────────
 
-        public async Task<List<string>?> GetMatchIdsByPuuidAsync(string puuid, int count = 20, int? queueId = null, int startIndex = 0)
+        public async Task<List<string>?> GetMatchIdsByPuuidAsync(
+            string puuid,
+            int count = 20,
+            int? queueId = null,
+            int startIndex = 0,
+            RiotCacheMode cacheMode = RiotCacheMode.Default)
         {
             var url = $"{RegionalUrl}/lol/match/v5/matches/by-puuid/{puuid}/ids?count={count}&start={startIndex}";
             if (queueId.HasValue) url += $"&queue={queueId}";
-            return await GetAsync<List<string>>(url);
+            return await GetAsync<List<string>>(url, cacheMode);
         }
 
         public async Task<MatchDto?> GetMatchByIdAsync(string matchId)
@@ -143,13 +236,8 @@ namespace MixOverlays.Services
             var urlV5 = $"{PlatformUrl}/lol/spectator/v5/active-games/by-summoner/{Uri.EscapeDataString(puuid)}";
             try
             {
-                var resp = await _client.GetAsync(urlV5);
-                System.Diagnostics.Debug.WriteLine($"[Spectator v5] {resp.StatusCode} pour {puuid[..8]}...");
-                if (resp.IsSuccessStatusCode)
-                {
-                    var json = await resp.Content.ReadAsStringAsync();
-                    return Newtonsoft.Json.JsonConvert.DeserializeObject<SpectatorGameInfo>(json);
-                }
+                var game = await GetAsync<SpectatorGameInfo>(urlV5);
+                if (game != null) return game;
             }
             catch (Exception ex)
             {
@@ -164,32 +252,26 @@ namespace MixOverlays.Services
                 if (summoner != null && !string.IsNullOrEmpty(summoner.id))
                 {
                     var urlV4 = $"{PlatformUrl}/lol/spectator/v4/active-games/by-summoner/{Uri.EscapeDataString(summoner.id)}";
-                    var resp4 = await _client.GetAsync(urlV4);
-                    System.Diagnostics.Debug.WriteLine($"[Spectator v4] {resp4.StatusCode} pour summonerId {summoner.id[..8]}...");
-                    if (resp4.IsSuccessStatusCode)
+                    var game4 = await GetAsync<SpectatorGameInfoV4>(urlV4);
+                    if (game4 != null)
                     {
-                        var json4 = await resp4.Content.ReadAsStringAsync();
                         // v4 n'a pas de champ puuid dans participants — on adapte
-                        var game4 = Newtonsoft.Json.JsonConvert.DeserializeObject<SpectatorGameInfoV4>(json4);
-                        if (game4 != null)
+                        return new SpectatorGameInfo
                         {
-                            return new SpectatorGameInfo
+                            gameId        = game4.gameId,
+                            gameMode      = game4.gameMode,
+                            gameType      = game4.gameType,
+                            gameStartTime = game4.gameStartTime,
+                            participants  = game4.participants?.Select(p => new SpectatorParticipant
                             {
-                                gameId        = game4.gameId,
-                                gameMode      = game4.gameMode,
-                                gameType      = game4.gameType,
-                                gameStartTime = game4.gameStartTime,
-                                participants  = game4.participants?.Select(p => new SpectatorParticipant
-                                {
-                                    puuid        = puuid,
-                                    summonerName = p.summonerName,
-                                    championId   = p.championId,
-                                    teamId       = p.teamId,
-                                    spell1Id     = p.spell1Id,
-                                    spell2Id     = p.spell2Id
-                                }).ToList()
-                            };
-                        }
+                                puuid        = puuid,
+                                summonerName = p.summonerName,
+                                championId   = p.championId,
+                                teamId       = p.teamId,
+                                spell1Id     = p.spell1Id,
+                                spell2Id     = p.spell2Id
+                            }).ToList()
+                        };
                     }
                 }
             }
@@ -204,17 +286,8 @@ namespace MixOverlays.Services
         public async Task<bool> TestPlatformStatusAsync()
         {
             var url = $"{PlatformUrl}/lol/status/v4/platform-data";
-            try
-            {
-                var resp = await _client.GetAsync(url);
-                LastHttpError = $"HTTP {(int)resp.StatusCode} {resp.StatusCode} → {_settings.Current.Region}";
-                return resp.IsSuccessStatusCode;
-            }
-            catch (Exception ex)
-            {
-                LastHttpError = ex.Message;
-                return false;
-            }
+            var response = await FetchAsync(url);
+            return response.IsSuccess;
         }
 
         // ─── Aggregated Player Data ────────────────────────────────────────────
@@ -613,70 +686,97 @@ summary.AllParticipants = match.info.participants
             }
         }
 
-        private async Task<T?> GetAsync<T>(string url, bool useCache = true)
+        private async Task<T?> GetAsync<T>(string url, RiotCacheMode cacheMode = RiotCacheMode.Default)
         {
-            bool isSpectator = url.Contains("/spectator/");
-            if (useCache && !isSpectator && _cache.TryGetValue(url, out var cached) && cached.Expires > DateTime.UtcNow)
+            if (Interlocked.Increment(ref _cacheAccessCount) % 50 == 0)
+                PurgeExpiredCache();
+
+            var now = DateTime.UtcNow;
+            if (cacheMode == RiotCacheMode.Default &&
+                _cache.TryGetValue(url, out var cached) && cached.Expires > now)
             {
+                App.Log($"[RiotCache] HIT {GetLogPath(url)}");
+                if (cached.Json == null) return default; // cache négatif (404 court)
+
                 try { return JsonConvert.DeserializeObject<T>(cached.Json); }
-                catch { }
+                catch { _cache.TryRemove(url, out _); }
             }
 
-            // Token bucket : attend qu'on puisse envoyer
-            await WaitForTokenAsync();
+            App.Log($"[RiotCache] {(cacheMode == RiotCacheMode.Default ? "MISS" : cacheMode.ToString().ToUpperInvariant())} {GetLogPath(url)}");
+            var request = new Lazy<Task<FetchResult>>(() => FetchAsync(url), LazyThreadSafetyMode.ExecutionAndPublication);
+            var pending = _inflight.GetOrAdd(url, request);
+            if (!ReferenceEquals(pending, request))
+                App.Log($"[RiotCache] COALESCED {GetLogPath(url)}");
 
+            FetchResult result;
             try
             {
-                var resp = await _client.GetAsync(url);
-                
-                if (!resp.IsSuccessStatusCode)
+                result = await pending.Value;
+            }
+            finally
+            {
+                _inflight.TryRemove(url, out _);
+            }
+
+            var policy = GetCachePolicy(url);
+            if (result.IsSuccess && result.Json != null)
+                _cache[url] = new CachedResponse(result.Json, DateTime.UtcNow.Add(policy.Ttl));
+            else if (result.IsNotFound && policy.NegativeTtl is { } negativeTtl)
+                _cache[url] = new CachedResponse(null, DateTime.UtcNow.Add(negativeTtl));
+
+            if (!result.IsSuccess || result.Json == null) return default;
+            try { return JsonConvert.DeserializeObject<T>(result.Json); }
+            catch (Exception ex)
+            {
+                LastHttpError = $"Désérialisation : {ex.Message}";
+                return default;
+            }
+        }
+
+        /// <summary>Exécute un appel réseau Riot sous token bucket, sans politique de cache.</summary>
+        private async Task<FetchResult> FetchAsync(string url)
+        {
+            await WaitForTokenAsync();
+            try
+            {
+                using var response = await _client.GetAsync(url);
+                if (response.IsSuccessStatusCode)
+                    return new FetchResult(await response.Content.ReadAsStringAsync(), true);
+
+                var uri = new Uri(url);
+                var segment = uri.AbsolutePath.Split('/').LastOrDefault(s => s.Length is > 0 and < 30) ?? uri.AbsolutePath;
+                var message = $"HTTP {(int)response.StatusCode} {response.StatusCode} sur /{segment}";
+
+                if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
                 {
-                    var uri     = new Uri(url);
-                    var segment = uri.AbsolutePath.Split('/').LastOrDefault(s => !string.IsNullOrEmpty(s) && s.Length < 30) ?? uri.AbsolutePath;
-                    var message = $"HTTP {(int)resp.StatusCode} {resp.StatusCode} sur /{segment}";
-
-                    if (resp.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-                    {
-                        LastHttpWasUnauthorized = true;
-                        LastHttpError = "HTTP 401 Unauthorized — clé Riot API invalide ou expirée. Mets-la à jour dans Paramètres.";
-                    }
-                    else if (!LastHttpWasUnauthorized)
-                    {
-                        LastHttpError = message;
-                    }
-                    
-                    // Si c'est une erreur 429, on attend un peu plus longtemps
-                    if (resp.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
-                    {
-                        // Backoff exponentiel : vider le bucket + attendre
-                        await _rateLimitGate.WaitAsync();
-                        _tokens = 0; // forcer l'arrêt temporaire
-                        _rateLimitGate.Release();
-
-                        // Lire le Retry-After si présent
-                        int retryAfter = 10;
-                        if (resp.Headers.TryGetValues("Retry-After", out var vals) &&
-                            int.TryParse(vals.FirstOrDefault(), out int ra))
-                            retryAfter = ra;
-
-                        App.Log($"[RateLimit] 429 reçu — attente {retryAfter}s avant reprise");
-                        await Task.Delay(retryAfter * 1000);
-                    }
-                    
-                    return default;
+                    LastHttpWasUnauthorized = true;
+                    LastHttpError = "HTTP 401 Unauthorized — clé Riot API invalide ou expirée. Mets-la à jour dans Paramètres.";
                 }
-                
-                var json = await resp.Content.ReadAsStringAsync();
-                if (useCache && !isSpectator)
-                    _cache[url] = (json, DateTime.UtcNow.Add(CacheTtl));
-                return JsonConvert.DeserializeObject<T>(json);
+                else if (!LastHttpWasUnauthorized)
+                {
+                    LastHttpError = message;
+                }
+
+                if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                {
+                    var retryAfter = response.Headers.RetryAfter?.Delta ?? TimeSpan.FromSeconds(10);
+                    await _rateLimitGate.WaitAsync();
+                    try { _tokens = 0; }
+                    finally { _rateLimitGate.Release(); }
+                    App.Log($"[RateLimit] 429 reçu — attente {retryAfter.TotalSeconds:F0}s avant reprise");
+                    await Task.Delay(retryAfter);
+                }
+
+                return new FetchResult(null, false, response.StatusCode == System.Net.HttpStatusCode.NotFound);
             }
             catch (Exception ex)
             {
                 LastHttpError = $"Exception : {ex.Message}";
-                return default;
+                return new FetchResult(null, false);
             }
         }
+
+        private static string GetLogPath(string url) => new Uri(url).AbsolutePath;
     /// <summary>
     /// Calcule la durée réelle en secondes depuis le MatchInfo.
     /// - Avant le patch 11.20 (gameCreation < 1634000000000), l'API renvoyait des ms

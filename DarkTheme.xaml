@@ -44,6 +44,7 @@
     <SolidColorBrush x:Key="WinLightBrush" Color="{StaticResource WinLightColor}"/>
     <SolidColorBrush x:Key="LossBrush" Color="{StaticResource LossColor}"/>
     <SolidColorBrush x:Key="LossLightBrush" Color="{StaticResource LossLightColor}"/>
+    <SolidColorBrush x:Key="OverlayBgBrush" Color="{StaticResource OverlayBgColor}"/>
 
     <!-- Semantic / translucent brushes -->
     <!-- Semantic aliases: use these in views instead of literal colour values. -->

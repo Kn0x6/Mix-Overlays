@@ -76,9 +76,19 @@ namespace MixOverlays.ViewModels
         private int ComputeDelta(int days)
         {
             var cutoff = DateTime.UtcNow.AddDays(-days);
-            return _lpHistory
-                .Where(s => s.Timestamp >= cutoff && s.LpDelta.HasValue)
-                .Sum(s => s.LpDelta!.Value);
+            var snapshots = _lpHistory
+                .OrderByDescending(s => s.Timestamp)
+                .ToList();
+
+            // Recalculer les gains depuis les snapshots réels permet aussi de
+            // corriger les historiques créés avant la correction Master+.
+            return snapshots
+                .Select((snapshot, index) => new { snapshot, index })
+                .Where(x => x.snapshot.Timestamp >= cutoff &&
+                            (x.index < snapshots.Count - 1 || x.snapshot.LpDelta.HasValue))
+                .Sum(x => x.index < snapshots.Count - 1
+                    ? ComputeDeltaBetweenSnapshots(snapshots[x.index + 1], x.snapshot)
+                    : x.snapshot.LpDelta!.Value);
         }
 
         private List<LpSnapshot> BuildDisplayLpSnapshots()
@@ -124,8 +134,9 @@ namespace MixOverlays.ViewModels
 
         private static int ComputeDeltaBetweenSnapshots(LpSnapshot pre, LpSnapshot post)
         {
-            if (string.Equals(pre.Tier, post.Tier, StringComparison.OrdinalIgnoreCase) &&
-                string.Equals(pre.Rank, post.Rank, StringComparison.OrdinalIgnoreCase))
+            if ((string.Equals(pre.Tier, post.Tier, StringComparison.OrdinalIgnoreCase) &&
+                 string.Equals(pre.Rank, post.Rank, StringComparison.OrdinalIgnoreCase)) ||
+                (IsApexTier(pre.Tier) && IsApexTier(post.Tier)))
                 return post.LeaguePoints - pre.LeaguePoints;
 
             int rs = (TierVal(post.Tier) - TierVal(pre.Tier)) * 400
@@ -145,6 +156,11 @@ namespace MixOverlays.ViewModels
 
         private static int RankVal(string r) => r?.ToUpper() switch
         { "IV" => 0, "III" => 1, "II" => 2, "I" => 3, _ => 0 };
+
+        // Master, Grandmaster et Challenger n'ont pas de divisions fixes :
+        // leurs seuils sont déterminés par le classement régional, pas par 400 LP.
+        private static bool IsApexTier(string tier) => tier?.ToUpper() is
+            "MASTER" or "GRANDMASTER" or "CHALLENGER";
 
         private static string FormatDelta(int delta) =>
             delta >= 0 ? $"+{delta} LP" : $"{delta} LP";

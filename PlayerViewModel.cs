@@ -130,9 +130,7 @@ namespace MixOverlays.ViewModels
                 OnPropertyChanged(nameof(ChampionGamesPlayed));
                 OnPropertyChanged(nameof(ChampionWinRateDisplay));
                 OnPropertyChanged(nameof(CurrentChampionMasteryPoints));
-                OnPropertyChanged(nameof(ExpertiseLabel));
-                OnPropertyChanged(nameof(ExpertiseBadgeBackground));
-                OnPropertyChanged(nameof(ExpertiseBadgeForeground));
+                OnPropertyChanged(nameof(CurrentChampionMasteryPointsDisplay));
 
                 // Le graphique LP dépend à la fois de l'historique LP et du SoloRank actuel.
                 // Si le rang/LP actuel change sans nouvel historique injecté, on force aussi
