@@ -10,6 +10,9 @@
     <RootNamespace>MixOverlays</RootNamespace>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ApplicationIcon>Icone.ico</ApplicationIcon>
+    <!-- Le projet est situé à la racine : empêcher MSBuild d'inclure les
+         sources et artefacts d'éventuels projets enfants. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);MixOverlays.Tests/**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
