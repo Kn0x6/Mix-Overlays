@@ -588,6 +588,19 @@ namespace MixOverlays.Converters
             => throw new NotImplementedException();
     }
 
+    public class RuneIdToNameConverter : IValueConverter
+    {
+        public object Convert(object value, Type t, object p, CultureInfo c)
+        {
+            if (value is not int id || id == 0) return string.Empty;
+            return ChampionDataService.RuneMetadataById.TryGetValue(id, out var rune)
+                ? rune.Name
+                : string.Empty;
+        }
+        public object ConvertBack(object value, Type t, object p, CultureInfo c)
+            => throw new NotImplementedException();
+    }
+
     // ─── Champion name → Splash Art BitmapImage ───────────────────────────────
     // Retourne l'image de splash art du champion (skin 0 = splash par défaut)
     // URL: https://ddragon.leagueoflegends.com/cdn/img/champion/splash/{Key}_0.jpg

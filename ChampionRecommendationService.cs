@@ -12,14 +12,14 @@ namespace MixOverlays.Services
     public interface IChampionRecommendationProvider
     {
         string SourceName { get; }
-        Task<ChampionRecommendation?> GetRecommendationAsync(int championId, string championName, string championKey);
+        Task<ChampionRecommendation?> GetRecommendationAsync(int championId, string championName, string championKey, string role);
     }
 
     public class ChampionRecommendationService
     {
         private readonly ChampionDataService _champions;
         private readonly List<IChampionRecommendationProvider> _providers;
-        private readonly Dictionary<int, ChampionRecommendation> _cache = new();
+        private readonly Dictionary<string, ChampionRecommendation> _cache = new();
 
         public ChampionRecommendationService(ChampionDataService champions)
         {
@@ -32,11 +32,14 @@ namespace MixOverlays.Services
             };
         }
 
-        public async Task<ChampionRecommendation?> GetRecommendationAsync(int championId)
+        public async Task<ChampionRecommendation?> GetRecommendationAsync(int championId, string role)
         {
             if (championId <= 0) return null;
 
-            if (_cache.TryGetValue(championId, out var cached) &&
+            role = NormalizeRole(role);
+            var cacheKey = $"{championId}:{role}";
+
+            if (_cache.TryGetValue(cacheKey, out var cached) &&
                 DateTime.Now - cached.LoadedAt < TimeSpan.FromMinutes(30))
                 return cached;
 
@@ -51,20 +54,27 @@ namespace MixOverlays.Services
             {
                 try
                 {
-                    var recommendation = await provider.GetRecommendationAsync(championId, championName, championKey);
+                    var recommendation = await provider.GetRecommendationAsync(championId, championName, championKey, role);
                     if (recommendation == null) continue;
 
                     recommendation.ChampionId = championId;
                     recommendation.ChampionName = championName;
                     recommendation.ChampionKey = championKey;
+                    recommendation.Role = role;
                     recommendation.LoadedAt = DateTime.Now;
+
+                    if (!CompleteRunePage(recommendation))
+                    {
+                        App.Log($"[Recommendations] {provider.SourceName} a retourné une page de runes incomplète pour {championName} ({role}).");
+                        continue;
+                    }
 
                     App.Log(
                         $"[Recommendations] champion={championName} id={championId} source={recommendation.SourceName} fallback={recommendation.IsFallback} " +
                         $"runes=[{string.Join(',', recommendation.RuneIds)}] start=[{string.Join(',', recommendation.StartingItemIds)}] " +
                         $"boots=[{string.Join(',', recommendation.BootsItemIds)}] core=[{string.Join(',', recommendation.CoreItemIds)}] url={recommendation.SourceUrl}");
 
-                    _cache[championId] = recommendation;
+                    _cache[cacheKey] = recommendation;
                     return recommendation;
                 }
                 catch (Exception ex)
@@ -74,6 +84,45 @@ namespace MixOverlays.Services
             }
 
             return null;
+        }
+
+        private static string NormalizeRole(string? role) => role?.Trim().ToUpperInvariant() switch
+        {
+            "TOP" => "top",
+            "JUNGLE" or "JG" => "jungle",
+            "MIDDLE" or "MID" => "middle",
+            "BOTTOM" or "BOT" or "ADC" => "bottom",
+            "UTILITY" or "SUPPORT" or "SUP" => "support",
+            _ => "middle"
+        };
+
+        private static bool CompleteRunePage(ChampionRecommendation recommendation)
+        {
+            var runeIds = recommendation.RuneIds.Distinct().Take(6).ToList();
+            if (runeIds.Count != 6) return false;
+
+            var metadata = ChampionDataService.RuneMetadataById;
+            if (metadata.Count == 0 || runeIds.Any(id => !metadata.ContainsKey(id))) return false;
+
+            var primaryStyle = metadata[runeIds[0]].StyleId;
+            var primary = runeIds.Where(id => metadata[id].StyleId == primaryStyle).Take(4).ToList();
+            var secondary = runeIds.Where(id => metadata[id].StyleId != primaryStyle).Take(2).ToList();
+            if (primary.Count != 4 || secondary.Count != 2 ||
+                secondary.Select(id => metadata[id].StyleId).Distinct().Count() != 1)
+                return false;
+
+            recommendation.PrimaryStyleId = primaryStyle;
+            recommendation.SecondaryStyleId = metadata[secondary[0]].StyleId;
+            recommendation.PrimaryStyleName = metadata.TryGetValue(primaryStyle, out var primaryStyleInfo)
+                ? primaryStyleInfo.Name : "Arbre principal";
+            recommendation.SecondaryStyleName = metadata.TryGetValue(recommendation.SecondaryStyleId, out var secondaryStyleInfo)
+                ? secondaryStyleInfo.Name : "Arbre secondaire";
+            recommendation.PrimaryRuneIds = primary;
+            recommendation.SecondaryRuneIds = secondary;
+            recommendation.RuneIds = primary.Concat(secondary).ToList();
+            if (recommendation.ShardIds.Count != 3)
+                recommendation.ShardIds = new List<int> { 5008, 5008, 5011 };
+            return true;
         }
     }
 
@@ -98,10 +147,10 @@ namespace MixOverlays.Services
 
         public string SourceName => "U.GG";
 
-        public async Task<ChampionRecommendation?> GetRecommendationAsync(int championId, string championName, string championKey)
+        public async Task<ChampionRecommendation?> GetRecommendationAsync(int championId, string championName, string championKey, string role)
         {
             var slug = ToUggSlug(championKey);
-            var url = $"https://u.gg/lol/champions/{slug}/build";
+            var url = $"https://u.gg/lol/champions/{slug}/build?role={role}";
 
             using var req = new HttpRequestMessage(HttpMethod.Get, url);
             req.Headers.UserAgent.ParseAdd("Mozilla/5.0 MixOverlays/1.0");
@@ -265,10 +314,12 @@ namespace MixOverlays.Services
 
         public string SourceName => "OP.GG";
 
-        public async Task<ChampionRecommendation?> GetRecommendationAsync(int championId, string championName, string championKey)
+        public async Task<ChampionRecommendation?> GetRecommendationAsync(int championId, string championName, string championKey, string role)
         {
             var slug = ToOpggSlug(championKey);
-            var url = $"https://www.op.gg/champions/{slug}/build";
+            // OP.GG rend la page correspondant au rôle dans le chemin. Cette forme
+            // contient également l'objet importClientData exploitable côté serveur.
+            var url = $"https://www.op.gg/champions/{slug}/build/{role}";
 
             using var req = new HttpRequestMessage(HttpMethod.Get, url);
             req.Headers.UserAgent.ParseAdd("Mozilla/5.0 MixOverlays/1.0");
@@ -288,6 +339,22 @@ namespace MixOverlays.Services
             {
                 App.Log($"[Recommendations] OP.GG page bloquée/inexploitable pour {championName} ({url})");
                 return null;
+            }
+
+            var selectedPerks = ExtractRecommendedPerkPage(html);
+            if (selectedPerks.Count == 9)
+            {
+                return new ChampionRecommendation
+                {
+                    ChampionId = championId,
+                    ChampionName = championName,
+                    ChampionKey = championKey,
+                    RuneIds = selectedPerks.Take(6).ToList(),
+                    ShardIds = selectedPerks.Skip(6).Take(3).ToList(),
+                    SourceName = "OP.GG",
+                    SourceUrl = url,
+                    IsFallback = false
+                };
             }
 
             var startingItems = ExtractFirstRowItemIds(html, "Starter items", 3);
@@ -351,6 +418,32 @@ namespace MixOverlays.Services
                 .ToList();
         }
 
+        private static List<int> ExtractRecommendedPerkPage(string html)
+        {
+            // Next.js sérialise ces données avec des guillemets échappés dans le HTML.
+            // importClientData est précisément le format prêt à importer dans le client LCU.
+            var normalizedHtml = html.Replace("\\\"", "\"");
+            var matches = Regex.Matches(
+                normalizedHtml,
+                "selectedPerkIds\\\"\\s*:\\s*\\[(?<ids>[0-9,\\s]+)\\]",
+                RegexOptions.IgnoreCase);
+
+            foreach (Match match in matches)
+            {
+                var ids = match.Groups["ids"].Value
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(value => int.TryParse(value.Trim(), out var id) ? id : 0)
+                    .Where(id => id > 0)
+                    .ToList();
+
+                if (ids.Count == 9 && ids.Take(6).Distinct().Count() == 6)
+                    return ids;
+            }
+
+            App.Log("[Recommendations] OP.GG : aucune page importClientData complète trouvée.");
+            return new List<int>();
+        }
+
         private static bool LooksLikeBlockedPage(string html)
         {
             return html.Contains("Just a moment", StringComparison.OrdinalIgnoreCase) ||
@@ -399,11 +492,31 @@ namespace MixOverlays.Services
             "Mordekaiser", "Gwen", "Rumble", "Singed", "Sylas", "Diana", "Lillia", "Shyvana"
         };
 
-        public Task<ChampionRecommendation?> GetRecommendationAsync(int championId, string championName, string championKey)
+        public Task<ChampionRecommendation?> GetRecommendationAsync(int championId, string championName, string championKey, string role)
         {
             ChampionRecommendation recommendation;
 
-            if (Marksmen.Contains(championKey))
+            if (string.Equals(role, "support", StringComparison.OrdinalIgnoreCase))
+            {
+                recommendation = new ChampionRecommendation
+                {
+                    RuneIds = new List<int> { 8214, 8226, 8210, 8237, 8345, 8347 },
+                    StartingItemIds = new List<int> { 3865, 2003 },
+                    BootsItemIds = new List<int> { 3158 },
+                    CoreItemIds = new List<int> { 3190, 3107, 3504 }
+                };
+            }
+            else if (string.Equals(role, "jungle", StringComparison.OrdinalIgnoreCase))
+            {
+                recommendation = new ChampionRecommendation
+                {
+                    RuneIds = new List<int> { 8010, 9111, 9104, 8299, 8444, 8451 },
+                    StartingItemIds = new List<int> { 1101, 2003 },
+                    BootsItemIds = new List<int> { 3047 },
+                    CoreItemIds = new List<int> { 6631, 3071, 6333 }
+                };
+            }
+            else if (Marksmen.Contains(championKey))
             {
                 recommendation = new ChampionRecommendation
                 {

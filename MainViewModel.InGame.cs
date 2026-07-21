@@ -102,6 +102,50 @@ namespace MixOverlays.ViewModels
         }
 
         private int _lastRecommendationChampionId;
+        private string _lastRecommendationRole = string.Empty;
+        private int _recommendationRequestVersion;
+
+        private string _lockedChampionRole = string.Empty;
+        public string LockedChampionRole
+        {
+            get => _lockedChampionRole;
+            private set
+            {
+                if (SetField(ref _lockedChampionRole, value))
+                    OnPropertyChanged(nameof(LockedChampionRoleDisplay));
+            }
+        }
+
+        public string LockedChampionRoleDisplay => LockedChampionRole switch
+        {
+            "top" => "Top",
+            "jungle" => "Jungle",
+            "middle" => "Mid",
+            "bottom" => "Bot",
+            "support" => "Support",
+            _ => "Rôle non identifié"
+        };
+
+        private bool _isImportingRunes;
+        public bool IsImportingRunes
+        {
+            get => _isImportingRunes;
+            private set => SetField(ref _isImportingRunes, value);
+        }
+
+        private string _runeImportStatus = string.Empty;
+        public string RuneImportStatus
+        {
+            get => _runeImportStatus;
+            private set
+            {
+                if (SetField(ref _runeImportStatus, value))
+                    OnPropertyChanged(nameof(HasRuneImportStatus));
+            }
+        }
+
+        public bool HasRuneImportStatus => !string.IsNullOrWhiteSpace(RuneImportStatus);
+        public RelayCommand ImportRunesCommand { get; private set; } = null!;
 
         public bool HasChampionRecommendation => ChampionRecommendation != null;
         public bool HasDetectedChampionForRecommendation => LockedChampionId > 0;
@@ -126,6 +170,9 @@ namespace MixOverlays.ViewModels
             // Écouter les changements sur les équipes pour mettre à jour IsInLiveSession
             _allyTeam.CollectionChanged  += (_, __) => OnPropertyChanged(nameof(IsInLiveSession));
             _enemyTeam.CollectionChanged += (_, __) => OnPropertyChanged(nameof(IsInLiveSession));
+
+            ImportRunesCommand = new RelayCommand(async _ => await ImportRunesAsync(), _ =>
+                ChampionRecommendation?.IsCompleteRunePage == true && !IsImportingRunes);
         }
 
         // ─── Hook nettoyage équipes depuis Core (OnLcuStateChanged) ───────────
@@ -262,6 +309,7 @@ namespace MixOverlays.ViewModels
         private async Task UpdateLockedChampionRecommendationAsync(LcuChampSelectSession session)
         {
             var lockedChampionId = DetectLocalLockedChampionId(session, out var detectionSource);
+            var role = ResolveLocalRole(session);
             LogChampSelectRecommendationDiagnostics(session, lockedChampionId, detectionSource);
 
             if (lockedChampionId <= 0)
@@ -277,11 +325,13 @@ namespace MixOverlays.ViewModels
                 return;
             }
 
-            if (lockedChampionId == _lastRecommendationChampionId &&
+            if (lockedChampionId == _lastRecommendationChampionId && role == _lastRecommendationRole &&
                 (ChampionRecommendation != null || IsLoadingChampionRecommendation))
                 return;
 
             _lastRecommendationChampionId = lockedChampionId;
+            _lastRecommendationRole = role;
+            var requestVersion = ++_recommendationRequestVersion;
 
             await _champions.EnsureLoadedAsync();
             var championName = _champions.GetName(lockedChampionId);
@@ -290,17 +340,20 @@ namespace MixOverlays.ViewModels
             {
                 LockedChampionId = lockedChampionId;
                 LockedChampionName = championName;
+                LockedChampionRole = role;
                 ChampionRecommendation = null;
                 ChampionRecommendationError = string.Empty;
+                RuneImportStatus = string.Empty;
                 IsLoadingChampionRecommendation = true;
                 OnPropertyChanged(nameof(IsWaitingForChampionLock));
             });
 
             try
             {
-                var recommendation = await _recommendations.GetRecommendationAsync(lockedChampionId);
+                var recommendation = await _recommendations.GetRecommendationAsync(lockedChampionId, role);
                 Application.Current.Dispatcher.Invoke(() =>
                 {
+                    if (requestVersion != _recommendationRequestVersion) return;
                     ChampionRecommendation = recommendation;
                     ChampionRecommendationError = recommendation == null
                         ? "Aucune recommandation disponible pour ce champion."
@@ -313,6 +366,7 @@ namespace MixOverlays.ViewModels
                 App.Log($"[Recommendations] Erreur chargement champion {lockedChampionId}: {ex.Message}");
                 Application.Current.Dispatcher.Invoke(() =>
                 {
+                    if (requestVersion != _recommendationRequestVersion) return;
                     ChampionRecommendation = null;
                     ChampionRecommendationError = "Impossible de charger les recommandations en ligne.";
                     OnPropertyChanged(nameof(IsWaitingForChampionLock));
@@ -322,6 +376,7 @@ namespace MixOverlays.ViewModels
             {
                 Application.Current.Dispatcher.Invoke(() =>
                 {
+                    if (requestVersion != _recommendationRequestVersion) return;
                     IsLoadingChampionRecommendation = false;
                     OnPropertyChanged(nameof(IsWaitingForChampionLock));
                 });
@@ -331,14 +386,6 @@ namespace MixOverlays.ViewModels
         private static int DetectLocalLockedChampionId(LcuChampSelectSession session, out string detectionSource)
         {
             detectionSource = "none";
-
-            // Source la plus directe pour le prélock / hover du joueur local.
-            // LCU la remplit via /lol-champ-select/v1/current-champion.
-            if (session.currentChampionId > 0)
-            {
-                detectionSource = "current-champion endpoint";
-                return session.currentChampionId;
-            }
 
             if (session.localPlayerCellId >= 0 && session.actions != null)
             {
@@ -350,20 +397,6 @@ namespace MixOverlays.ViewModels
                         string.Equals(action.type, "pick", System.StringComparison.OrdinalIgnoreCase))
                     .ToList();
 
-                // Prélock / sélection locale non confirmée selon certains clients.
-                var selectedPick = localPickActions
-                    .Where(action => !action.completed)
-                    .Select(action => action.championId)
-                    .LastOrDefault();
-
-                if (selectedPick > 0)
-                {
-                    detectionSource = "local pick action pending/hover";
-                    return selectedPick;
-                }
-
-                // Lock confirmé : conservé comme fallback explicite si l'ordre des actions LCU
-                // ne permet pas de récupérer la dernière sélection locale ci-dessus.
                 var completedPick = localPickActions
                     .Where(action => action.completed)
                     .Select(action => action.championId)
@@ -375,20 +408,10 @@ namespace MixOverlays.ViewModels
                     return completedPick;
                 }
 
-                var anyPick = localPickActions
-                    .Select(action => action.championId)
-                    .LastOrDefault();
-
-                if (anyPick > 0)
-                {
-                    detectionSource = "local pick action any";
-                    return anyPick;
-                }
             }
 
-            // Fallback : certains modes/clients remplissent myTeam[].championId mais pas actions[].
-            // Cela peut détecter le champion dès qu'il est attribué au joueur local, ce qui est
-            // préférable à un panneau totalement invisible si LCU ne renseigne pas completed.
+            // Fallback LCU : une fois le lock validé, certains clients exposent seulement
+            // championId sur le membre local de myTeam.
             if (session.localPlayerCellId >= 0)
             {
                 var myCellChampion = session.myTeam
@@ -403,22 +426,24 @@ namespace MixOverlays.ViewModels
                 }
             }
 
-            // Dernier fallback pour certains modes personnalisés : s'il n'y a qu'un seul champion
-            // renseigné dans notre équipe, on l'utilise pour déclencher l'affichage.
-            var uniqueMyChampion = session.myTeam
-                .Where(member => member.championId > 0)
-                .Select(member => member.championId)
-                .Distinct()
-                .Take(2)
-                .ToList();
-
-            if (uniqueMyChampion.Count == 1)
-            {
-                detectionSource = "myTeam unique champion fallback";
-                return uniqueMyChampion[0];
-            }
-
             return 0;
+        }
+
+        private static string ResolveLocalRole(LcuChampSelectSession session)
+        {
+            var rawRole = session.myTeam
+                .FirstOrDefault(member => member.cellId == session.localPlayerCellId)
+                ?.assignedPosition;
+
+            return rawRole?.Trim().ToUpperInvariant() switch
+            {
+                "TOP" => "top",
+                "JUNGLE" => "jungle",
+                "MIDDLE" or "MID" => "middle",
+                "BOTTOM" or "BOT" => "bottom",
+                "UTILITY" or "SUPPORT" => "support",
+                _ => "middle"
+            };
         }
 
         private static void LogChampSelectRecommendationDiagnostics(LcuChampSelectSession session, int detectedChampionId, string detectionSource)
@@ -455,13 +480,37 @@ namespace MixOverlays.ViewModels
 
         private void ClearChampionRecommendation()
         {
+            _recommendationRequestVersion++;
             LockedChampionId = 0;
             LockedChampionName = string.Empty;
+            LockedChampionRole = string.Empty;
             ChampionRecommendation = null;
             ChampionRecommendationError = string.Empty;
+            RuneImportStatus = string.Empty;
+            IsImportingRunes = false;
             IsLoadingChampionRecommendation = false;
             _lastRecommendationChampionId = 0;
+            _lastRecommendationRole = string.Empty;
             OnPropertyChanged(nameof(IsWaitingForChampionLock));
+        }
+
+        private async Task ImportRunesAsync()
+        {
+            var recommendation = ChampionRecommendation;
+            if (recommendation == null || !recommendation.IsCompleteRunePage || IsImportingRunes)
+                return;
+
+            IsImportingRunes = true;
+            RuneImportStatus = string.Empty;
+            try
+            {
+                var result = await _lcu.UpsertRunePageAsync(recommendation);
+                RuneImportStatus = result.Message;
+            }
+            finally
+            {
+                IsImportingRunes = false;
+            }
         }
 
         // ══════════════════════════════════════════════════════════════════════
@@ -643,7 +692,7 @@ namespace MixOverlays.ViewModels
                 {
                     resolvedGameName = !string.IsNullOrEmpty(lcuSummoner.gameName) ? lcuSummoner.gameName : lcuSummoner.displayName;
                     resolvedTagLine  = lcuSummoner.tagLine;
-                    
+
                     // Tentative de résolution par RiotId
                     if (!string.IsNullOrEmpty(resolvedGameName))
                     {
@@ -806,7 +855,7 @@ namespace MixOverlays.ViewModels
 
             // Amélioration : ajout de variants et normalisation
             name = name.ToLower().Trim();
-            
+
             return name switch
             {
                 "summonerflash"        => 4,

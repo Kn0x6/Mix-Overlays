@@ -23,6 +23,12 @@ namespace MixOverlays.Services
         public LcuState State { get; init; }
     }
 
+    public sealed class RunePageImportResult
+    {
+        public bool Success { get; init; }
+        public string Message { get; init; } = string.Empty;
+    }
+
     public class LcuService : IDisposable
     {
         // ─── Events ────────────────────────────────────────────────────────────
@@ -699,6 +705,89 @@ namespace MixOverlays.Services
             }
             catch { return default; }
         }
+
+        /// <summary>
+        /// Crée ou actualise une page dédiée à MixOverlays, puis l'active dans le client LoL.
+        /// Les pages sont identifiées par leur nom afin de ne pas en créer une à chaque clic.
+        /// </summary>
+        public async Task<RunePageImportResult> UpsertRunePageAsync(ChampionRecommendation recommendation)
+        {
+            if (_client == null)
+                return new RunePageImportResult { Message = "Client League of Legends non connecté." };
+            if (!recommendation.IsCompleteRunePage || recommendation.SelectedPerkIds.Count != 9)
+                return new RunePageImportResult { Message = "La recommandation ne contient pas une page de runes complète." };
+
+            var pageName = $"MixOverlays - {recommendation.ChampionName} {FormatRole(recommendation.Role)}";
+            var page = new JObject
+            {
+                ["name"] = pageName,
+                ["primaryStyleId"] = recommendation.PrimaryStyleId,
+                ["subStyleId"] = recommendation.SecondaryStyleId,
+                ["selectedPerkIds"] = new JArray(recommendation.SelectedPerkIds),
+                ["current"] = true
+            };
+
+            try
+            {
+                using var pagesResponse = await _client.GetAsync("/lol-perks/v1/pages");
+                if (!pagesResponse.IsSuccessStatusCode)
+                    return new RunePageImportResult { Message = "Impossible de lire les pages de runes du client." };
+
+                var pagesJson = await pagesResponse.Content.ReadAsStringAsync();
+                var pages = JArray.Parse(pagesJson);
+                var existing = pages.OfType<JObject>().FirstOrDefault(p =>
+                    string.Equals(p.Value<string>("name"), pageName, StringComparison.Ordinal));
+
+                HttpResponseMessage response;
+                if (existing?.Value<long?>("id") is long pageId)
+                {
+                    page["id"] = pageId;
+                    page["isDeletable"] = true;
+                    response = await _client.PutAsync(
+                        $"/lol-perks/v1/pages/{pageId}",
+                        new StringContent(page.ToString(Formatting.None), Encoding.UTF8, "application/json"));
+                }
+                else
+                {
+                    response = await _client.PostAsync(
+                        "/lol-perks/v1/pages",
+                        new StringContent(page.ToString(Formatting.None), Encoding.UTF8, "application/json"));
+                }
+
+                using (response)
+                {
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        var body = await response.Content.ReadAsStringAsync();
+                        L($"[Runes] import HTTP {(int)response.StatusCode}: {body}");
+                        return new RunePageImportResult
+                        {
+                            Message = response.StatusCode == System.Net.HttpStatusCode.BadRequest
+                                ? "Le client a refusé la page de runes (vérifiez vos pages disponibles)."
+                                : "Impossible d'enregistrer la page de runes dans le client."
+                        };
+                    }
+                }
+
+                L($"[Runes] page importée : '{pageName}', primary={recommendation.PrimaryStyleId}, secondary={recommendation.SecondaryStyleId}");
+                return new RunePageImportResult { Success = true, Message = "Runes copiées et activées dans League of Legends." };
+            }
+            catch (Exception ex)
+            {
+                L($"[Runes] import exception: {ex.Message}");
+                return new RunePageImportResult { Message = "Erreur de communication avec le client League of Legends." };
+            }
+        }
+
+        private static string FormatRole(string? role) => role?.ToLowerInvariant() switch
+        {
+            "top" => "Top",
+            "jungle" => "Jungle",
+            "middle" => "Mid",
+            "bottom" => "Bot",
+            "support" => "Support",
+            _ => ""
+        };
 
         public async Task<LcuSummoner?> GetCurrentSummonerAsync() =>
             await GetAsync<LcuSummoner>("/lol-summoner/v1/current-summoner");

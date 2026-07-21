@@ -9,7 +9,7 @@ namespace MixOverlays.Services
 {
     public class ChampionDataService
     {
-        private static readonly HttpClient _http = new(); 
+        private static readonly HttpClient _http = new();
         private Dictionary<int, string> _idToName = new();    // id  -> display name ("Vel'Koz")
         private Dictionary<int, string> _idToKey  = new();    // id  -> DDragon key  ("VelKoz")
         private Dictionary<string, int> _nameToId = new();
@@ -31,6 +31,24 @@ namespace MixOverlays.Services
         /// Peuplé depuis runesReforged.json au démarrage.
         /// </summary>
         public static Dictionary<int, string> RuneIdToIconPath { get; private set; } = new();
+        public static Dictionary<int, RuneMetadata> RuneMetadataById { get; private set; } = new();
+
+        // Les fragments ne sont pas présents dans runesReforged.json. Ils sont tout
+        // de même des perks LCU, donc on les ajoute explicitement aux métadonnées
+        // utilisées par l'UI et par l'import de page de runes.
+        private static readonly IReadOnlyDictionary<int, (string Name, string Icon)> StatShardMetadata =
+            new Dictionary<int, (string, string)>
+            {
+                [5001] = ("PV évolutifs", "perk-images/StatMods/StatModsHealthScalingIcon.png"),
+                [5002] = ("Armure", "perk-images/StatMods/StatModsArmorIcon.png"),
+                [5003] = ("Résistance magique", "perk-images/StatMods/StatModsMagicResIcon.png"),
+                [5005] = ("Vitesse d'attaque", "perk-images/StatMods/StatModsAttackSpeedIcon.png"),
+                [5007] = ("Hâte évolutive", "perk-images/StatMods/StatModsCDRScalingIcon.png"),
+                [5008] = ("Force adaptative", "perk-images/StatMods/StatModsAdaptiveForceIcon.png"),
+                [5009] = ("Vitesse de déplacement", "perk-images/StatMods/StatModsMovementSpeedIcon.png"),
+                [5010] = ("Ténacité", "perk-images/StatMods/StatModsTenacityIcon.png"),
+                [5011] = ("PV", "perk-images/StatMods/StatModsHealthPlusIcon.png")
+            };
 
         /// <summary>
         /// Ensures the champion data is loaded and updates to the latest Data Dragon version.
@@ -85,7 +103,7 @@ namespace MixOverlays.Services
                         var ddKey     = prop.Name;                              // DDragon key (PascalCase)
                         var name      = champObj["name"]?.Value<string>() ?? string.Empty;
                         var idStr     = champObj["key"]?.Value<string>() ?? "0";
-                        
+
                         if (!int.TryParse(idStr, out var id)) continue;
 
                         _idToName[id]    = name;
@@ -168,11 +186,14 @@ namespace MixOverlays.Services
                 if (paths == null) return;
 
                 var newMap = new Dictionary<int, string>();
+                var metadata = new Dictionary<int, RuneMetadata>();
                 foreach (var path in paths)
                 {
                     // Icône du path lui-même (utilisée pour la rune secondaire)
                     if (!string.IsNullOrEmpty(path.icon))
                         newMap[path.id] = path.icon;
+
+                    metadata[path.id] = new RuneMetadata(path.id, path.id, path.name, path.icon, true);
 
                     foreach (var slot in path.slots)
                     {
@@ -180,10 +201,18 @@ namespace MixOverlays.Services
                         {
                             if (!string.IsNullOrEmpty(rune.icon))
                                 newMap[rune.id] = rune.icon;
+                            metadata[rune.id] = new RuneMetadata(rune.id, path.id, rune.name, rune.icon, false);
                         }
                     }
                 }
+
+                foreach (var shard in StatShardMetadata)
+                {
+                    newMap[shard.Key] = shard.Value.Icon;
+                    metadata[shard.Key] = new RuneMetadata(shard.Key, 0, shard.Value.Name, shard.Value.Icon, false);
+                }
                 RuneIdToIconPath = newMap;
+                RuneMetadataById = metadata;
             }
             catch
             {
@@ -211,6 +240,8 @@ namespace MixOverlays.Services
             public string icon { get; set; } = string.Empty;
             public string name { get; set; } = string.Empty;
         }
+
+        public sealed record RuneMetadata(int Id, int StyleId, string Name, string IconPath, bool IsStyle);
         public string GetName(int championId)
         {
             if (_idToName.TryGetValue(championId, out var name)) return name;
