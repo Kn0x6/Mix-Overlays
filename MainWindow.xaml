@@ -28,6 +28,7 @@
         <conv:ItemIdToImageConverter            x:Key="ItemToImg"/>
         <conv:UrlToImageSourceWithFallbackConverter x:Key="UrlToImgWithFallback"/>
         <conv:WinLossBrushConverter             x:Key="WinLossBrush"/>
+        <conv:PercentageToGridLengthConverter   x:Key="PercentToGridLength"/>
     </Window.Resources>
 
     <Border x:Name="MainWindowRoot"
@@ -1742,365 +1743,282 @@
                     <!-- FIN PANNEAU LIVE GAME -->
 
                     <!-- ══════════════════════════════════════════════════════════ -->
-                    <!--  PANNEAU RÉCAP FIN DE PARTIE — affiché après EndOfGame     -->
+                    <!--  PANNEAU RÉCAP FIN DE PARTIE — maquette équipe / objectifs -->
                     <!-- ══════════════════════════════════════════════════════════ -->
-                    <Grid Visibility="{Binding HasPostGameRecap, Converter={StaticResource BoolVis}}"
+                    <Grid Visibility="{Binding HasSelectedMatch, Converter={StaticResource BoolVis}}"
                           Panel.ZIndex="120">
+                        <Rectangle Fill="#DD080D18"/>
 
-                        <Rectangle Fill="#D9151B24"/>
-
-                        <Border Background="{StaticResource BgPrimaryBrush}"
-                                BorderBrush="{StaticResource BorderBrush}"
+                        <Border Margin="18,12"
+                                Background="#11182A"
+                                BorderBrush="#31415D"
                                 BorderThickness="1"
-                                CornerRadius="12"
-                                Margin="34,24"
-                                DataContext="{Binding PostGameRecap}">
+                                CornerRadius="13"
+                                DataContext="{Binding SelectedMatch}">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#000000" BlurRadius="32" ShadowDepth="6" Opacity="0.55"/>
+                            </Border.Effect>
                             <Grid>
                                 <Grid.RowDefinitions>
-                                    <RowDefinition Height="56"/>
+                                    <RowDefinition Height="52"/>
                                     <RowDefinition Height="*"/>
                                 </Grid.RowDefinitions>
 
-                                <!-- Header -->
-                                <Border Grid.Row="0"
-                                        BorderBrush="{StaticResource BorderBrush}"
-                                        BorderThickness="0,0,0,1"
-                                        CornerRadius="12,12,0,0"
-                                        Padding="18,0"
-                                        Background="{StaticResource BgSecondaryBrush}">
+                                <!-- Barre d'informations -->
+                                <Border Grid.Row="0" Background="#17233B" CornerRadius="13,13,0,0"
+                                        BorderBrush="#31415D" BorderThickness="0,0,0,1" Padding="14,0">
                                     <Grid>
                                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                            <Border Padding="10,5" CornerRadius="14"
-                                                    Background="{Binding ResultBackgroundHex, Converter={StaticResource HexBrush}}"
-                                                    Margin="0,0,12,0">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="{Binding ResultIcon}" FontSize="14" Margin="0,0,6,0"/>
-                                                    <TextBlock Text="{Binding ResultText}"
-                                                               Foreground="{Binding ResultHex, Converter={StaticResource HexBrush}}"
-                                                               FontWeight="Bold" FontSize="13"/>
-                                                </StackPanel>
+                                            <Border Background="#26344F" BorderBrush="#3A4A69" BorderThickness="1"
+                                                    CornerRadius="7" Padding="10,4">
+                                                <TextBlock Text="{Binding QueueName}" Foreground="#E6EDF3" FontSize="12" FontWeight="SemiBold"/>
                                             </Border>
-                                            <TextBlock Text="Récap de fin de partie"
-                                                       Foreground="{StaticResource TextPrimaryBrush}"
-                                                       FontSize="15" FontWeight="SemiBold"
-                                                       VerticalAlignment="Center"/>
-                                            <TextBlock Text="·" Foreground="{StaticResource TextMutedBrush}"
-                                                       Margin="10,0" VerticalAlignment="Center"/>
-                                            <TextBlock Text="{Binding QueueName}"
-                                                       Foreground="{StaticResource TextSecondaryBrush}"
-                                                       FontSize="12" VerticalAlignment="Center"/>
-                                            <TextBlock Text="·" Foreground="{StaticResource TextMutedBrush}"
-                                                       Margin="10,0" VerticalAlignment="Center"/>
-                                            <TextBlock Foreground="{StaticResource TextMutedBrush}"
-                                                       FontSize="12" VerticalAlignment="Center">
-                                                <Run Text="{Binding GameDuration, Converter={StaticResource GameDuration}}"/>
-                                            </TextBlock>
+                                            <TextBlock Text="{Binding GameDuration, Converter={StaticResource GameDuration}}"
+                                                       Foreground="#A7B0BC" FontSize="12" Margin="14,0,0,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text=" • " Foreground="#61708C" Margin="8,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding GameCreation, Converter={StaticResource TimeAgo}}"
+                                                       Foreground="#A7B0BC" FontSize="12" VerticalAlignment="Center"/>
                                         </StackPanel>
-
                                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                                            <Button Content="Voir détail complet"
-                                                    Style="{StaticResource GhostButton}"
-                                                    Command="{Binding DataContext.OpenPostGameDetailCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                    Padding="10,5" FontSize="12" Margin="0,0,8,0"/>
-                                            <Button Command="{Binding DataContext.ClosePostGameRecapCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                    Width="30" Height="30"
-                                                    Background="Transparent" BorderThickness="0" Cursor="Hand">
-                                                <Button.Style>
-                                                    <Style TargetType="Button">
-                                                        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
-                                                        <Style.Triggers>
-                                                            <Trigger Property="IsMouseOver" Value="True">
-                                                                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
-                                                                <Setter Property="Background" Value="{StaticResource BgHoverBrush}"/>
-                                                            </Trigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </Button.Style>
+                                            <Button Command="{Binding DataContext.CloseMatchDetailCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    Style="{StaticResource IconButton}" Background="Transparent" BorderThickness="0"
+                                                    Foreground="{StaticResource TextSecondaryBrush}" ToolTip="Fermer">
                                                 <TextBlock Text="✕" FontSize="14"/>
                                             </Button>
                                         </StackPanel>
                                     </Grid>
                                 </Border>
 
-                                <!-- Body -->
-                                <ScrollViewer Grid.Row="1"
-                                              VerticalScrollBarVisibility="Auto"
-                                              Style="{StaticResource SlimScrollViewer}">
-                                    <StackPanel Margin="18">
+                                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Style="{StaticResource SlimScrollViewer}">
+                                    <StackPanel Margin="12,10,12,14">
+                                        <!-- Score et deux équipes -->
+                                        <Grid Margin="0,0,0,12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="150"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
 
-                                        <!-- Carte joueur -->
-                                        <Border Background="{StaticResource BgCardBrush}"
-                                                BorderBrush="{StaticResource BorderBrush}"
-                                                BorderThickness="1"
-                                                CornerRadius="12"
-                                                Padding="16"
-                                                Margin="0,0,0,14">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="84"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
-
-                                                <Border Grid.Column="0" Width="68" Height="68"
-                                                        CornerRadius="10" ClipToBounds="True"
-                                                        BorderBrush="{Binding ResultHex, Converter={StaticResource HexBrush}}"
-                                                        BorderThickness="2">
-                                                    <Image Source="{Binding ChampionName, Converter={StaticResource ChampImg}}"
-                                                           Stretch="UniformToFill"/>
-                                                </Border>
-
-                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                    <TextBlock Text="Votre performance"
-                                                               Style="{StaticResource SectionLabel}"/>
-                                                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                                        <TextBlock Text="{Binding ChampionName}"
-                                                                   Foreground="{StaticResource TextPrimaryBrush}"
-                                                                   FontSize="18" FontWeight="SemiBold"/>
-                                                        <TextBlock Text="{Binding Position}"
-                                                                   Foreground="{StaticResource TextMutedBrush}"
-                                                                   FontSize="12" VerticalAlignment="Bottom"
-                                                                   Margin="10,0,0,2"/>
-                                                    </StackPanel>
-                                                    <TextBlock Foreground="{StaticResource TextMutedBrush}"
-                                                               FontSize="12" Margin="0,4,0,0">
-                                                        <Run Text="Score de performance : "/>
-                                                        <Run Text="{Binding PerformanceScore}"/>
-                                                         <Run Text=" · "/>
-                                                         <Run Text="{Binding PerformanceRankDisplay}"/>
-                                                         <Run Text=" de la partie"/>
-                                                    </TextBlock>
-                                                </StackPanel>
-
-                                                <UniformGrid Grid.Column="2" Columns="6" VerticalAlignment="Center">
-                                                    <StackPanel Margin="12,0" MinWidth="58">
-                                                        <TextBlock Text="KDA" Style="{StaticResource SectionLabel}" HorizontalAlignment="Center"/>
-                                                        <TextBlock Text="{Binding KdaLine}" Foreground="{StaticResource TextPrimaryBrush}"
-                                                                   FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Center"/>
-                                                        <TextBlock Foreground="{StaticResource TextMutedBrush}" FontSize="11" HorizontalAlignment="Center">
-                                                            <Run Text="{Binding KDA, Converter={StaticResource DoubleFmt}}"/>
-                                                            <Run Text=" ratio"/>
-                                                        </TextBlock>
-                                                    </StackPanel>
-                                                    <StackPanel Margin="12,0" MinWidth="58">
-                                                        <TextBlock Text="CS" Style="{StaticResource SectionLabel}" HorizontalAlignment="Center"/>
-                                                        <TextBlock Text="{Binding CS}" Foreground="{StaticResource TextPrimaryBrush}"
-                                                                   FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Center"/>
-                                                        <TextBlock Text="{Binding CSPerMinDisplay}" Foreground="{StaticResource TextMutedBrush}"
-                                                                   FontSize="11" HorizontalAlignment="Center"/>
-                                                    </StackPanel>
-                                                    <StackPanel Margin="12,0" MinWidth="58">
-                                                        <TextBlock Text="DÉGÂTS" Style="{StaticResource SectionLabel}" HorizontalAlignment="Center"/>
-                                                        <TextBlock Text="{Binding DamageDisplay}" Foreground="{StaticResource TextPrimaryBrush}"
-                                                                   FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Center"/>
-                                                    </StackPanel>
-                                                    <StackPanel Margin="12,0" MinWidth="58">
-                                                        <TextBlock Text="GOLD" Style="{StaticResource SectionLabel}" HorizontalAlignment="Center"/>
-                                                        <TextBlock Text="{Binding GoldDisplay}" Foreground="{StaticResource TextPrimaryBrush}"
-                                                                   FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Center"/>
-                                                    </StackPanel>
-                                                    <StackPanel Margin="12,0" MinWidth="58">
-                                                        <TextBlock Text="VISION" Style="{StaticResource SectionLabel}" HorizontalAlignment="Center"/>
-                                                        <TextBlock Text="{Binding VisionDisplay}" Foreground="{StaticResource TextPrimaryBrush}"
-                                                                   FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Center"/>
-                                                    </StackPanel>
-                                                    <StackPanel Margin="12,0" MinWidth="58">
-                                                        <TextBlock Text="RÉSULTAT" Style="{StaticResource SectionLabel}" HorizontalAlignment="Center"/>
-                                                        <TextBlock Text="{Binding ResultText}"
-                                                                   Foreground="{Binding ResultHex, Converter={StaticResource HexBrush}}"
-                                                                   FontSize="15" FontWeight="Bold" HorizontalAlignment="Center"/>
-                                                    </StackPanel>
-                                                </UniformGrid>
-                                            </Grid>
-                                        </Border>
-
-                                         <!-- Stats avancées -->
-                                         <UniformGrid Columns="5" Margin="0,0,0,14">
-                                             <Border Background="{StaticResource BgCardBrush}"
-                                                     BorderBrush="{StaticResource BorderBrush}"
-                                                     BorderThickness="1"
-                                                     CornerRadius="10"
-                                                     Padding="12"
-                                                     Margin="0,0,6,0">
-                                                 <StackPanel>
-                                                     <TextBlock Text="PARTICIPATION" Style="{StaticResource SectionLabel}"/>
-                                                     <TextBlock Text="{Binding KillParticipationDisplay}"
-                                                                Foreground="{StaticResource TextPrimaryBrush}"
-                                                                FontSize="20" FontWeight="SemiBold" Margin="0,6,0,0"/>
-                                                     <TextBlock Foreground="{StaticResource TextMutedBrush}" FontSize="11">
-                                                         <Run Text="Sur "/>
-                                                         <Run Text="{Binding TeamKillsDisplay}"/>
-                                                         <Run Text=" kills équipe"/>
-                                                     </TextBlock>
-                                                 </StackPanel>
-                                             </Border>
-
-                                             <Border Background="{StaticResource BgCardBrush}"
-                                                     BorderBrush="{StaticResource BorderBrush}"
-                                                     BorderThickness="1"
-                                                     CornerRadius="10"
-                                                     Padding="12"
-                                                     Margin="3,0,6,0">
-                                                 <StackPanel>
-                                                     <TextBlock Text="DÉGÂTS / MIN" Style="{StaticResource SectionLabel}"/>
-                                                     <TextBlock Text="{Binding DamagePerMinDisplay}"
-                                                                Foreground="{StaticResource TextPrimaryBrush}"
-                                                                FontSize="20" FontWeight="SemiBold" Margin="0,6,0,0"/>
-                                                     <TextBlock Text="{Binding DamageRankDisplay, StringFormat={}Rang {0} dégâts}"
-                                                                Foreground="{StaticResource TextMutedBrush}" FontSize="11"/>
-                                                 </StackPanel>
-                                             </Border>
-
-                                             <Border Background="{StaticResource BgCardBrush}"
-                                                     BorderBrush="{StaticResource BorderBrush}"
-                                                     BorderThickness="1"
-                                                     CornerRadius="10"
-                                                     Padding="12"
-                                                     Margin="3,0,6,0">
-                                                 <StackPanel>
-                                                     <TextBlock Text="GOLD / MIN" Style="{StaticResource SectionLabel}"/>
-                                                     <TextBlock Text="{Binding GoldPerMinDisplay}"
-                                                                Foreground="{StaticResource TextPrimaryBrush}"
-                                                                FontSize="20" FontWeight="SemiBold" Margin="0,6,0,0"/>
-                                                     <TextBlock Text="{Binding GoldRankDisplay, StringFormat={}Rang {0} gold}"
-                                                                Foreground="{StaticResource TextMutedBrush}" FontSize="11"/>
-                                                 </StackPanel>
-                                             </Border>
-
-                                             <Border Background="{StaticResource BgCardBrush}"
-                                                     BorderBrush="{StaticResource BorderBrush}"
-                                                     BorderThickness="1"
-                                                     CornerRadius="10"
-                                                     Padding="12"
-                                                     Margin="3,0,6,0">
-                                                 <StackPanel>
-                                                     <TextBlock Text="VISION / MIN" Style="{StaticResource SectionLabel}"/>
-                                                     <TextBlock Text="{Binding VisionPerMinDisplay}"
-                                                                Foreground="{StaticResource TextPrimaryBrush}"
-                                                                FontSize="20" FontWeight="SemiBold" Margin="0,6,0,0"/>
-                                                     <TextBlock Text="{Binding VisionRankDisplay, StringFormat={}Rang {0} vision}"
-                                                                Foreground="{StaticResource TextMutedBrush}" FontSize="11"/>
-                                                 </StackPanel>
-                                             </Border>
-
-                                             <Border Background="{StaticResource BgCardBrush}"
-                                                     BorderBrush="{StaticResource BorderBrush}"
-                                                     BorderThickness="1"
-                                                     CornerRadius="10"
-                                                     Padding="12"
-                                                     Margin="3,0,0,0">
-                                                 <StackPanel>
-                                                     <TextBlock Text="KILLS ÉQUIPES" Style="{StaticResource SectionLabel}"/>
-                                                     <TextBlock Foreground="{StaticResource TextPrimaryBrush}"
-                                                                FontSize="20" FontWeight="SemiBold" Margin="0,6,0,0">
-                                                         <Run Text="{Binding TeamKillsDisplay}" Foreground="#3FB950"/>
-                                                         <Run Text=" - " Foreground="{StaticResource TextMutedBrush}"/>
-                                                         <Run Text="{Binding EnemyTeamKillsDisplay}" Foreground="#F85149"/>
-                                                     </TextBlock>
-                                                     <TextBlock Text="Votre équipe / adversaires"
-                                                                Foreground="{StaticResource TextMutedBrush}" FontSize="11"/>
-                                                 </StackPanel>
-                                             </Border>
-                                         </UniformGrid>
-
-                                        <!-- Highlights -->
-                                        <UniformGrid Columns="3" Margin="0,0,0,14">
-                                            <Border Background="{StaticResource BgCardBrush}" BorderBrush="{StaticResource BorderBrush}"
-                                                    BorderThickness="1" CornerRadius="10" Padding="12" Margin="0,0,8,0">
+                                            <!-- Équipe gagnante -->
+                                            <Border Grid.Column="0" CornerRadius="12,35,35,12" Padding="12,10">
+                                                <Border.Background>
+                                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                        <GradientStop Color="#163642" Offset="0"/>
+                                                        <GradientStop Color="#111C30" Offset="0.85"/>
+                                                    </LinearGradientBrush>
+                                                </Border.Background>
                                                 <StackPanel>
-                                                    <TextBlock Text="🔥 Plus gros dégâts" Style="{StaticResource SectionLabel}"/>
-                                                    <TextBlock Text="{Binding BestDamagePlayer.DisplayName}" Foreground="{StaticResource TextPrimaryBrush}"
-                                                               FontSize="13" FontWeight="SemiBold" Margin="0,6,0,0"/>
-                                                    <TextBlock Text="{Binding BestDamagePlayer.TotalDamage, StringFormat={}{0:N0} dégâts}"
-                                                               Foreground="{StaticResource TextMutedBrush}" FontSize="12"/>
-                                                </StackPanel>
-                                            </Border>
-                                            <Border Background="{StaticResource BgCardBrush}" BorderBrush="{StaticResource BorderBrush}"
-                                                    BorderThickness="1" CornerRadius="10" Padding="12" Margin="4,0,4,0">
-                                                <StackPanel>
-                                                    <TextBlock Text="⭐ Meilleur KDA" Style="{StaticResource SectionLabel}"/>
-                                                    <TextBlock Text="{Binding BestKdaPlayer.DisplayName}" Foreground="{StaticResource TextPrimaryBrush}"
-                                                               FontSize="13" FontWeight="SemiBold" Margin="0,6,0,0"/>
-                                                    <TextBlock Foreground="{StaticResource TextMutedBrush}" FontSize="12">
-                                                        <Run Text="{Binding BestKdaPlayer.KDA, Converter={StaticResource DoubleFmt}}"/>
-                                                        <Run Text=" KDA"/>
-                                                    </TextBlock>
-                                                </StackPanel>
-                                            </Border>
-                                            <Border Background="{StaticResource BgCardBrush}" BorderBrush="{StaticResource BorderBrush}"
-                                                    BorderThickness="1" CornerRadius="10" Padding="12" Margin="8,0,0,0">
-                                                <StackPanel>
-                                                    <TextBlock Text="👁 Meilleure vision" Style="{StaticResource SectionLabel}"/>
-                                                    <TextBlock Text="{Binding BestVisionPlayer.DisplayName}" Foreground="{StaticResource TextPrimaryBrush}"
-                                                               FontSize="13" FontWeight="SemiBold" Margin="0,6,0,0"/>
-                                                    <TextBlock Text="{Binding BestVisionPlayer.VisionScore, StringFormat={}{0} score de vision}"
-                                                               Foreground="{StaticResource TextMutedBrush}" FontSize="12"/>
-                                                </StackPanel>
-                                            </Border>
-                                        </UniformGrid>
-
-                                        <!-- Participants -->
-                                        <Border Background="{StaticResource BgCardBrush}"
-                                                BorderBrush="{StaticResource BorderBrush}"
-                                                BorderThickness="1"
-                                                CornerRadius="10"
-                                                Padding="0">
-                                            <DockPanel>
-                                                <Border DockPanel.Dock="Top" Padding="12,9"
-                                                        BorderBrush="{StaticResource BorderBrush}"
-                                                        BorderThickness="0,0,0,1">
-                                                    <TextBlock Text="JOUEURS DE LA PARTIE"
-                                                               Style="{StaticResource SectionLabel}"/>
-                                                </Border>
-                                                <ItemsControl ItemsSource="{Binding Participants}">
-                                                    <ItemsControl.ItemTemplate>
-                                                        <DataTemplate>
-                                                            <Border BorderBrush="{StaticResource BorderBrush}"
-                                                                    BorderThickness="0,0,0,1"
-                                                                    Padding="10,7">
-                                                                <Grid>
+                                                    <StackPanel Orientation="Horizontal" Margin="3,0,0,7">
+                                                        <TextBlock Text="⚔" Foreground="#3FB950" FontSize="17" Margin="0,0,9,0"/>
+                                                        <TextBlock Text="VICTOIRE" Foreground="#3FB950" FontSize="17" FontWeight="Bold"/>
+                                                    </StackPanel>
+                                                    <Border Height="1" Background="#285061" Margin="0,0,0,3"/>
+                                                    <ItemsControl ItemsSource="{Binding WinningTeam}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Grid Height="52" Margin="0,1">
                                                                     <Grid.ColumnDefinitions>
-                                                                        <ColumnDefinition Width="34"/>
+                                                                        <ColumnDefinition Width="43"/>
+                                                                        <ColumnDefinition Width="24"/>
                                                                         <ColumnDefinition Width="*"/>
-                                                                        <ColumnDefinition Width="72"/>
-                                                                        <ColumnDefinition Width="54"/>
-                                                                        <ColumnDefinition Width="78"/>
-                                                                        <ColumnDefinition Width="54"/>
-                                                                        <ColumnDefinition Width="66"/>
+                                                                        <ColumnDefinition Width="76"/>
+                                                                        <ColumnDefinition Width="80"/>
+                                                                        <ColumnDefinition Width="38"/>
                                                                     </Grid.ColumnDefinitions>
-
-                                                                    <Border Grid.Column="0" Width="28" Height="28" CornerRadius="4" ClipToBounds="True">
-                                                                        <Image Source="{Binding ChampionName, Converter={StaticResource ChampImg}}"/>
+                                                                    <Border Width="39" Height="39" CornerRadius="5" VerticalAlignment="Center" ClipToBounds="True">
+                                                                        <Image Source="{Binding ChampionName, Converter={StaticResource ChampImg}}" Stretch="UniformToFill"/>
                                                                     </Border>
-                                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="8,0,0,0">
-                                                                        <TextBlock Text="{Binding DisplayName}" Foreground="{StaticResource TextPrimaryBrush}"
-                                                                                   FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                                                                        <TextBlock Text="{Binding ChampionName}" Foreground="{StaticResource TextMutedBrush}"
-                                                                                   FontSize="10"/>
+                                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,4,0">
+                                                                        <Image Width="18" Height="18" Margin="0,0,0,2" Source="{Binding Summoner1Id, Converter={StaticResource SpellImg}}"/>
+                                                                        <Image Width="18" Height="18" Source="{Binding Summoner2Id, Converter={StaticResource SpellImg}}"/>
                                                                     </StackPanel>
-                                                                    <TextBlock Grid.Column="2" Text="{Binding RankDisplay}" Foreground="{StaticResource TextMutedBrush}"
-                                                                               FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                                                    <TextBlock Grid.Column="3" Text="{Binding CS, StringFormat={}{0} CS}" Foreground="{StaticResource TextMutedBrush}"
-                                                                               FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                                                    <TextBlock Grid.Column="4" Foreground="{StaticResource TextSecondaryBrush}"
-                                                                               FontSize="12" VerticalAlignment="Center" HorizontalAlignment="Center">
-                                                                        <Run Text="{Binding Kills}" Foreground="#3FB950"/>
-                                                                        <Run Text=" / " Foreground="{StaticResource TextMutedBrush}"/>
-                                                                        <Run Text="{Binding Deaths}" Foreground="#F85149"/>
-                                                                        <Run Text=" / " Foreground="{StaticResource TextMutedBrush}"/>
-                                                                        <Run Text="{Binding Assists}" Foreground="#58A6FF"/>
-                                                                    </TextBlock>
-                                                                    <TextBlock Grid.Column="5" Text="{Binding VisionScore}" Foreground="{StaticResource TextMutedBrush}"
-                                                                               FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                                                    <TextBlock Grid.Column="6" Text="{Binding TotalDamage, StringFormat={}{0:N0}}" Foreground="{StaticResource TextMutedBrush}"
-                                                                               FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                                                                    <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="3,0,4,0">
+                                                                        <TextBlock Text="{Binding DisplayName}" Foreground="#EDF3FA" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                                                        <TextBlock Text="{Binding Position}" Foreground="#8291AA" FontSize="9" Margin="0,2,0,0"/>
+                                                                    </StackPanel>
+                                                                    <StackPanel Grid.Column="3" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                                        <TextBlock FontSize="11" HorizontalAlignment="Center">
+                                                                            <Run Text="{Binding Kills}" Foreground="#3FB950"/><Run Text=" / " Foreground="#718099"/><Run Text="{Binding Deaths}" Foreground="#F85169"/><Run Text=" / " Foreground="#718099"/><Run Text="{Binding Assists}" Foreground="#55A4FF"/>
+                                                                        </TextBlock>
+                                                                        <TextBlock Text="{Binding KDA, StringFormat={}{0:F2} KDA}" Foreground="#93A1B8" FontSize="9" HorizontalAlignment="Center"/>
+                                                                    </StackPanel>
+                                                                    <StackPanel Grid.Column="4" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                                        <TextBlock Text="{Binding CS, StringFormat={}{0} CS}" Foreground="#CFD9E8" FontSize="11" HorizontalAlignment="Center"/>
+                                                                        <TextBlock Text="{Binding CSPerMinDisplay}" Foreground="#8291AA" FontSize="9" HorizontalAlignment="Center"/>
+                                                                    </StackPanel>
+                                                                    <Grid Grid.Column="5" Width="33" Height="33" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                                                        <Ellipse Stroke="#3B82F6" StrokeThickness="1.5"/>
+                                                                        <TextBlock Text="{Binding PerformanceScore}" Foreground="#E6EDF3" FontSize="10" FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                                                    </Grid>
                                                                 </Grid>
-                                                            </Border>
-                                                        </DataTemplate>
-                                                    </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
-                                            </DockPanel>
-                                        </Border>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </StackPanel>
+                                            </Border>
+
+                                            <!-- Score central -->
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Top" HorizontalAlignment="Center" Margin="0,12,0,0">
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                    <TextBlock Text="{Binding WinningTeamKills}" Foreground="#3FB950" FontSize="31" FontWeight="Bold"/>
+                                                    <TextBlock Text="VS" Foreground="#8D9BB0" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" Margin="18,0"/>
+                                                    <TextBlock Text="{Binding LosingTeamKills}" Foreground="#F85169" FontSize="31" FontWeight="Bold"/>
+                                                </StackPanel>
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,19,0,0">
+                                                    <TextBlock Text="{Binding WinningTeamGold, StringFormat={}{0:N0}}" Foreground="#3FB950" FontSize="13" FontWeight="SemiBold"/>
+                                                    <TextBlock Text="  GOLD  " Foreground="#8D9BB0" FontSize="10" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding LosingTeamGold, StringFormat={}{0:N0}}" Foreground="#F85169" FontSize="13" FontWeight="SemiBold"/>
+                                                </StackPanel>
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,16,0,0">
+                                                    <TextBlock Text="{Binding WinningTowers}" Foreground="#3FB950" FontSize="13" FontWeight="Bold"/>
+                                                    <TextBlock Text="  TOURS  " Foreground="#8D9BB0" FontSize="10" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding LosingTowers}" Foreground="#F85169" FontSize="13" FontWeight="Bold"/>
+                                                </StackPanel>
+                                            </StackPanel>
+
+                                            <!-- Équipe perdante -->
+                                            <Border Grid.Column="2" CornerRadius="35,12,12,35" Padding="12,10">
+                                                <Border.Background>
+                                                    <LinearGradientBrush StartPoint="1,0" EndPoint="0,1">
+                                                        <GradientStop Color="#42203B" Offset="0"/>
+                                                        <GradientStop Color="#161B30" Offset="0.86"/>
+                                                    </LinearGradientBrush>
+                                                </Border.Background>
+                                                <StackPanel>
+                                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,3,7">
+                                                        <TextBlock Text="DÉFAITE" Foreground="#F85169" FontSize="17" FontWeight="Bold"/>
+                                                        <TextBlock Text=" ⚔" Foreground="#F85169" FontSize="17" Margin="9,0,0,0"/>
+                                                    </StackPanel>
+                                                    <Border Height="1" Background="#5A2D4D" Margin="0,0,0,3"/>
+                                                    <ItemsControl ItemsSource="{Binding LosingTeam}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Grid Height="52" Margin="0,1">
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="38"/>
+                                                                        <ColumnDefinition Width="80"/>
+                                                                        <ColumnDefinition Width="76"/>
+                                                                        <ColumnDefinition Width="*"/>
+                                                                        <ColumnDefinition Width="24"/>
+                                                                        <ColumnDefinition Width="43"/>
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <Grid Grid.Column="0" Width="33" Height="33" VerticalAlignment="Center">
+                                                                        <Ellipse Stroke="#4E93F0" StrokeThickness="1.5"/>
+                                                                        <TextBlock Text="{Binding PerformanceScore}" Foreground="#E6EDF3" FontSize="10" FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                                                    </Grid>
+                                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                                        <TextBlock Text="{Binding CS, StringFormat={}{0} CS}" Foreground="#CFD9E8" FontSize="11" HorizontalAlignment="Center"/>
+                                                                        <TextBlock Text="{Binding CSPerMinDisplay}" Foreground="#8291AA" FontSize="9" HorizontalAlignment="Center"/>
+                                                                    </StackPanel>
+                                                                    <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                                        <TextBlock FontSize="11" HorizontalAlignment="Center">
+                                                                            <Run Text="{Binding Kills}" Foreground="#3FB950"/><Run Text=" / " Foreground="#718099"/><Run Text="{Binding Deaths}" Foreground="#F85169"/><Run Text=" / " Foreground="#718099"/><Run Text="{Binding Assists}" Foreground="#55A4FF"/>
+                                                                        </TextBlock>
+                                                                        <TextBlock Text="{Binding KDA, StringFormat={}{0:F2} KDA}" Foreground="#93A1B8" FontSize="9" HorizontalAlignment="Center"/>
+                                                                    </StackPanel>
+                                                                    <StackPanel Grid.Column="3" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="4,0,3,0">
+                                                                        <TextBlock Text="{Binding DisplayName}" Foreground="#EDF3FA" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" HorizontalAlignment="Right"/>
+                                                                        <TextBlock Text="{Binding Position}" Foreground="#8291AA" FontSize="9" Margin="0,2,0,0" HorizontalAlignment="Right"/>
+                                                                    </StackPanel>
+                                                                    <StackPanel Grid.Column="4" VerticalAlignment="Center" Margin="0,0,4,0">
+                                                                        <Image Width="18" Height="18" Margin="0,0,0,2" Source="{Binding Summoner1Id, Converter={StaticResource SpellImg}}"/>
+                                                                        <Image Width="18" Height="18" Source="{Binding Summoner2Id, Converter={StaticResource SpellImg}}"/>
+                                                                    </StackPanel>
+                                                                    <Border Grid.Column="5" Width="39" Height="39" CornerRadius="5" VerticalAlignment="Center" HorizontalAlignment="Right" ClipToBounds="True">
+                                                                        <Image Source="{Binding ChampionName, Converter={StaticResource ChampImg}}" Stretch="UniformToFill"/>
+                                                                    </Border>
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </StackPanel>
+                                            </Border>
+                                        </Grid>
+
+                                        <!-- Cartes de synthèse : le bloc Résumés des équipes est volontairement absent -->
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="1.35*"/>
+                                                <ColumnDefinition Width="0.78*"/>
+                                                <ColumnDefinition Width="1.1*"/>
+                                                <ColumnDefinition Width="1.2*"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <Border Grid.Column="0" Style="{StaticResource CompactCardStyle}" Margin="0,0,8,0">
+                                                <StackPanel>
+                                                    <TextBlock Text="DÉGÂTS TOTAUX" Style="{StaticResource SectionLabel}"/>
+                                                    <Grid Margin="0,13,0,8">
+                                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Text="{Binding WinningTeamDamage, StringFormat={}{0:N0}}" Foreground="#3FB950" FontWeight="Bold" FontSize="14"/>
+                                                            <TextBlock Text="{Binding WinningDamagePercentDisplay}" Foreground="#77C98A" FontSize="10" VerticalAlignment="Bottom" Margin="5,0,0,1"/>
+                                                        </StackPanel>
+                                                        <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                                                            <TextBlock Text="{Binding LosingDamagePercentDisplay}" Foreground="#F28A9A" FontSize="10" VerticalAlignment="Bottom" Margin="0,0,5,1"/>
+                                                            <TextBlock Text="{Binding LosingTeamDamage, StringFormat={}{0:N0}}" Foreground="#F85169" FontWeight="Bold" FontSize="14"/>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                    <Border Height="8" CornerRadius="4" ClipToBounds="True" Background="#F85169">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="{Binding WinningDamagePercent, Converter={StaticResource PercentToGridLength}}"/>
+                                                                <ColumnDefinition Width="{Binding LosingDamagePercent, Converter={StaticResource PercentToGridLength}}"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <Border Grid.Column="0" Background="#3FB950"/>
+                                                        </Grid>
+                                                    </Border>
+                                                </StackPanel>
+                                            </Border>
+
+                                            <Border Grid.Column="1" Style="{StaticResource CompactCardStyle}" Margin="0,0,8,0">
+                                                <StackPanel>
+                                                    <TextBlock Text="OBJECTIFS" Style="{StaticResource SectionLabel}"/>
+                                                    <Grid Margin="0,9,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                                        <TextBlock Text="{Binding WinningDragons}" Foreground="#3FB950" FontWeight="Bold" HorizontalAlignment="Right"/><TextBlock Grid.Column="1" Text="  DRAGONS  " Foreground="#A7B0BC" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Center"/><TextBlock Grid.Column="2" Text="{Binding LosingDragons}" Foreground="#F85169" FontWeight="Bold"/>
+                                                    </Grid>
+                                                    <Grid Margin="0,4,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                                        <TextBlock Text="{Binding WinningBarons}" Foreground="#3FB950" FontWeight="Bold" HorizontalAlignment="Right"/><TextBlock Grid.Column="1" Text="  BARONS  " Foreground="#A7B0BC" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Center"/><TextBlock Grid.Column="2" Text="{Binding LosingBarons}" Foreground="#F85169" FontWeight="Bold"/>
+                                                    </Grid>
+                                                    <Grid Margin="0,4,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                                        <TextBlock Text="{Binding WinningTowers}" Foreground="#3FB950" FontWeight="Bold" HorizontalAlignment="Right"/><TextBlock Grid.Column="1" Text="  TOURS  " Foreground="#A7B0BC" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Center"/><TextBlock Grid.Column="2" Text="{Binding LosingTowers}" Foreground="#F85169" FontWeight="Bold"/>
+                                                    </Grid>
+                                                </StackPanel>
+                                            </Border>
+
+                                            <Border Grid.Column="2" Style="{StaticResource CompactCardStyle}" Margin="0,0,8,0">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="58"/><ColumnDefinition Width="*"/><ColumnDefinition Width="42"/></Grid.ColumnDefinitions>
+                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                        <TextBlock Text="MVP DE LA PARTIE" Style="{StaticResource SectionLabel}"/>
+                                                        <TextBlock Text="{Binding MvpPlayer.DisplayName}" Foreground="#E6EDF3" FontSize="12" FontWeight="SemiBold" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"/>
+                                                        <TextBlock Text="{Binding MvpPlayer.KdaLine}" Foreground="#A7B0BC" FontSize="11"/>
+                                                    </StackPanel>
+                                                    <Border Grid.Column="0" Width="51" Height="51" CornerRadius="6" VerticalAlignment="Center" ClipToBounds="True">
+                                                        <Image Source="{Binding MvpPlayer.ChampionName, Converter={StaticResource ChampImg}}" Stretch="UniformToFill"/>
+                                                    </Border>
+                                                    <Grid Grid.Column="2" Width="36" Height="36" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                                        <Ellipse Stroke="#F0C040" StrokeThickness="2"/><TextBlock Text="{Binding MvpPlayer.PerformanceScore}" Foreground="#F0C040" FontSize="10" FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                                    </Grid>
+                                                </Grid>
+                                            </Border>
+
+                                            <Border Grid.Column="3" Style="{StaticResource CompactCardStyle}">
+                                                <StackPanel>
+                                                    <TextBlock Text="BANS" Style="{StaticResource SectionLabel}" Margin="0,0,0,8"/>
+                                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                        <ItemsControl ItemsSource="{Binding WinningBans}">
+                                                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                                            <ItemsControl.ItemTemplate><DataTemplate><Border Width="27" Height="27" Margin="0,0,3,0" CornerRadius="3" Opacity="0.58" ClipToBounds="True"><Image Source="{Binding Converter={StaticResource ChampIdImg}}" Stretch="UniformToFill"/></Border></DataTemplate></ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                        <Border Width="1" Height="27" Background="#43506A" Margin="3,0"/>
+                                                        <ItemsControl ItemsSource="{Binding LosingBans}">
+                                                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                                            <ItemsControl.ItemTemplate><DataTemplate><Border Width="27" Height="27" Margin="3,0,0,0" CornerRadius="3" Opacity="0.58" ClipToBounds="True"><Image Source="{Binding Converter={StaticResource ChampIdImg}}" Stretch="UniformToFill"/></Border></DataTemplate></ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </Border>
+                                        </Grid>
                                     </StackPanel>
                                 </ScrollViewer>
                             </Grid>

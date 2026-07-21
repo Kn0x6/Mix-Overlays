@@ -31,16 +31,8 @@ namespace MixOverlays.Views
 
                 _vm.PropertyChanged += (s, e) =>
                 {
-                    if (e.PropertyName == nameof(MainViewModel.SelectedMatch))
-                    {
-                        if (_vm.SelectedMatch != null)
-                        {
-                            MatchDetailPanel.Visibility = Visibility.Visible;
-                            _matchDetailOpenTime = DateTime.UtcNow;
-                        }
-                        else
-                            MatchDetailPanel.Visibility = Visibility.Collapsed;
-                    }
+                    // Le détail est maintenant piloté directement par le binding du
+                    // nouveau panneau de résumé dans MainWindow.xaml.
 
                     if (e.PropertyName == nameof(MainViewModel.IsLiveSessionAvailable))
                     {

@@ -612,6 +612,23 @@ summary.AllParticipants = match.info.participants
                             Summoner2Id  = p.summoner2Id
                         }).ToList();
 
+                    summary.Teams = match.info.teams.Select(team => new MatchTeamSummary
+                    {
+                        Win             = team.win,
+                        TeamId          = team.teamId,
+                        BaronKills      = team.objectives.baron.kills,
+                        DragonKills     = team.objectives.dragon.kills,
+                        HordeKills      = team.objectives.horde.kills,
+                        InhibitorKills  = team.objectives.inhibitor.kills,
+                        RiftHeraldKills = team.objectives.riftHerald.kills,
+                        TowerKills      = team.objectives.tower.kills,
+                        BannedChampionIds = team.bans
+                            .OrderBy(ban => ban.pickTurn)
+                            .Select(ban => ban.championId)
+                            .Where(championId => championId > 0)
+                            .ToList()
+                    }).ToList();
+
                     summaries.Add((index, summary));
                 }
                 catch (Exception ex)

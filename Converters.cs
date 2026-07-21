@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Windows;
@@ -10,17 +11,39 @@ using MixOverlays.Services;
 
 namespace MixOverlays.Converters
 {
+    /// <summary>Convertit un pourcentage en largeur étoilée pour une barre comparative WPF.</summary>
+    public sealed class PercentageToGridLengthConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            var percentage = value is double number ? number : 0d;
+            return new GridLength(Math.Max(0.01, percentage), GridUnitType.Star);
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+            => Binding.DoNothing;
+    }
+
     // ─── Bool / Visibility ────────────────────────────────────────────────────
     // ─── Shared image cache (prevents stack overflow from repeated BitmapImage creation) ──
     internal static class ImageCache
     {
-        public static readonly Dictionary<string, BitmapImage> Shared = new();
+        private const int MaxEntries = 300;
+        public static readonly ConcurrentDictionary<string, BitmapImage> Shared = new();
+
+        public static BitmapImage AddOrGet(string url, BitmapImage image)
+        {
+            if (Shared.Count >= MaxEntries)
+                Shared.Clear();
+
+            return Shared.GetOrAdd(url, image);
+        }
     }
 
     // ─── Safe BitmapImage factory (prevents stack overflow from repeated BitmapImage creation) ──
     internal static class SafeBitmapImageFactory
     {
-        private static readonly Dictionary<string, BitmapImage> _cache = ImageCache.Shared;
+        private static readonly ConcurrentDictionary<string, BitmapImage> _cache = ImageCache.Shared;
 
         public static BitmapImage? Create(string? url)
         {
@@ -38,8 +61,7 @@ namespace MixOverlays.Converters
                 bi.EndInit();
                 // Ne pas appeler Freeze() pour éviter les exceptions InvalidOperationException
                 // bi.Freeze(); // thread-safe, libère des ressources WPF
-                _cache[url] = bi;
-                return bi;
+                return ImageCache.AddOrGet(url, bi);
             }
             catch (Exception ex)
             {
@@ -257,7 +279,7 @@ namespace MixOverlays.Converters
 
     public class UrlToImageSourceConverter : IValueConverter
     {
-        private static readonly Dictionary<string, BitmapImage> _cache
+        private static readonly ConcurrentDictionary<string, BitmapImage> _cache
             = ImageCache.Shared;
 
         public object? Convert(object value, Type t, object p, CultureInfo c)
@@ -277,8 +299,7 @@ namespace MixOverlays.Converters
                 bi.EndInit();
                 // Ne pas appeler Freeze() pour éviter les exceptions InvalidOperationException
                 // bi.Freeze(); // thread-safe, libère des ressources WPF
-                _cache[url] = bi;
-                return bi;
+                return ImageCache.AddOrGet(url, bi);
             }
             catch (Exception ex)
             {
@@ -294,7 +315,7 @@ namespace MixOverlays.Converters
 
     public class UrlToImageSourceWithFallbackConverter : IValueConverter
     {
-        private static readonly Dictionary<string, BitmapImage> _cache
+        private static readonly ConcurrentDictionary<string, BitmapImage> _cache
             = ImageCache.Shared;
 
         public object? Convert(object value, Type t, object p, CultureInfo c)
@@ -316,8 +337,7 @@ namespace MixOverlays.Converters
                 bi.EndInit();
                 // Ne pas appeler Freeze() pour éviter les exceptions InvalidOperationException
                 // bi.Freeze();
-                _cache[url] = bi;
-                return bi;
+                return ImageCache.AddOrGet(url, bi);
             }
             catch (Exception ex)
             {

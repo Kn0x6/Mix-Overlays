@@ -719,7 +719,6 @@ namespace MixOverlays.ViewModels
             if (cached != null && cached.AllParticipants.Count > 0)
             {
                 BuildMatchDetail(detail, cached);
-                _ = LoadParticipantRanksAsync(detail);
             }
             else
             {
@@ -755,14 +754,30 @@ namespace MixOverlays.ViewModels
                             TotalDamage  = p.totalDamageDealtToChampions,
                             GoldEarned   = p.goldEarned,
                             VisionScore  = p.visionScore,
+                            GameDuration = RiotApiService.ResolveGameDuration(match.info),
                             Items        = new[] { p.item0, p.item1, p.item2, p.item3, p.item4, p.item5, p.item6 },
                             Summoner1Id  = p.summoner1Id,
                             Summoner2Id  = p.summoner2Id
+                        }).ToList(),
+                        Teams = match.info.teams.Select(team => new MatchTeamSummary
+                        {
+                            Win             = team.win,
+                            TeamId          = team.teamId,
+                            BaronKills      = team.objectives.baron.kills,
+                            DragonKills     = team.objectives.dragon.kills,
+                            HordeKills      = team.objectives.horde.kills,
+                            InhibitorKills  = team.objectives.inhibitor.kills,
+                            RiftHeraldKills = team.objectives.riftHerald.kills,
+                            TowerKills      = team.objectives.tower.kills,
+                            BannedChampionIds = team.bans
+                                .OrderBy(ban => ban.pickTurn)
+                                .Select(ban => ban.championId)
+                                .Where(championId => championId > 0)
+                                .ToList()
                         }).ToList()
                     };
 
                     BuildMatchDetail(detail, tempSummary);
-                    _ = LoadParticipantRanksAsync(detail);
                 }
                 catch (Exception ex) { detail.ErrorMessage = ex.Message; }
                 finally { detail.IsLoading = false; }
@@ -808,6 +823,38 @@ var participants = summary.AllParticipants.Select(p => new MatchParticipantViewM
 
             detail.RedTeam.Clear();
             foreach (var player in redTeam) detail.RedTeam.Add(player);
+
+            var winningTeam = blueTeam;
+            var losingTeam = redTeam;
+            var winningSummary = summary.Teams.FirstOrDefault(team => team.Win);
+            var losingSummary = summary.Teams.FirstOrDefault(team => !team.Win);
+
+            detail.WinningTeamKills = winningTeam.Sum(player => player.Kills);
+            detail.LosingTeamKills = losingTeam.Sum(player => player.Kills);
+            detail.WinningTeamGold = winningTeam.Sum(player => player.GoldEarned);
+            detail.LosingTeamGold = losingTeam.Sum(player => player.GoldEarned);
+            detail.WinningTeamDamage = winningTeam.Sum(player => player.TotalDamage);
+            detail.LosingTeamDamage = losingTeam.Sum(player => player.TotalDamage);
+            var totalDamage = detail.WinningTeamDamage + detail.LosingTeamDamage;
+            detail.WinningDamagePercent = totalDamage > 0
+                ? detail.WinningTeamDamage * 100.0 / totalDamage
+                : 50;
+
+            detail.WinningDragons = winningSummary?.DragonKills ?? 0;
+            detail.LosingDragons = losingSummary?.DragonKills ?? 0;
+            detail.WinningBarons = winningSummary?.BaronKills ?? 0;
+            detail.LosingBarons = losingSummary?.BaronKills ?? 0;
+            detail.WinningTowers = winningSummary?.TowerKills ?? 0;
+            detail.LosingTowers = losingSummary?.TowerKills ?? 0;
+            detail.WinningInhibitors = winningSummary?.InhibitorKills ?? 0;
+            detail.LosingInhibitors = losingSummary?.InhibitorKills ?? 0;
+            detail.WinningBans = winningSummary?.BannedChampionIds ?? new List<int>();
+            detail.LosingBans = losingSummary?.BannedChampionIds ?? new List<int>();
+            detail.MvpPlayer = participants
+                .OrderByDescending(player => player.PerformanceScore)
+                .ThenByDescending(player => player.KDA)
+                .ThenByDescending(player => player.TotalDamage)
+                .FirstOrDefault();
 
             detail.Participants = new ObservableCollection<MatchParticipantViewModel>(participants);
             detail.PlayerRows   = BuildPlayerRows(blueTeam, redTeam);
@@ -1116,6 +1163,11 @@ if (me != null && !string.IsNullOrEmpty(me.gameName))
         public ObservableCollection<PlayerViewModel> EnemyTeam { get; } = new();
     }
 }
+
+
+
+
+
 
 
 

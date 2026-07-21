@@ -161,7 +161,40 @@ public class MatchInfo
     public string gameType       { get; set; } = string.Empty;
     public int queueId           { get; set; }
     public List<MatchParticipant> participants { get; set; } = new();
+    public List<MatchTeamDto> teams { get; set; } = new();
 }
+
+    /// <summary>Données d'équipe renvoyées par Match-V5.</summary>
+    public class MatchTeamDto
+    {
+        public bool win { get; set; }
+        public int teamId { get; set; }
+        public MatchObjectivesDto objectives { get; set; } = new();
+        public List<MatchBanDto> bans { get; set; } = new();
+    }
+
+    public class MatchObjectivesDto
+    {
+        public MatchObjectiveDto baron { get; set; } = new();
+        public MatchObjectiveDto champion { get; set; } = new();
+        public MatchObjectiveDto dragon { get; set; } = new();
+        public MatchObjectiveDto horde { get; set; } = new();
+        public MatchObjectiveDto inhibitor { get; set; } = new();
+        public MatchObjectiveDto riftHerald { get; set; } = new();
+        public MatchObjectiveDto tower { get; set; } = new();
+    }
+
+    public class MatchObjectiveDto
+    {
+        public bool first { get; set; }
+        public int kills { get; set; }
+    }
+
+    public class MatchBanDto
+    {
+        public int championId { get; set; }
+        public int pickTurn { get; set; }
+    }
 
     public class MatchParticipant
     {
@@ -305,6 +338,7 @@ public partial class MatchSummary
 
         // Participants complets pour le détail de partie (stockés localement)
         public List<MatchParticipantSummary> AllParticipants { get; set; } = new();
+        public List<MatchTeamSummary> Teams { get; set; } = new();
 
         // État d'expansion pour l'affichage "face-à-face"
         public bool IsExpanded { get; set; } = false;
@@ -332,6 +366,9 @@ public long GameDuration { get; set; }
         public int    Summoner1Id  { get; set; }
         public int    Summoner2Id  { get; set; }
         public double KDA          => Deaths == 0 ? Kills + Assists : (double)(Kills + Assists) / Deaths;
+        public double CSPerMin     => GameDuration > 0 ? CS / (GameDuration / 60.0) : 0;
+        public string KdaLine      => $"{Kills} / {Deaths} / {Assists}";
+        public string CSPerMinDisplay => $"{CSPerMin:F1} CS/min";
 
         public int PerformanceScore
         {
@@ -355,6 +392,19 @@ public long GameDuration { get; set; }
         public int    LeaguePoints { get; set; }
         public string RankDisplay  => string.IsNullOrEmpty(Tier) ? "Unranked" : $"{Tier} {Rank}";
         public string LpDisplay    => string.IsNullOrEmpty(Tier) ? string.Empty : $"{LeaguePoints} LP";
+    }
+
+    public class MatchTeamSummary
+    {
+        public bool Win { get; set; }
+        public int TeamId { get; set; }
+        public int BaronKills { get; set; }
+        public int DragonKills { get; set; }
+        public int HordeKills { get; set; }
+        public int InhibitorKills { get; set; }
+        public int RiftHeraldKills { get; set; }
+        public int TowerKills { get; set; }
+        public List<int> BannedChampionIds { get; set; } = new();
     }
 
     // ─── Spectator API Models ──────────────────────────────────────────────────

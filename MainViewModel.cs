@@ -254,6 +254,60 @@ namespace MixOverlays.ViewModels
         public System.Collections.ObjectModel.ObservableCollection<MatchParticipantViewModel> Participants { get; set; } = new();
         public System.Collections.ObjectModel.ObservableCollection<MatchParticipantViewModel> BlueTeam     { get; set; } = new();
         public System.Collections.ObjectModel.ObservableCollection<MatchParticipantViewModel> RedTeam      { get; set; } = new();
+        public System.Collections.Generic.IReadOnlyList<MatchParticipantViewModel> WinningTeam => BlueTeam;
+        public System.Collections.Generic.IReadOnlyList<MatchParticipantViewModel> LosingTeam => RedTeam;
+
+        private int _winningTeamKills;
+        public int WinningTeamKills { get => _winningTeamKills; set => SetField(ref _winningTeamKills, value); }
+        private int _losingTeamKills;
+        public int LosingTeamKills { get => _losingTeamKills; set => SetField(ref _losingTeamKills, value); }
+        private int _winningTeamGold;
+        public int WinningTeamGold { get => _winningTeamGold; set => SetField(ref _winningTeamGold, value); }
+        private int _losingTeamGold;
+        public int LosingTeamGold { get => _losingTeamGold; set => SetField(ref _losingTeamGold, value); }
+        private int _winningTeamDamage;
+        public int WinningTeamDamage { get => _winningTeamDamage; set => SetField(ref _winningTeamDamage, value); }
+        private int _losingTeamDamage;
+        public int LosingTeamDamage { get => _losingTeamDamage; set => SetField(ref _losingTeamDamage, value); }
+        private double _winningDamagePercent = 50;
+        public double WinningDamagePercent
+        {
+            get => _winningDamagePercent;
+            set
+            {
+                if (SetField(ref _winningDamagePercent, value))
+                {
+                    OnPropertyChanged(nameof(LosingDamagePercent));
+                    OnPropertyChanged(nameof(WinningDamagePercentDisplay));
+                    OnPropertyChanged(nameof(LosingDamagePercentDisplay));
+                }
+            }
+        }
+        public double LosingDamagePercent => 100 - WinningDamagePercent;
+        public string WinningDamagePercentDisplay => $"{WinningDamagePercent:F0}%";
+        public string LosingDamagePercentDisplay => $"{LosingDamagePercent:F0}%";
+        private int _winningDragons;
+        public int WinningDragons { get => _winningDragons; set => SetField(ref _winningDragons, value); }
+        private int _losingDragons;
+        public int LosingDragons { get => _losingDragons; set => SetField(ref _losingDragons, value); }
+        private int _winningBarons;
+        public int WinningBarons { get => _winningBarons; set => SetField(ref _winningBarons, value); }
+        private int _losingBarons;
+        public int LosingBarons { get => _losingBarons; set => SetField(ref _losingBarons, value); }
+        private int _winningTowers;
+        public int WinningTowers { get => _winningTowers; set => SetField(ref _winningTowers, value); }
+        private int _losingTowers;
+        public int LosingTowers { get => _losingTowers; set => SetField(ref _losingTowers, value); }
+        private int _winningInhibitors;
+        public int WinningInhibitors { get => _winningInhibitors; set => SetField(ref _winningInhibitors, value); }
+        private int _losingInhibitors;
+        public int LosingInhibitors { get => _losingInhibitors; set => SetField(ref _losingInhibitors, value); }
+        private System.Collections.Generic.IReadOnlyList<int> _winningBans = Array.Empty<int>();
+        public System.Collections.Generic.IReadOnlyList<int> WinningBans { get => _winningBans; set => SetField(ref _winningBans, value); }
+        private System.Collections.Generic.IReadOnlyList<int> _losingBans = Array.Empty<int>();
+        public System.Collections.Generic.IReadOnlyList<int> LosingBans { get => _losingBans; set => SetField(ref _losingBans, value); }
+        private MatchParticipantViewModel? _mvpPlayer;
+        public MatchParticipantViewModel? MvpPlayer { get => _mvpPlayer; set => SetField(ref _mvpPlayer, value); }
 
         private System.Collections.Generic.List<MatchPlayerRow> _playerRows = new();
         public System.Collections.Generic.List<MatchPlayerRow> PlayerRows
@@ -302,6 +356,8 @@ namespace MixOverlays.ViewModels
         public int    Summoner1Id  { get; set; }
         public int    Summoner2Id  { get; set; }
 public double KDA          => Deaths == 0 ? Kills + Assists : (double)(Kills + Assists) / Deaths;
+public string KdaLine      => $"{Kills} / {Deaths} / {Assists}";
+public string CSPerMinDisplay => GameDuration > 0 ? $"{CS / (GameDuration / 60.0):F1}/min" : "—";
 
 public long GameDuration { get; set; }
 

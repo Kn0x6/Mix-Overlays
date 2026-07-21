@@ -79,8 +79,8 @@ namespace MixOverlays.ViewModels
                     .ToList()
                 : new List<MatchParticipantSummary> { Player };
 
-            WinningTeam = Participants.Where(p => p.Win).ToList();
-            LosingTeam  = Participants.Where(p => !p.Win).ToList();
+            WinningTeam = OrderByPosition(Participants.Where(p => p.Win));
+            LosingTeam  = OrderByPosition(Participants.Where(p => !p.Win));
 
             TeamKills = Participants
                 .Where(p => p.Win == Player.Win)
@@ -99,6 +99,37 @@ namespace MixOverlays.ViewModels
         public IReadOnlyList<MatchParticipantSummary> LosingTeam { get; }
         public int TeamKills { get; }
         public int EnemyTeamKills { get; }
+
+        public int WinningTeamKills => WinningTeam.Sum(p => p.Kills);
+        public int LosingTeamKills => LosingTeam.Sum(p => p.Kills);
+        public int WinningTeamGold => WinningTeam.Sum(p => p.GoldEarned);
+        public int LosingTeamGold => LosingTeam.Sum(p => p.GoldEarned);
+        public int WinningTeamDamage => WinningTeam.Sum(p => p.TotalDamage);
+        public int LosingTeamDamage => LosingTeam.Sum(p => p.TotalDamage);
+        public int TotalTeamDamage => WinningTeamDamage + LosingTeamDamage;
+        public double WinningDamagePercent => TotalTeamDamage > 0 ? WinningTeamDamage * 100.0 / TotalTeamDamage : 50;
+        public double LosingDamagePercent => 100 - WinningDamagePercent;
+
+        public MatchParticipantSummary? MvpPlayer => Participants
+            .OrderByDescending(p => p.PerformanceScore)
+            .ThenByDescending(p => p.KDA)
+            .ThenByDescending(p => p.TotalDamage)
+            .FirstOrDefault();
+
+        private MatchTeamSummary? WinningTeamSummary => Match.Teams.FirstOrDefault(team => team.Win);
+        private MatchTeamSummary? LosingTeamSummary => Match.Teams.FirstOrDefault(team => !team.Win);
+        public int WinningDragons => WinningTeamSummary?.DragonKills ?? 0;
+        public int LosingDragons => LosingTeamSummary?.DragonKills ?? 0;
+        public int WinningBarons => WinningTeamSummary?.BaronKills ?? 0;
+        public int LosingBarons => LosingTeamSummary?.BaronKills ?? 0;
+        public int WinningTowers => WinningTeamSummary?.TowerKills ?? 0;
+        public int LosingTowers => LosingTeamSummary?.TowerKills ?? 0;
+        public int WinningInhibitors => WinningTeamSummary?.InhibitorKills ?? 0;
+        public int LosingInhibitors => LosingTeamSummary?.InhibitorKills ?? 0;
+        public int WinningHeralds => (WinningTeamSummary?.RiftHeraldKills ?? 0) + (WinningTeamSummary?.HordeKills ?? 0);
+        public int LosingHeralds => (LosingTeamSummary?.RiftHeraldKills ?? 0) + (LosingTeamSummary?.HordeKills ?? 0);
+        public IReadOnlyList<int> WinningBans => WinningTeamSummary?.BannedChampionIds ?? new List<int>();
+        public IReadOnlyList<int> LosingBans => LosingTeamSummary?.BannedChampionIds ?? new List<int>();
 
         public bool IsWin => Player.Win;
         public string ResultText => IsWin ? "VICTOIRE" : "DÉFAITE";
@@ -180,5 +211,19 @@ namespace MixOverlays.ViewModels
         }
 
         private static string FormatRank(int rank) => rank > 0 ? $"#{rank}" : "—";
+
+        private static IReadOnlyList<MatchParticipantSummary> OrderByPosition(IEnumerable<MatchParticipantSummary> participants)
+        {
+            var laneOrder = new[] { "TOP", "JUNGLE", "MIDDLE", "MID", "BOTTOM", "UTILITY", "SUPPORT" };
+            return participants
+                .OrderBy(player =>
+                {
+                    var index = Array.FindIndex(laneOrder, lane =>
+                        string.Equals(lane, player.Position, StringComparison.OrdinalIgnoreCase));
+                    return index < 0 ? int.MaxValue : index;
+                })
+                .ThenBy(player => player.DisplayName)
+                .ToList();
+        }
     }
 }
