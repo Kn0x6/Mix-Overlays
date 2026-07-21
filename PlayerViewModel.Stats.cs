@@ -122,6 +122,48 @@ namespace MixOverlays.ViewModels
                 .Take(3)
                 .ToList();
 
+        // ── Winrate par rôle (parties classées Solo/Duo chargées) ───────────────
+
+        /// <summary>
+        /// Répartition des parties Ranked Solo/Duo déjà présentes dans l'historique.
+        /// Les cinq rôles sont toujours renvoyés afin que l'interface reste stable,
+        /// y compris lorsqu'un rôle n'a pas encore été joué.
+        /// </summary>
+        public List<RoleWinRateStat> RoleWinRateStats
+        {
+            get
+            {
+                var soloMatchesByRole = _data.RecentMatches
+                    .Where(m => m.QueueId == 420)
+                    .Select(m => new { Match = m, Role = NormalizeRole(m.Position) })
+                    .Where(x => x.Role != null)
+                    .GroupBy(x => x.Role!)
+                    .ToDictionary(
+                        group => group.Key,
+                        group => new { Games = group.Count(), Wins = group.Count(x => x.Match.Win) });
+
+                return RoleWinRateStat.OrderedRoles
+                    .Select(role =>
+                    {
+                        soloMatchesByRole.TryGetValue(role.RoleKey, out var record);
+                        return new RoleWinRateStat(role.RoleKey, role.DisplayName, role.IconPath, record?.Games ?? 0, record?.Wins ?? 0);
+                    })
+                    .ToList();
+            }
+        }
+
+        public bool HasRoleWinRateData => RoleWinRateStats.Any(role => role.Games > 0);
+
+        private static string? NormalizeRole(string? position) => position?.Trim().ToUpperInvariant() switch
+        {
+            "TOP" => "TOP",
+            "JUNGLE" => "JUNGLE",
+            "MIDDLE" or "MID" => "MID",
+            "BOTTOM" or "BOT" or "ADC" => "ADC",
+            "UTILITY" or "SUPPORT" or "SUP" => "SUPPORT",
+            _ => null,
+        };
+
         // ── Refresh ───────────────────────────────────────────────────────────
 
         /// <summary>
@@ -143,6 +185,7 @@ namespace MixOverlays.ViewModels
                 nameof(AvgDurationDisplay),
                 nameof(CurrentStreak), nameof(IsWinStreak), nameof(StreakDisplay),
                 nameof(TopChampionStats),
+                nameof(RoleWinRateStats), nameof(HasRoleWinRateData),
             })
                 OnPropertyChanged(name);
         }
@@ -166,5 +209,38 @@ namespace MixOverlays.ViewModels
         public string WinRateDisplay   => Games > 0 ? $"{WinRate:F0}%" : "—";
         public string RecordDisplay    => $"{Wins}W {Losses}L";
         public string KDADisplay       => $"{AvgKDA:F2} KDA";
+    }
+
+    /// <summary>Statistiques d'un rôle sur les parties Ranked Solo/Duo chargées.</summary>
+    public class RoleWinRateStat
+    {
+        public static readonly (string RoleKey, string DisplayName, string IconPath)[] OrderedRoles =
+        {
+            ("TOP", "TOP", "/Assets/Roles/Top.png"),
+            ("JUNGLE", "JUNGLE", "/Assets/Roles/Jungle.png"),
+            ("MID", "MID", "/Assets/Roles/Middle.png"),
+            ("ADC", "ADC", "/Assets/Roles/Bottom.png"),
+            ("SUPPORT", "SUPPORT", "/Assets/Roles/Support.png"),
+        };
+
+        public RoleWinRateStat(string roleKey, string displayName, string iconPath, int games, int wins)
+        {
+            RoleKey = roleKey;
+            DisplayName = displayName;
+            IconPath = iconPath;
+            Games = games;
+            Wins = wins;
+        }
+
+        public string RoleKey { get; }
+        public string DisplayName { get; }
+        public string IconPath { get; }
+        public int Games { get; }
+        public int Wins { get; }
+        public int Losses => Games - Wins;
+        public bool HasGames => Games > 0;
+        public double WinRate => HasGames ? (double)Wins / Games * 100.0 : 0;
+        public string WinRateDisplay => HasGames ? $"{WinRate:F0}%" : "—";
+        public string GamesDisplay => Games == 1 ? "1 partie" : $"{Games} parties";
     }
 }

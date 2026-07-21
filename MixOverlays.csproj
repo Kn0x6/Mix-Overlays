@@ -28,6 +28,7 @@
     <!-- Icone.ico doit être une Resource WPF pour que TaskbarIcon puisse le charger -->
     <Resource Include="Icone.ico" />
     <Resource Include="Icone.jpeg" />
+    <Resource Include="Assets\Roles\*.png" />
   </ItemGroup>
 
   <ItemGroup>

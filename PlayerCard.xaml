@@ -159,6 +159,7 @@
                     <!-- ── Contenu original (une seule fois, par-dessus le splash) ── -->
                     <Grid Margin="16,14,16,10">
                         <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
@@ -282,8 +283,42 @@
                             </StackPanel>
                         </StackPanel>
 
+                        <!-- Winrates Solo/Duo par rôle, regroupés avec le rang et le winrate global. -->
+                        <ItemsControl Grid.Column="1" ItemsSource="{Binding RoleWinRateStats}"
+                                      VerticalAlignment="Center" HorizontalAlignment="Center"
+                                      Margin="16,22,16,0">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel HorizontalAlignment="Center" Margin="8,0">
+                                        <Border Width="30" Height="30" CornerRadius="7"
+                                                Background="#10192638" BorderBrush="#38445A77" BorderThickness="1"
+                                                HorizontalAlignment="Center">
+                                            <Image Source="{Binding IconPath}" Width="20" Height="20" Stretch="Uniform"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <TextBlock Text="{Binding WinRateDisplay}"
+                                                   Foreground="{Binding WinRate, Converter={StaticResource WinRateBrush}}"
+                                                   FontSize="13" FontWeight="Bold" HorizontalAlignment="Center"
+                                                   Margin="0,3,0,0"/>
+                                        <TextBlock FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Center">
+                                            <Run Text="{Binding Wins, Mode=OneWay}" Foreground="#3FB950"/>
+                                            <Run Text="W" Foreground="#3FB950"/>
+                                            <Run Text="-" Foreground="{StaticResource TextMutedBrush}"/>
+                                            <Run Text="{Binding Losses, Mode=OneWay}" Foreground="#F85149"/>
+                                            <Run Text="L" Foreground="#F85149"/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
                         <!-- Colonne droite : jauge Solo/Duo + statut de partie -->
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top" HorizontalAlignment="Right">
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top" HorizontalAlignment="Right">
                             <views:WinRateGaugeControl Width="150" Height="128" Margin="12,0,8,0"
                                                         WinRate="{Binding SoloWinRate}"
                                                         Wins="{Binding SoloWins}"
