@@ -1816,7 +1816,11 @@
                                                     <ItemsControl ItemsSource="{Binding WinningTeam}">
                                                         <ItemsControl.ItemTemplate>
                                                             <DataTemplate>
-                                                                <Grid Height="52" Margin="0,1">
+                                                                <Grid Height="73" Margin="0,1">
+                                                                    <Grid.RowDefinitions>
+                                                                        <RowDefinition Height="52"/>
+                                                                        <RowDefinition Height="21"/>
+                                                                    </Grid.RowDefinitions>
                                                                     <Grid.ColumnDefinitions>
                                                                         <ColumnDefinition Width="43"/>
                                                                         <ColumnDefinition Width="24"/>
@@ -1850,6 +1854,23 @@
                                                                         <Ellipse Stroke="#3B82F6" StrokeThickness="1.5"/>
                                                                         <TextBlock Text="{Binding PerformanceScore}" Foreground="#E6EDF3" FontSize="10" FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                                                                     </Grid>
+                                                                    <!-- Build final du joueur -->
+                                                                    <ItemsControl Grid.Row="1" Grid.ColumnSpan="6"
+                                                                                  ItemsSource="{Binding BuildItems}"
+                                                                                  HorizontalAlignment="Left"
+                                                                                  Margin="1,0,0,1">
+                                                                        <ItemsControl.ItemsPanel>
+                                                                            <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                                                                        </ItemsControl.ItemsPanel>
+                                                                        <ItemsControl.ItemTemplate>
+                                                                            <DataTemplate>
+                                                                                <Border Width="18" Height="18" CornerRadius="3" ClipToBounds="True"
+                                                                                        Background="#0B1220" BorderBrush="#36506B" BorderThickness="1" Margin="0,0,3,0">
+                                                                                    <Image Source="{Binding Converter={StaticResource ItemToImg}}" Stretch="UniformToFill"/>
+                                                                                </Border>
+                                                                            </DataTemplate>
+                                                                        </ItemsControl.ItemTemplate>
+                                                                    </ItemsControl>
                                                                 </Grid>
                                                             </DataTemplate>
                                                         </ItemsControl.ItemTemplate>
@@ -1893,7 +1914,11 @@
                                                     <ItemsControl ItemsSource="{Binding LosingTeam}">
                                                         <ItemsControl.ItemTemplate>
                                                             <DataTemplate>
-                                                                <Grid Height="52" Margin="0,1">
+                                                                <Grid Height="73" Margin="0,1">
+                                                                    <Grid.RowDefinitions>
+                                                                        <RowDefinition Height="52"/>
+                                                                        <RowDefinition Height="21"/>
+                                                                    </Grid.RowDefinitions>
                                                                     <Grid.ColumnDefinitions>
                                                                         <ColumnDefinition Width="38"/>
                                                                         <ColumnDefinition Width="80"/>
@@ -1927,6 +1952,23 @@
                                                                     <Border Grid.Column="5" Width="39" Height="39" CornerRadius="5" VerticalAlignment="Center" HorizontalAlignment="Right" ClipToBounds="True">
                                                                         <Image Source="{Binding ChampionName, Converter={StaticResource ChampImg}}" Stretch="UniformToFill"/>
                                                                     </Border>
+                                                                    <!-- Build final du joueur -->
+                                                                    <ItemsControl Grid.Row="1" Grid.ColumnSpan="6"
+                                                                                  ItemsSource="{Binding BuildItems}"
+                                                                                  HorizontalAlignment="Right"
+                                                                                  Margin="0,0,1,1">
+                                                                        <ItemsControl.ItemsPanel>
+                                                                            <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                                                                        </ItemsControl.ItemsPanel>
+                                                                        <ItemsControl.ItemTemplate>
+                                                                            <DataTemplate>
+                                                                                <Border Width="18" Height="18" CornerRadius="3" ClipToBounds="True"
+                                                                                        Background="#200F1B" BorderBrush="#6A3A57" BorderThickness="1" Margin="3,0,0,0">
+                                                                                    <Image Source="{Binding Converter={StaticResource ItemToImg}}" Stretch="UniformToFill"/>
+                                                                                </Border>
+                                                                            </DataTemplate>
+                                                                        </ItemsControl.ItemTemplate>
+                                                                    </ItemsControl>
                                                                 </Grid>
                                                             </DataTemplate>
                                                         </ItemsControl.ItemTemplate>

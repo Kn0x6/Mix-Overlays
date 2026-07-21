@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using MixOverlays.ViewModels;
 
 namespace MixOverlays.Models
@@ -363,6 +364,7 @@ public partial class MatchSummary
 public int VisionScore { get; set; }
 public long GameDuration { get; set; }
         public int[]  Items        { get; set; } = new int[7];
+        public IReadOnlyList<int> BuildItems => Items.Where(itemId => itemId > 0).ToList();
         public int    Summoner1Id  { get; set; }
         public int    Summoner2Id  { get; set; }
         public double KDA          => Deaths == 0 ? Kills + Assists : (double)(Kills + Assists) / Deaths;

@@ -353,6 +353,8 @@ namespace MixOverlays.ViewModels
         public int    GoldEarned   { get; set; }
         public int    VisionScore  { get; set; }
         public int[]  Items        { get; set; } = new int[7];
+        public System.Collections.Generic.IReadOnlyList<int> BuildItems
+            => System.Linq.Enumerable.Where(Items, itemId => itemId > 0).ToList();
         public int    Summoner1Id  { get; set; }
         public int    Summoner2Id  { get; set; }
 public double KDA          => Deaths == 0 ? Kills + Assists : (double)(Kills + Assists) / Deaths;

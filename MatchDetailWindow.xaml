@@ -21,6 +21,7 @@
         <conv:TimeAgoConverter                  x:Key="TimeAgo"/>
         <conv:ChampionNameToImageConverter      x:Key="ChampToImg"/>
         <conv:SummonerSpellIdToImageConverter   x:Key="SpellToImg"/>
+        <conv:ItemIdToImageConverter             x:Key="ItemToImg"/>
         <conv:NullToVisibilityConverter         x:Key="NullToVis"/>
     </Window.Resources>
 
@@ -207,6 +208,10 @@
                                         Padding="10,7"
                                         Visibility="{Binding BluePlayer, Converter={StaticResource NullToVis}}">
                                     <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="*"/>
+                                            <RowDefinition Height="20"/>
+                                        </Grid.RowDefinitions>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="40"/>
                                             <ColumnDefinition Width="20"/>
@@ -329,6 +334,23 @@
                                                 </TextBlock>
                                             </Grid>
                                         </StackPanel>
+                                        <!-- Build final du joueur -->
+                                        <ItemsControl Grid.Row="1" Grid.ColumnSpan="5"
+                                                      ItemsSource="{Binding BluePlayer.BuildItems}"
+                                                      HorizontalAlignment="Left"
+                                                      Margin="0,1,0,0">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Width="17" Height="17" CornerRadius="3" ClipToBounds="True"
+                                                            Background="#081425" BorderBrush="#1F3A5F" BorderThickness="1" Margin="0,0,3,0">
+                                                        <Image Source="{Binding Converter={StaticResource ItemToImg}}" Stretch="UniformToFill"/>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
                                     </Grid>
                                 </Border>
 
@@ -349,6 +371,10 @@
                                         Padding="10,7"
                                         Visibility="{Binding RedPlayer, Converter={StaticResource NullToVis}}">
                                     <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="*"/>
+                                            <RowDefinition Height="20"/>
+                                        </Grid.RowDefinitions>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="48"/>
                                             <ColumnDefinition Width="70"/>
@@ -474,6 +500,23 @@
                                                             Stretch="UniformToFill"/>
                                             </Border.Background>
                                         </Border>
+                                        <!-- Build final du joueur -->
+                                        <ItemsControl Grid.Row="1" Grid.ColumnSpan="5"
+                                                      ItemsSource="{Binding RedPlayer.BuildItems}"
+                                                      HorizontalAlignment="Right"
+                                                      Margin="0,1,0,0">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Width="17" Height="17" CornerRadius="3" ClipToBounds="True"
+                                                            Background="#200A0A" BorderBrush="#5F1F1F" BorderThickness="1" Margin="3,0,0,0">
+                                                        <Image Source="{Binding Converter={StaticResource ItemToImg}}" Stretch="UniformToFill"/>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
                                     </Grid>
                                 </Border>
 
