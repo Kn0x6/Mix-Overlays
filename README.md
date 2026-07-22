@@ -62,7 +62,6 @@ MixOverlays/
 ├── App.xaml / App.xaml.cs              # Point d'entrée de l'application, gestion des services globaux
 ├── MainWindow.xaml / MainWindow.xaml.cs # Fenêtre principale (hors jeu)
 ├── OverlayWindow.xaml / OverlayWindow.xaml.cs # Fenêtre overlay in-game (transparente)
-├── MatchDetailWindow.xaml / MatchDetailWindow.xaml.cs # Détails des parties avec affichage face-à-face
 ├── PlayerCard.xaml / PlayerCard.xaml.cs # Carte de stats d'un joueur (hors jeu)
 ├── LivePlayerCard.xaml / LivePlayerCard.xaml.cs # Carte joueur en live (in-game)
 ├── DarkTheme.xaml                     # Thème sombre complet (styles WPF)
@@ -71,7 +70,6 @@ MixOverlays/
 ├── MainViewModel.cs                   # ViewModel principal (orchestration globale)
 ├── PlayerViewModel.cs                 # ViewModel d'un joueur (stats, rang, maîtrise)
 ├── PlayerData.cs                      # Modèles de données (LCU, Riot API, Display)
-├── MatchParticipantPair.cs            # Modèle pour les paires de participants
 ├── VersionHolder.cs                   # Gestion de la version (Data Dragon)
 ├── LcuService.cs                      # Connexion au client LoL (lockfile + polling)
 ├── RiotApiService.cs                  # Tous les appels Riot API (cache, pagination)
@@ -149,10 +147,9 @@ MixOverlays/
   - Affichage des stats des alliés et ennemis pendant la sélection
   - Mise à jour en temps réel via LCU
 
-- **`MatchDetailWindow.xaml`** : Détails des parties
-  - Affichage "face-à-face" des participants
-  - Organisé par lane (TOP, JUNGLE, MID, ADC, SUPPORT)
-  - Comparaison équipe vs équipe
+- **`MainWindow.xaml`** : Détails des parties intégrés
+  - Affichage "face-à-face" des participants dans le panneau de détail
+  - Comparaison des équipes sans ouvrir de fenêtre secondaire
 
 - **`PlayerCard.xaml`** : Carte de joueur compacte
   - Affiche rang, maîtrise, K/D/A, etc.
