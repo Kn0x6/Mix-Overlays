@@ -22,6 +22,7 @@ namespace MixOverlays.ViewModels
         private readonly ChampionDataService _champions = new();
         private readonly ChampionRecommendationService _recommendations;
         private readonly LpTrackerService    _lpTracker = new();
+        private readonly RoleWinRateHistoryService _roleWinRateHistory = new();
         private int _postGameHistoryRefreshInProgress;
         private string _lastPostGameHistoryRefreshMatchId = string.Empty;
         private bool _disposed;

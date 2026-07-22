@@ -95,12 +95,36 @@ namespace MixOverlays.ViewModels
             : CurrentStreakDisplay.EndsWith("V") ? "#3FB950" : "#F85149";
 
         // ── Top champions depuis l'historique ─────────────────────────────────
+        // Quand l'analyse saisonnière est disponible, elle apporte les mêmes
+        // statistiques sur toutes les Solo/Duo de la saison sans nouvelle requête Riot.
         public bool HasChampionStats => TopChampionsFromHistory.Count > 0;
 
         public List<ChampionStatEntry> TopChampionsFromHistory
         {
             get
             {
+                var seasonalMatches = _data.SeasonRoleMatches
+                    .Where(m => m.HasChampionStats)
+                    .ToList();
+
+                if (seasonalMatches.Count > 0)
+                {
+                    return seasonalMatches
+                        .Where(m => !string.IsNullOrWhiteSpace(m.ChampionName))
+                        .GroupBy(m => m.ChampionName)
+                        .Select(g => CreateChampionEntry(
+                            g.Key,
+                            g.Count(),
+                            g.Count(m => m.Win),
+                            g.Average(m => m.Kills),
+                            g.Average(m => m.Deaths),
+                            g.Average(m => m.Assists)))
+                        .OrderByDescending(c => c.Games)
+                        .ThenByDescending(c => c.WinRate)
+                        .Take(3)
+                        .ToList();
+                }
+
                 if (_csCount == 0) return new List<ChampionStatEntry>();
 
                 return _csMatches
@@ -108,24 +132,13 @@ namespace MixOverlays.ViewModels
                     .GroupBy(m => m.ChampionName)
                     .Select(g =>
                     {
-                        int    games  = g.Count();
-                        int    wins   = g.Count(m => m.Win);
-                        double avgK   = g.Average(m => m.Kills);
-                        double avgD   = g.Average(m => m.Deaths);
-                        double avgA   = g.Average(m => m.Assists);
-                        double avgKda = avgD == 0 ? avgK + avgA : (avgK + avgA) / avgD;
-                        return new ChampionStatEntry
-                        {
-                            ChampionName = g.Key,
-                            Games        = games,
-                            Wins         = wins,
-                            Losses       = games - wins,
-                            WinRate      = games > 0 ? (double)wins / games : 0,
-                            AvgKills     = avgK,
-                            AvgDeaths    = avgD,
-                            AvgAssists   = avgA,
-                            AvgKDA       = avgKda
-                        };
+                        return CreateChampionEntry(
+                            g.Key,
+                            g.Count(),
+                            g.Count(m => m.Win),
+                            g.Average(m => m.Kills),
+                            g.Average(m => m.Deaths),
+                            g.Average(m => m.Assists));
                     })
 .OrderByDescending(c => c.Games)
 .ThenByDescending(c => c.WinRate)
@@ -133,6 +146,20 @@ namespace MixOverlays.ViewModels
 .ToList();
             }
         }
+
+        private static ChampionStatEntry CreateChampionEntry(
+            string championName, int games, int wins, double avgKills, double avgDeaths, double avgAssists) => new()
+        {
+            ChampionName = championName,
+            Games = games,
+            Wins = wins,
+            Losses = games - wins,
+            WinRate = games > 0 ? (double)wins / games : 0,
+            AvgKills = avgKills,
+            AvgDeaths = avgDeaths,
+            AvgAssists = avgAssists,
+            AvgKDA = avgDeaths == 0 ? avgKills + avgAssists : (avgKills + avgAssists) / avgDeaths
+        };
     }
 
     // ─── Modèle d'entrée par champion ────────────────────────────────────────

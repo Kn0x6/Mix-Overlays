@@ -1,5 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
@@ -20,6 +22,10 @@ namespace MixOverlays.Views
     /// </summary>
     public partial class OverlayWindow : Window
     {
+        private ObservableCollection<PlayerViewModel>? _allies;
+        private ObservableCollection<PlayerViewModel>? _enemies;
+
+        public ObservableCollection<OverlayMatchup> Matchups { get; } = new();
         // ─── Win32 P/Invoke ──────────────────────────────────────────────────
 
         [DllImport("user32.dll", SetLastError = true)]
@@ -53,11 +59,79 @@ namespace MixOverlays.Views
             ObservableCollection<PlayerViewModel> allies,
             ObservableCollection<PlayerViewModel>? enemies = null)
         {
-            AllyList.ItemsSource = allies;
+            if (_allies != null) _allies.CollectionChanged -= Teams_CollectionChanged;
+            if (_enemies != null) _enemies.CollectionChanged -= Teams_CollectionChanged;
 
-            if (enemies != null)
-                EnemyList.ItemsSource = enemies;
+            _allies = allies;
+            _enemies = enemies;
+            _allies.CollectionChanged += Teams_CollectionChanged;
+            if (_enemies != null) _enemies.CollectionChanged += Teams_CollectionChanged;
+
+            MatchupList.ItemsSource = Matchups;
+            RebuildMatchups();
         }
+
+        private void Teams_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) => RebuildMatchups();
+
+        /// <summary>
+        /// Construit les colonnes de l'overlay par rôle. Quand le client ne fournit pas le rôle
+        /// (notamment en jeu), l'ordre de l'équipe est utilisé : les index Riot restent face à face.
+        /// </summary>
+        private void RebuildMatchups()
+        {
+            Matchups.Clear();
+            var allies = _allies?.ToList() ?? new();
+            var enemies = _enemies?.ToList() ?? new();
+            var slots = new[] { "TOP", "JUNGLE", "MIDDLE", "BOTTOM", "UTILITY" };
+            var matchups = new List<OverlayMatchup>(slots.Length);
+
+            var usedAllies = new HashSet<PlayerViewModel>();
+            var usedEnemies = new HashSet<PlayerViewModel>();
+            foreach (var slot in slots)
+            {
+                var ally = allies.FirstOrDefault(player => !usedAllies.Contains(player) && NormalizeRole(player.Position) == slot);
+                var enemy = enemies.FirstOrDefault(player => !usedEnemies.Contains(player) && NormalizeRole(player.Position) == slot);
+                if (ally != null) usedAllies.Add(ally);
+                if (enemy != null) usedEnemies.Add(enemy);
+                matchups.Add(new OverlayMatchup(slot, ally, enemy));
+            }
+
+            // Les positions indisponibles complètent les emplacements restants dans l'ordre LCU/Riot.
+            var remainingAllies = allies.Where(player => !usedAllies.Contains(player)).ToList();
+            var remainingEnemies = enemies.Where(player => !usedEnemies.Contains(player)).ToList();
+            for (var index = 0; index < matchups.Count; index++)
+            {
+                if (matchups[index].Ally == null && remainingAllies.Count > 0)
+                {
+                    matchups[index].Ally = remainingAllies[0];
+                    remainingAllies.RemoveAt(0);
+                }
+                if (matchups[index].Enemy == null && remainingEnemies.Count > 0)
+                {
+                    matchups[index].Enemy = remainingEnemies[0];
+                    remainingEnemies.RemoveAt(0);
+                }
+            }
+
+            var overflow = Math.Max(remainingAllies.Count, remainingEnemies.Count);
+            for (var index = 0; index < overflow; index++)
+                matchups.Add(new OverlayMatchup(string.Empty,
+                    index < remainingAllies.Count ? remainingAllies[index] : null,
+                    index < remainingEnemies.Count ? remainingEnemies[index] : null));
+
+            foreach (var matchup in matchups)
+                Matchups.Add(matchup);
+        }
+
+        private static string NormalizeRole(string? role) => role?.Trim().ToUpperInvariant() switch
+        {
+            "TOP" => "TOP",
+            "JUNGLE" => "JUNGLE",
+            "MID" or "MIDDLE" => "MIDDLE",
+            "BOT" or "BOTTOM" or "ADC" => "BOTTOM",
+            "SUPPORT" or "UTILITY" => "UTILITY",
+            _ => string.Empty
+        };
 
         /// <summary>Applique les préférences persistées juste avant chaque affichage.</summary>
         public void ApplySettings()
@@ -150,5 +224,19 @@ namespace MixOverlays.Views
                 Hide();
             }
         }
+    }
+
+    public sealed class OverlayMatchup
+    {
+        public OverlayMatchup(string role, PlayerViewModel? ally, PlayerViewModel? enemy)
+        {
+            Role = role;
+            Ally = ally;
+            Enemy = enemy;
+        }
+
+        public string Role { get; }
+        public PlayerViewModel? Ally { get; set; }
+        public PlayerViewModel? Enemy { get; set; }
     }
 }

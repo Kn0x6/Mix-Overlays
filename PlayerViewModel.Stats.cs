@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using MixOverlays.Models;
 
 namespace MixOverlays.ViewModels
 {
@@ -122,10 +123,11 @@ namespace MixOverlays.ViewModels
                 .Take(3)
                 .ToList();
 
-        // ── Winrate par rôle (parties classées Solo/Duo chargées) ───────────────
+        // ── Winrate par rôle (saison Solo/Duo, avec fallback sur l'historique affiché) ──
 
         /// <summary>
-        /// Répartition des parties Ranked Solo/Duo déjà présentes dans l'historique.
+        /// Répartition des parties Ranked Solo/Duo de la saison lorsque l'analyse
+        /// de fond a des données, sinon des parties actuellement chargées.
         /// Les cinq rôles sont toujours renvoyés afin que l'interface reste stable,
         /// y compris lorsqu'un rôle n'a pas encore été joué.
         /// </summary>
@@ -133,8 +135,14 @@ namespace MixOverlays.ViewModels
         {
             get
             {
-                var soloMatchesByRole = _data.RecentMatches
-                    .Where(m => m.QueueId == 420)
+                var seasonMatches = _data.SeasonRoleMatches;
+                var matches = seasonMatches.Count > 0
+                    ? seasonMatches.Select(m => new { Win = m.Win, Position = m.Position })
+                    : _data.RecentMatches
+                        .Where(m => m.QueueId == 420)
+                        .Select(m => new { m.Win, m.Position });
+
+                var soloMatchesByRole = matches
                     .Select(m => new { Match = m, Role = NormalizeRole(m.Position) })
                     .Where(x => x.Role != null)
                     .GroupBy(x => x.Role!)
@@ -153,6 +161,29 @@ namespace MixOverlays.ViewModels
         }
 
         public bool HasRoleWinRateData => RoleWinRateStats.Any(role => role.Games > 0);
+        public bool IsRoleWinRateAnalysisRunning => _data.IsRoleWinRateAnalysisRunning;
+        public bool IsRoleWinRateSeasonComplete => _data.IsRoleWinRateSeasonComplete;
+        public string RoleWinRateAnalysisStatus => _data.RoleWinRateAnalysisStatus;
+        public int RoleWinRateGamesAnalyzed => _data.SeasonRoleMatches.Count;
+
+        /// <summary>Applique une progression venant de l'analyseur saisonnier.</summary>
+        public void UpdateRoleWinRateAnalysis(RoleWinRateAnalysisUpdate update)
+        {
+            _data.SeasonRoleMatches = update.Matches ?? new List<RoleWinRateMatchRecord>();
+            _data.RoleWinRateTotalGames = update.TotalGames;
+            _data.IsRoleWinRateAnalysisRunning = update.IsRunning;
+            _data.IsRoleWinRateSeasonComplete = update.IsComplete;
+            _data.RoleWinRateAnalysisStatus = update.Status ?? string.Empty;
+
+            OnPropertyChanged(nameof(RoleWinRateStats));
+            OnPropertyChanged(nameof(HasRoleWinRateData));
+            OnPropertyChanged(nameof(IsRoleWinRateAnalysisRunning));
+            OnPropertyChanged(nameof(IsRoleWinRateSeasonComplete));
+            OnPropertyChanged(nameof(RoleWinRateAnalysisStatus));
+            OnPropertyChanged(nameof(RoleWinRateGamesAnalyzed));
+            OnPropertyChanged(nameof(TopChampionsFromHistory));
+            OnPropertyChanged(nameof(HasChampionStats));
+        }
 
         private static string? NormalizeRole(string? position) => position?.Trim().ToUpperInvariant() switch
         {
@@ -186,6 +217,8 @@ namespace MixOverlays.ViewModels
                 nameof(CurrentStreak), nameof(IsWinStreak), nameof(StreakDisplay),
                 nameof(TopChampionStats),
                 nameof(RoleWinRateStats), nameof(HasRoleWinRateData),
+                nameof(IsRoleWinRateAnalysisRunning), nameof(IsRoleWinRateSeasonComplete),
+                nameof(RoleWinRateAnalysisStatus), nameof(RoleWinRateGamesAnalyzed),
             })
                 OnPropertyChanged(name);
         }

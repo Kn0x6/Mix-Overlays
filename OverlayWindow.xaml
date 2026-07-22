@@ -1,8 +1,7 @@
 <!--
     OverlayWindow.xaml — Overlay in-game MixOverlays
-    ▸ Togglable via Ctrl+X (global hotkey enregistré dans MainWindow.xaml.cs)
-    ▸ Affiche 2 rangées de cartes losange : alliés (haut) / ennemis (bas)
-    ▸ Transparent, toujours au-dessus, déplaçable par drag
+    ▸ Affiche chaque matchup verticalement : allié au-dessus de son opposant.
+    ▸ Transparent, toujours au-dessus, déplaçable par drag.
 -->
 <Window x:Class="MixOverlays.Views.OverlayWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -19,25 +18,18 @@
         Focusable="False"
         KeyDown="Overlay_KeyDown">
 
-    <!--
-        Conteneur principal : fond très légèrement sombre arrondi.
-        MouseLeftButtonDown => DragMove pour déplacer la fenêtre.
-    -->
     <Border x:Name="OverlayRoot"
             Background="{StaticResource OverlayBgBrush}"
-            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+            BorderBrush="{StaticResource BorderBrush}"
+            BorderThickness="1"
             CornerRadius="16"
             Padding="16,12"
             MouseLeftButtonDown="Overlay_MouseLeftButtonDown">
-
-        <!-- ── Scale global de l'overlay : modifier ScaleX/ScaleY pour changer la taille ── -->
         <Border.LayoutTransform>
             <ScaleTransform x:Name="OverlayScale" ScaleX="1" ScaleY="1"/>
         </Border.LayoutTransform>
 
         <StackPanel>
-
-            <!-- ── Barre de titre compacte ── -->
             <Grid Margin="0,0,0,8">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -45,15 +37,9 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                    <!-- Logo / indicateur -->
-                    <Ellipse Width="8" Height="8" Fill="#4DC7DB" Margin="0,0,6,0"
-                             VerticalAlignment="Center"/>
-                    <TextBlock Text="MixOverlays"
-                               Foreground="#80FFFFFF" FontSize="11" FontWeight="SemiBold"
-                               VerticalAlignment="Center"/>
-                    <TextBlock x:Name="HotkeyHint" Text="  ·  Glisser pour déplacer"
-                               Foreground="#70FFFFFF" FontSize="10"
-                               VerticalAlignment="Center"/>
+                    <Ellipse Width="8" Height="8" Fill="#4DC7DB" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="MixOverlays" Foreground="#80FFFFFF" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="HotkeyHint" Text="  ·  Glisser pour déplacer" Foreground="#70FFFFFF" FontSize="10" VerticalAlignment="Center"/>
                 </StackPanel>
 
                 <Button Grid.Column="1"
@@ -64,66 +50,50 @@
                     <Viewbox Width="13" Height="13">
                         <Path Data="M 2,2 L 10,10 M 10,2 L 2,10"
                               Stroke="{StaticResource TextSecondaryBrush}"
-                              StrokeThickness="1.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                              StrokeThickness="1.7"
+                              StrokeStartLineCap="Round"
+                              StrokeEndLineCap="Round"/>
                     </Viewbox>
                 </Button>
             </Grid>
 
-            <!-- ── Séparateur ── -->
             <Rectangle Height="1" Fill="#20FFFFFF" Margin="0,0,0,10"/>
 
-            <!-- ══════════════════════════════════════════════════════════ -->
-            <!--  RANGÉE ALLIÉS                                             -->
-            <!-- ══════════════════════════════════════════════════════════ -->
-            <StackPanel Margin="0,0,0,4">
-                <TextBlock Text="ALLIÉS" Foreground="{StaticResource InfoBrush}"
-                           FontSize="11" FontWeight="Bold"
-                           Margin="4,0,0,6"/>
-
-                <ItemsControl x:Name="AllyList">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <!-- FIX : Margin positif pour éviter la superposition des fiches -->
-                            <StackPanel Orientation="Horizontal"/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <!-- FIX : était Margin="-10,0" qui causait un chevauchement de 20px -->
-                            <views:DiamondPlayerCard DataContext="{Binding}"
-                                                     Margin="4,0"/>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </StackPanel>
-
-            <!-- ── Séparateur milieu ── -->
-            <Rectangle Height="1" Fill="#15FFFFFF" Margin="0,2,0,2"/>
-
-            <!-- ══════════════════════════════════════════════════════════ -->
-            <!--  RANGÉE ENNEMIS                                            -->
-            <!-- ══════════════════════════════════════════════════════════ -->
-            <StackPanel Margin="0,4,0,0">
-                <TextBlock Text="ENNEMIS" Foreground="{StaticResource DangerBrush}"
-                           FontSize="11" FontWeight="Bold"
-                           Margin="4,0,0,6"/>
-
-                <ItemsControl x:Name="EnemyList">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel Orientation="Horizontal"/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <!-- FIX : était Margin="-10,0" qui causait un chevauchement de 20px -->
-                            <views:DiamondPlayerCard DataContext="{Binding}"
-                                                     Margin="4,0"/>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </StackPanel>
-
+            <!-- Une colonne = un rôle : l'allié et l'ennemi restent toujours en face. -->
+            <ItemsControl x:Name="MatchupList">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Width="162">
+                            <TextBlock Text="{Binding Role}"
+                                       Height="16"
+                                       TextAlignment="Center"
+                                       Foreground="#80FFFFFF"
+                                       FontSize="9"
+                                       FontWeight="Bold"/>
+                            <ContentControl Content="{Binding Ally}" Height="236">
+                                <ContentControl.ContentTemplate>
+                                    <DataTemplate>
+                                        <views:DiamondPlayerCard DataContext="{Binding}" Margin="4,0"/>
+                                    </DataTemplate>
+                                </ContentControl.ContentTemplate>
+                            </ContentControl>
+                            <Rectangle Height="1" Fill="#20FFFFFF" Margin="4,5"/>
+                            <ContentControl Content="{Binding Enemy}" Height="236">
+                                <ContentControl.ContentTemplate>
+                                    <DataTemplate>
+                                        <views:DiamondPlayerCard DataContext="{Binding}" Margin="4,0"/>
+                                    </DataTemplate>
+                                </ContentControl.ContentTemplate>
+                            </ContentControl>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
         </StackPanel>
     </Border>
 </Window>

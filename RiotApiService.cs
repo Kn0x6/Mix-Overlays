@@ -210,10 +210,12 @@ namespace MixOverlays.Services
             int count = 20,
             int? queueId = null,
             int startIndex = 0,
+            long? startTime = null,
             RiotCacheMode cacheMode = RiotCacheMode.Default)
         {
             var url = $"{RegionalUrl}/lol/match/v5/matches/by-puuid/{puuid}/ids?count={count}&start={startIndex}";
             if (queueId.HasValue) url += $"&queue={queueId}";
+            if (startTime.HasValue) url += $"&startTime={startTime.Value}";
             return await GetAsync<List<string>>(url, cacheMode);
         }
 

@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -24,6 +25,8 @@ namespace MixOverlays.ViewModels
         // Limite le nombre de joueurs chargés en parallèle (évite le quota 80/2min Riot)
         private readonly SemaphoreSlim _playerLoadSem = new(3, 3);
         private string _lastChampSelectSignature = string.Empty;
+        // Les données Port 2999 ne contiennent pas le rôle : conserver celui connu au champ select.
+        private readonly ConcurrentDictionary<string, string> _liveRolesByPuuid = new();
 
         // ─── Équipes en cours ─────────────────────────────────────────────────
         private ObservableCollection<PlayerViewModel> _allyTeam = new();
@@ -270,6 +273,9 @@ namespace MixOverlays.ViewModels
                     var pd = allResults[i];
                     if (pd == null) continue;
                     pd.ChampionId = myMembers[i].championId;
+                    pd.Position = myMembers[i].assignedPosition;
+                    if (!string.IsNullOrWhiteSpace(pd.Puuid) && !string.IsNullOrWhiteSpace(pd.Position))
+                        _liveRolesByPuuid[pd.Puuid] = pd.Position;
                     allyData.Add(pd);
                 }
                 for (int i = 0; i < theirMembers.Count; i++)
@@ -615,7 +621,10 @@ namespace MixOverlays.ViewModels
                     championId,
                     championName,
                     spell1,
-                    spell2);
+                    spell2,
+                    livePosition: !string.IsNullOrWhiteSpace(m.position)
+                        ? m.position
+                        : _liveRolesByPuuid.TryGetValue(m.puuid, out var rememberedRole) ? rememberedRole : string.Empty);
             }
 
 
@@ -744,7 +753,8 @@ namespace MixOverlays.ViewModels
             int spell2Id = 0,
             SpectatorGameInfo? activeGame = null,
             long liveGameStartTime = 0,
-            int liveRuneId = 0)
+            int liveRuneId = 0,
+            string? livePosition = null)
         {
             string resolvedPuuid    = puuid ?? string.Empty;
             string resolvedGameName = fallbackName ?? string.Empty;
@@ -802,6 +812,7 @@ namespace MixOverlays.ViewModels
                 TeamId              = teamId,
                 ChampionId          = championId,
                 ChampionName        = resolvedChampionName,
+                Position            = livePosition ?? string.Empty,
                 CurrentChampionName = resolvedChampionName,
                 LiveSpell1Id        = spell1Id,
                 LiveSpell2Id        = spell2Id,
@@ -916,6 +927,7 @@ namespace MixOverlays.ViewModels
                 rankData.TeamId              = pd.TeamId;
                 rankData.ChampionId          = pd.ChampionId;
                 rankData.ChampionName        = pd.ChampionId > 0 ? _champions.GetName(pd.ChampionId) : pd.ChampionName;
+                rankData.Position            = pd.Position;
                 rankData.CurrentChampionName = pd.CurrentChampionName;
                 rankData.LiveSpell1Id        = pd.LiveSpell1Id;
                 rankData.LiveSpell2Id        = pd.LiveSpell2Id;

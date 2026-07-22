@@ -133,6 +133,10 @@ namespace MixOverlays.ViewModels
                 OnPropertyChanged(nameof(CurrentChampionMasteryPointsDisplay));
                 OnPropertyChanged(nameof(RoleWinRateStats));
                 OnPropertyChanged(nameof(HasRoleWinRateData));
+                OnPropertyChanged(nameof(IsRoleWinRateAnalysisRunning));
+                OnPropertyChanged(nameof(IsRoleWinRateSeasonComplete));
+                OnPropertyChanged(nameof(RoleWinRateAnalysisStatus));
+                OnPropertyChanged(nameof(RoleWinRateGamesAnalyzed));
 
                 // Le graphique LP dépend à la fois de l'historique LP et du SoloRank actuel.
                 // Si le rang/LP actuel change sans nouvel historique injecté, on force aussi
@@ -215,6 +219,10 @@ namespace MixOverlays.ViewModels
             OnPropertyChanged(nameof(CurrentStreakHex));
             OnPropertyChanged(nameof(RoleWinRateStats));
             OnPropertyChanged(nameof(HasRoleWinRateData));
+            OnPropertyChanged(nameof(IsRoleWinRateAnalysisRunning));
+            OnPropertyChanged(nameof(IsRoleWinRateSeasonComplete));
+            OnPropertyChanged(nameof(RoleWinRateAnalysisStatus));
+            OnPropertyChanged(nameof(RoleWinRateGamesAnalyzed));
         }
 
         /// <summary>Rafraîchit uniquement les propriétés liées au rang et au statut de chargement.</summary>

@@ -325,7 +325,8 @@ namespace MixOverlays.Services
 
         private static void EnrichWithLcuPuuids(List<LcuTeamMember> target, List<LcuTeamMember> source)
         {
-            // Mapper dans l'ordre : si le port 2999 n'a pas de PUUID, prendre celui du LCU
+            // Mapper dans l'ordre : le port 2999 fournit les champions, le LCU peut compléter
+            // PUUID, summonerId et position assignée lorsque celle-ci est disponible.
             for (int i = 0; i < Math.Min(target.Count, source.Count); i++)
             {
                 if (string.IsNullOrEmpty(target[i].puuid) && !string.IsNullOrEmpty(source[i].puuid))
@@ -333,6 +334,8 @@ namespace MixOverlays.Services
                     target[i].puuid      = source[i].puuid;
                     target[i].summonerId = source[i].summonerId;
                 }
+                if (string.IsNullOrWhiteSpace(target[i].position) && !string.IsNullOrWhiteSpace(source[i].position))
+                    target[i].position = source[i].position;
             }
         }
 
@@ -615,12 +618,12 @@ namespace MixOverlays.Services
                 if (!s.theirTeam.Any() && s.myTeam.Count > 5)
                 {
                     int id1 = s.myTeam.First().teamId;
-                    gd.teamOne = s.myTeam.Where(m => m.teamId == id1) .Select(m => new LcuTeamMember { summonerId = m.summonerId, puuid = m.puuid }).ToList();
+                    gd.teamOne = s.myTeam.Where(m => m.teamId == id1) .Select(m => new LcuTeamMember { summonerId = m.summonerId, puuid = m.puuid, position = m.assignedPosition }).ToList();
                     gd.teamTwo = s.myTeam.Where(m => m.teamId != id1) .Select(m => new LcuTeamMember { summonerId = m.summonerId, puuid = m.puuid }).ToList();
                 }
                 else
                 {
-                    gd.teamOne = s.myTeam   .Select(m => new LcuTeamMember { summonerId = m.summonerId, puuid = m.puuid }).ToList();
+                    gd.teamOne = s.myTeam   .Select(m => new LcuTeamMember { summonerId = m.summonerId, puuid = m.puuid, position = m.assignedPosition }).ToList();
                     gd.teamTwo = s.theirTeam.Select(m => new LcuTeamMember { summonerId = m.summonerId, puuid = m.puuid }).ToList();
                 }
                 L($"BuildFromCS → t1={gd.teamOne.Count} t2={gd.teamTwo.Count}");

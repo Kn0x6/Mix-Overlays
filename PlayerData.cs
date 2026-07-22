@@ -86,6 +86,8 @@ namespace MixOverlays.Models
         public long   summonerId   { get; set; }
         public string puuid        { get; set; } = string.Empty;
         public string summonerName { get; set; } = string.Empty;
+        // Position de la partie courante quand le LCU la fournit (champ select).
+        public string position     { get; set; } = string.Empty;
         // Champs optionnels pré-remplis depuis le port 2999
         public string championName { get; set; } = string.Empty;
         public int    spell1Id     { get; set; }
@@ -289,6 +291,13 @@ public class MatchInfo
         // Match history
         public List<MatchSummary> RecentMatches { get; set; } = new();
 
+        // Analyse Solo/Duo par rôle, alimentée progressivement depuis le cache local.
+        public List<RoleWinRateMatchRecord> SeasonRoleMatches { get; set; } = new();
+        public int RoleWinRateTotalGames { get; set; }
+        public bool IsRoleWinRateAnalysisRunning { get; set; }
+        public bool IsRoleWinRateSeasonComplete { get; set; }
+        public string RoleWinRateAnalysisStatus { get; set; } = string.Empty;
+
         // Pagination : buffer d'IDs et offset courant
         public List<string> MatchIdBuffer { get; set; } = new();
         public int MatchesOffset { get; set; } = 0;
@@ -407,6 +416,40 @@ public long GameDuration { get; set; }
         public int RiftHeraldKills { get; set; }
         public int TowerKills { get; set; }
         public List<int> BannedChampionIds { get; set; } = new();
+    }
+
+    /// <summary>Donnée minimale persistée pour le calcul du winrate par rôle.</summary>
+    public class RoleWinRateMatchRecord
+    {
+        public string MatchId { get; set; } = string.Empty;
+        public string Position { get; set; } = string.Empty;
+        public bool Win { get; set; }
+        public long GameCreation { get; set; }
+
+        // Données déjà présentes dans le détail Match-V5, mutualisées avec les stats champion.
+        public int ChampionId { get; set; }
+        public string ChampionName { get; set; } = string.Empty;
+        public int Kills { get; set; }
+        public int Deaths { get; set; }
+        public int Assists { get; set; }
+        public int CS { get; set; }
+        public long GameDuration { get; set; }
+
+        /// <summary>
+        /// Les anciens caches ne possèdent que rôle/résultat. Ce flag permet de les
+        /// enrichir une seule fois lors de la prochaine analyse saisonnière.
+        /// </summary>
+        public bool HasChampionStats => ChampionId > 0 || !string.IsNullOrWhiteSpace(ChampionName);
+    }
+
+    /// <summary>Mise à jour émise par l'analyseur d'historique saisonnier.</summary>
+    public class RoleWinRateAnalysisUpdate
+    {
+        public List<RoleWinRateMatchRecord> Matches { get; set; } = new();
+        public int TotalGames { get; set; }
+        public bool IsRunning { get; set; }
+        public bool IsComplete { get; set; }
+        public string Status { get; set; } = string.Empty;
     }
 
     // ─── Spectator API Models ──────────────────────────────────────────────────

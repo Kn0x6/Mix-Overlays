@@ -343,6 +343,8 @@ namespace MixOverlays.ViewModels
                         }
                     });
 
+                    StartRoleWinRateAnalysis(MyAccount, fullData.Puuid);
+
                     // ── Sauvegarde du profil pour rechargement hors-ligne ──
                     _settings.Current.LastKnownGameName = fullData.GameName;
                     _settings.Current.LastKnownTagLine  = fullData.TagLine;
@@ -459,6 +461,8 @@ namespace MixOverlays.ViewModels
 
                         StatusMessage = $"Historique actualisé : dernière partie ajoutée ({QueueHelper.GetQueueName(refreshedData.RecentMatches[0].QueueId)}).";
                     });
+
+                    StartRoleWinRateAnalysis(MyAccount, puuid);
 
                     _lastPostGameHistoryRefreshMatchId = latestMatchId;
                     App.Log($"[PostGameHistory] ✅ Historique actualisé avec {latestMatchId}");
@@ -577,6 +581,10 @@ namespace MixOverlays.ViewModels
                     OnPropertyChanged(nameof(HasSearchHistory));
                     OnPropertyChanged(nameof(ShowSearchHistory));
                 });
+
+                // Une recherche doit rester légère : ses stats par rôle/champion
+                // restent calculées sur les matchs récents déjà affichés. L'analyse
+                // saisonnière complète est réservée au compte actuellement connecté.
             }
             catch (Exception ex) { StatusMessage = $"Erreur : {ex.Message}"; }
             finally { IsSearching = false; }
@@ -610,6 +618,29 @@ namespace MixOverlays.ViewModels
             {
                 pvm.IsLoadingMoreMatches = false;
             }
+        }
+
+        /// <summary>
+        /// Lance sans attendre l'analyse de la saison. Le service séquence les analyses
+        /// et RiotApiService applique déjà le plafond prudent de 80 requêtes/2 minutes.
+        /// </summary>
+        private void StartRoleWinRateAnalysis(PlayerViewModel? player, string expectedPuuid)
+        {
+            if (player == null || string.IsNullOrWhiteSpace(expectedPuuid)) return;
+
+            _ = _roleWinRateHistory.AnalyzeCurrentSeasonAsync(
+                player.Data,
+                _riot,
+                update =>
+                {
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        // Ne pas injecter le résultat si la carte a entre-temps été remplacée.
+                        if (player.Data.Puuid == expectedPuuid)
+                            player.UpdateRoleWinRateAnalysis(update);
+                    });
+                    return Task.CompletedTask;
+                });
         }
 
         // ══════════════════════════════════════════════════════════════════════
@@ -1119,6 +1150,8 @@ if (me != null && !string.IsNullOrEmpty(me.gameName))
                     MyAccount.SetLpHistory(_lpTracker.LpHistory);
                 });
 
+                StartRoleWinRateAnalysis(MyAccount, fullData.Puuid);
+
                 _settings.Current.LastKnownGameName = account.gameName;
                 _settings.Current.LastKnownTagLine  = account.tagLine;
                 _settings.Current.LastKnownPuuid    = account.puuid;
@@ -1163,6 +1196,9 @@ if (me != null && !string.IsNullOrEmpty(me.gameName))
         public ObservableCollection<PlayerViewModel> EnemyTeam { get; } = new();
     }
 }
+
+
+
 
 
 
