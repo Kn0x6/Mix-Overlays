@@ -1,4 +1,23 @@
+# Build outputs
 bin/
 obj/
 dist/
 *.log
+
+# Local settings and secrets
+.env
+.env.*
+settings.json
+appsettings.*.json
+*.pfx
+*.p12
+*.pem
+
+# IDE and user-specific files
+.vs/
+.vscode/
+*.user
+*.suo
+
+# Local application data / cache exports
+lp_history_*.json
