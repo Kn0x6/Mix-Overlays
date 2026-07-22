@@ -145,14 +145,6 @@
                                 </StackPanel>
                             </Button>
 
-                            <Button x:Name="BtnSideHistory" Style="{StaticResource SideNavButton}"
-                                    Click="NavButton_Click" Tag="History">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="◷" Width="36" FontSize="23" VerticalAlignment="Center" TextAlignment="Center" Foreground="#8B5CF6"/>
-                                    <TextBlock Text="Historique" VerticalAlignment="Center" FontSize="14"/>
-                                </StackPanel>
-                            </Button>
-
                             <Button x:Name="BtnSideChampions" Style="{StaticResource SideNavButton}"
                                     Click="NavButton_Click" Tag="Champions">
                                 <StackPanel Orientation="Horizontal">
@@ -362,7 +354,7 @@
                                                    FontSize="12" FontWeight="Bold"/>
                                     </StackPanel>
 
-                                    <TextBlock Text="En attente du verrouillage de votre champion..."
+                                    <TextBlock Text="Présélectionnez un champion pour afficher les recommandations..."
                                                Visibility="{Binding IsWaitingForChampionLock, Converter={StaticResource BoolVis}}"
                                                Foreground="{StaticResource TextMutedBrush}"
                                                FontSize="11"/>
@@ -644,31 +636,117 @@
                                         ToolTip="Afficher la Live Session"
                                         Padding="10,5" Margin="0,0,6,0"/>
 
-                                <TextBox Grid.Column="2"
-                                         Width="240" Height="44"
-                                         Text="{Binding SearchInput, UpdateSourceTrigger=PropertyChanged}"
-                                         Margin="0,0,6,0"
-                                         VerticalAlignment="Center"
-                                         KeyDown="SearchBox_KeyDown">
-                                    <TextBox.Style>
-                                        <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
-                                            <Style.Resources>
-                                                <VisualBrush x:Key="HeaderSearchPlaceholderBrush" AlignmentX="Left" AlignmentY="Center" Stretch="None">
-                                                    <VisualBrush.Visual>
-                                                        <TextBlock Text="Rechercher un joueur"
-                                                                   Foreground="{StaticResource TextMutedBrush}"
-                                                                   Margin="10,0"/>
-                                                    </VisualBrush.Visual>
-                                                </VisualBrush>
-                                            </Style.Resources>
-                                            <Style.Triggers>
-                                                <Trigger Property="Text" Value="">
-                                                    <Setter Property="Background" Value="{StaticResource HeaderSearchPlaceholderBrush}"/>
-                                                </Trigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBox.Style>
-                                </TextBox>
+                                <Grid Grid.Column="2" Width="240" Height="44" Margin="0,0,6,0" VerticalAlignment="Center">
+                                    <TextBox x:Name="HeaderSearchBox"
+                                             Text="{Binding SearchInput, UpdateSourceTrigger=PropertyChanged}"
+                                             VerticalAlignment="Stretch"
+                                             KeyDown="SearchBox_KeyDown"
+                                             GotKeyboardFocus="HeaderSearchBox_GotKeyboardFocus"
+                                             PreviewMouseLeftButtonDown="HeaderSearchBox_PreviewMouseLeftButtonDown">
+                                        <TextBox.Style>
+                                            <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                                                <Style.Resources>
+                                                    <VisualBrush x:Key="HeaderSearchPlaceholderBrush" AlignmentX="Left" AlignmentY="Center" Stretch="None">
+                                                        <VisualBrush.Visual>
+                                                            <TextBlock Text="Rechercher un joueur"
+                                                                       Foreground="{StaticResource TextMutedBrush}"
+                                                                       Margin="10,0"/>
+                                                        </VisualBrush.Visual>
+                                                    </VisualBrush>
+                                                </Style.Resources>
+                                                <Style.Triggers>
+                                                    <Trigger Property="Text" Value="">
+                                                        <Setter Property="Background" Value="{StaticResource HeaderSearchPlaceholderBrush}"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBox.Style>
+                                    </TextBox>
+
+                                    <Popup x:Name="HeaderSearchHistoryPopup"
+                                           PlacementTarget="{Binding ElementName=HeaderSearchBox}"
+                                           Placement="Bottom"
+                                           AllowsTransparency="True"
+                                           StaysOpen="True"
+                                           Focusable="False"
+                                           PopupAnimation="Fade">
+                                        <Border Width="240"
+                                                MaxHeight="260"
+                                                Background="{StaticResource BgPrimaryBrush}"
+                                                BorderBrush="{StaticResource AccentBlueLightBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="10"
+                                                Padding="8"
+                                                Margin="0,6,0,0">
+                                            <StackPanel>
+                                                <TextBlock Text="RECHERCHES RÉCENTES"
+                                                           Style="{StaticResource SectionLabel}"
+                                                           Margin="4,0,0,8"/>
+                                                <ListBox x:Name="HeaderSearchHistoryList"
+                                                         ItemsSource="{Binding SearchHistory}"
+                                                         SelectionChanged="HeaderSearchHistoryList_SelectionChanged"
+                                                         Background="Transparent"
+                                                         BorderThickness="0"
+                                                         Padding="0"
+                                                         MaxHeight="210"
+                                                         HorizontalContentAlignment="Stretch"
+                                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                                    <ListBox.ItemContainerStyle>
+                                                        <Style TargetType="ListBoxItem">
+                                                            <Setter Property="Margin" Value="0,0,0,6"/>
+                                                            <Setter Property="Padding" Value="0"/>
+                                                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                                            <Setter Property="Cursor" Value="Hand"/>
+                                                            <Setter Property="Template">
+                                                                <Setter.Value>
+                                                                    <ControlTemplate TargetType="ListBoxItem">
+                                                                        <ContentPresenter/>
+                                                                    </ControlTemplate>
+                                                                </Setter.Value>
+                                                            </Setter>
+                                                        </Style>
+                                                    </ListBox.ItemContainerStyle>
+                                                    <ListBox.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Border BorderBrush="{StaticResource BorderBrush}"
+                                                                    BorderThickness="1"
+                                                                    CornerRadius="8"
+                                                                    Padding="8,7">
+                                                                <Border.Style>
+                                                                    <Style TargetType="Border">
+                                                                        <Setter Property="Background" Value="{StaticResource BgCardBrush}"/>
+                                                                        <Style.Triggers>
+                                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                                <Setter Property="Background" Value="{StaticResource BgHoverBrush}"/>
+                                                                            </Trigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Border.Style>
+                                                                <StackPanel Orientation="Horizontal">
+                                                                    <Border Width="30" Height="30"
+                                                                            CornerRadius="15"
+                                                                            BorderBrush="{StaticResource AccentBlueLightBrush}"
+                                                                            BorderThickness="1"
+                                                                            ClipToBounds="True"
+                                                                            Margin="0,0,9,0">
+                                                                        <Image Source="{Binding ProfileIconUrl, Converter={StaticResource UrlToImgWithFallback}}"
+                                                                               Stretch="UniformToFill"/>
+                                                                    </Border>
+                                                                    <TextBlock Text="{Binding DisplayName}"
+                                                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                                                               FontSize="13"
+                                                                               FontWeight="SemiBold"
+                                                                               VerticalAlignment="Center"
+                                                                               TextTrimming="CharacterEllipsis"/>
+                                                                </StackPanel>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ListBox.ItemTemplate>
+                                                </ListBox>
+                                            </StackPanel>
+                                        </Border>
+                                    </Popup>
+                                </Grid>
 
                                 <Button Grid.Column="3" Content="🔍"
                                         Style="{StaticResource HeaderActionButton}"

@@ -27,6 +27,7 @@ namespace MixOverlays.Views
             {
                 _vm = new MainViewModel();
                 DataContext = _vm;
+                HeaderSearchHistoryPopup.DataContext = _vm;
                 _vm.SettingsSaved += MainViewModel_SettingsSaved;
 
                 _vm.PropertyChanged += (s, e) =>
@@ -51,6 +52,7 @@ namespace MixOverlays.Views
             }
 
             KeyDown           += MainWindow_KeyDown;
+            PreviewMouseDown  += MainWindow_PreviewMouseDown;
             Closed            += MainWindow_Closed;
             InitGlobalHotkey();
 
@@ -154,6 +156,20 @@ namespace MixOverlays.Views
                 _vm.SelectedMatch = null;
                 e.Handled = true;
             }
+        }
+
+        private void MainWindow_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (!HeaderSearchHistoryPopup.IsOpen)
+                return;
+
+            var popupContent = HeaderSearchHistoryPopup.Child as FrameworkElement;
+            var clickIsInsideSearchPreview = HeaderSearchBox.IsMouseOver
+                                          || HeaderSearchHistoryList.IsMouseOver
+                                          || popupContent?.IsMouseOver == true;
+
+            if (!clickIsInsideSearchPreview)
+                CloseHeaderSearchHistoryPopup();
         }
 
         // ─── Fermeture du panneau detail ──────────────────────────────────────
@@ -324,9 +340,6 @@ namespace MixOverlays.Views
 
             var requestedPage = page;
 
-            if (page == "History")
-                page = "MyAccount";
-
             if (page == "Live" && !_vm.IsLiveSessionAvailable)
                 page = "MyAccount";
 
@@ -366,12 +379,11 @@ namespace MixOverlays.Views
 
         private void UpdateSideNavState(string requestedPage, string actualPage)
         {
-            var activeKey = requestedPage == "History" ? "History" : actualPage;
+            var activeKey = actualPage;
             var buttons = new (Button Button, string Key)[]
             {
                 (BtnSideMyAccount, "MyAccount"),
                 (BtnSideDashboard, "Dashboard"),
-                (BtnSideHistory, "History"),
                 (BtnSideChampions, "Champions"),
                 (BtnSideStats, "Stats"),
                 (BtnSideAnalysis, "Analysis"),
@@ -399,8 +411,14 @@ namespace MixOverlays.Views
         {
             if (e.Key == Key.Return && _vm.SearchPlayerCommand.CanExecute(null))
             {
+                CloseHeaderSearchHistoryPopup();
                 SetActiveNav("Search");
                 _vm.SearchPlayerCommand.Execute(null);
+            }
+            else if (e.Key == Key.Escape)
+            {
+                CloseHeaderSearchHistoryPopup();
+                e.Handled = true;
             }
         }
 
@@ -408,9 +426,48 @@ namespace MixOverlays.Views
         {
             if (_vm.SearchPlayerCommand.CanExecute(null))
             {
+                CloseHeaderSearchHistoryPopup();
                 SetActiveNav("Search");
                 _vm.SearchPlayerCommand.Execute(null);
             }
+        }
+
+        private void HeaderSearchBox_GotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+        {
+            OpenHeaderSearchHistoryPopupIfAvailable();
+        }
+
+        private void HeaderSearchBox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            OpenHeaderSearchHistoryPopupIfAvailable();
+        }
+
+        private void OpenHeaderSearchHistoryPopupIfAvailable()
+        {
+            if (_vm?.HasSearchHistory == true)
+                HeaderSearchHistoryPopup.IsOpen = true;
+        }
+
+        private void CloseHeaderSearchHistoryPopup()
+        {
+            HeaderSearchHistoryPopup.IsOpen = false;
+        }
+
+        private void HeaderSearchHistoryList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (HeaderSearchHistoryList.SelectedItem is not PlayerViewModel player)
+                return;
+
+            CloseHeaderSearchHistoryPopup();
+            HeaderSearchHistoryList.SelectedItem = null;
+
+            _vm.SearchInput = player.Data.DisplayName;
+            SetActiveNav("Search");
+
+            if (_vm.SearchPlayerCommand.CanExecute(null))
+                _vm.SearchPlayerCommand.Execute(null);
+            else
+                _vm.SearchedPlayer = player;
         }
 
         private void Hyperlink_RequestNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)

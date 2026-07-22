@@ -414,6 +414,27 @@ namespace MixOverlays.ViewModels
                     return completedPick;
                 }
 
+                // Pendant le champ select, le client expose souvent le champion présélectionné
+                // via l'action locale de pick avant que le verrouillage soit validé.
+                var pendingPick = localPickActions
+                    .Where(action => !action.completed)
+                    .Select(action => action.championId)
+                    .LastOrDefault();
+
+                if (pendingPick > 0)
+                {
+                    detectionSource = "local pick action pending";
+                    return pendingPick;
+                }
+
+            }
+
+            // /lol-champ-select/v1/current-champion correspond au champion actuellement
+            // survolé/prélocké par le joueur local. LcuService le renseigne à chaque poll.
+            if (session.currentChampionId > 0)
+            {
+                detectionSource = "current champion prelock";
+                return session.currentChampionId;
             }
 
             // Fallback LCU : une fois le lock validé, certains clients exposent seulement

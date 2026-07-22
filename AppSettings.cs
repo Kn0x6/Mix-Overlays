@@ -33,8 +33,9 @@ namespace MixOverlays.Models
 
     public class SearchHistoryEntry
     {
-        public string Puuid    { get; set; } = string.Empty;
-        public string GameName { get; set; } = string.Empty;
-        public string TagLine  { get; set; } = string.Empty;
+        public string Puuid         { get; set; } = string.Empty;
+        public string GameName      { get; set; } = string.Empty;
+        public string TagLine       { get; set; } = string.Empty;
+        public int    ProfileIconId { get; set; }
     }
 }

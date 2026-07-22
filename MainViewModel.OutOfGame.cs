@@ -200,7 +200,7 @@ namespace MixOverlays.ViewModels
                 SearchedPlayer         = null;
                 SearchInput            = string.Empty;
                 HasSearchedAtLeastOnce = false;
-                OnPropertyChanged(nameof(ShowSearchHistory));
+                NotifySearchHistoryChanged();
             });
 
             RefreshMyAccountCommand = new RelayCommand(
@@ -239,6 +239,54 @@ namespace MixOverlays.ViewModels
             {
                 if (p is MatchSummary ms) await ToggleFaceToFaceAsync(ms);
             });
+
+            LoadSearchHistoryFromSettings();
+        }
+
+        private void NotifySearchHistoryChanged()
+        {
+            OnPropertyChanged(nameof(HasSearchHistory));
+            OnPropertyChanged(nameof(ShowSearchHistory));
+            OnPropertyChanged(nameof(ShowSearchEmptyState));
+        }
+
+        private void LoadSearchHistoryFromSettings()
+        {
+            SearchHistory.Clear();
+
+            foreach (var entry in (_settings.Current.SearchHistory ?? new List<SearchHistoryEntry>())
+                         .Where(e => !string.IsNullOrWhiteSpace(e.Puuid)
+                                  || !string.IsNullOrWhiteSpace(e.GameName))
+                         .Take(10))
+            {
+                SearchHistory.Add(new PlayerViewModel(new PlayerData
+                {
+                    Puuid         = entry.Puuid,
+                    GameName      = entry.GameName,
+                    TagLine       = entry.TagLine,
+                    ProfileIconId = entry.ProfileIconId,
+                    IsLoading     = false,
+                    IsLoaded      = false
+                }));
+            }
+
+            NotifySearchHistoryChanged();
+        }
+
+        private void SaveSearchHistoryToSettings()
+        {
+            _settings.Current.SearchHistory = SearchHistory
+                .Take(10)
+                .Select(player => new SearchHistoryEntry
+                {
+                    Puuid         = player.Data.Puuid,
+                    GameName      = player.Data.GameName,
+                    TagLine       = player.Data.TagLine,
+                    ProfileIconId = player.Data.ProfileIconId
+                })
+                .ToList();
+
+            _settings.Save();
         }
 
         // ══════════════════════════════════════════════════════════════════════
@@ -578,8 +626,8 @@ namespace MixOverlays.ViewModels
                     while (SearchHistory.Count > 10)
                         SearchHistory.RemoveAt(SearchHistory.Count - 1);
 
-                    OnPropertyChanged(nameof(HasSearchHistory));
-                    OnPropertyChanged(nameof(ShowSearchHistory));
+                    NotifySearchHistoryChanged();
+                    SaveSearchHistoryToSettings();
                 });
 
                 // Une recherche doit rester légère : ses stats par rôle/champion
@@ -1196,6 +1244,8 @@ if (me != null && !string.IsNullOrEmpty(me.gameName))
         public ObservableCollection<PlayerViewModel> EnemyTeam { get; } = new();
     }
 }
+
+
 
 
 
