@@ -5,18 +5,18 @@
     <!-- ═══════════════════════════════════════════════════ -->
     <!--  COULEURS PRINCIPALES                               -->
     <!-- ═══════════════════════════════════════════════════ -->
-    <Color x:Key="BgDeepColor">#151B24</Color>
-    <Color x:Key="BgPrimaryColor">#1D2633</Color>
-    <Color x:Key="BgSecondaryColor">#253145</Color>
-    <Color x:Key="BgCardColor">#2B3648</Color>
-    <Color x:Key="BgElevatedColor">#334056</Color>
-    <Color x:Key="BgHoverColor">#3D4A61</Color>
-    <Color x:Key="BorderColor">#46536A</Color>
-    <Color x:Key="TextPrimaryColor">#E6EDF3</Color>
-    <Color x:Key="TextSecondaryColor">#A7B0BC</Color>
-    <Color x:Key="TextMutedColor">#8792A2</Color>
-    <Color x:Key="AccentBlueColor">#1F6FEB</Color>
-    <Color x:Key="AccentBlueLightColor">#388BFD</Color>
+    <Color x:Key="BgDeepColor">#071122</Color>
+    <Color x:Key="BgPrimaryColor">#0B162B</Color>
+    <Color x:Key="BgSecondaryColor">#101D35</Color>
+    <Color x:Key="BgCardColor">#121F39</Color>
+    <Color x:Key="BgElevatedColor">#172744</Color>
+    <Color x:Key="BgHoverColor">#243451</Color>
+    <Color x:Key="BorderColor">#203453</Color>
+    <Color x:Key="TextPrimaryColor">#EEF4FF</Color>
+    <Color x:Key="TextSecondaryColor">#AEB9CC</Color>
+    <Color x:Key="TextMutedColor">#748099</Color>
+    <Color x:Key="AccentBlueColor">#2563EB</Color>
+    <Color x:Key="AccentBlueLightColor">#3B82F6</Color>
     <Color x:Key="GoldColor">#D4A017</Color>
     <Color x:Key="GoldLightColor">#F0C040</Color>
     <Color x:Key="WinColor">#238636</Color>
@@ -61,6 +61,11 @@
     <SolidColorBrush x:Key="WarningSoftBrush" Color="#22F0C040"/>
     <SolidColorBrush x:Key="PurpleAccentBrush" Color="#8B5CF6"/>
     <SolidColorBrush x:Key="PurpleSoftBrush" Color="#228B5CF6"/>
+    <SolidColorBrush x:Key="SidebarBrush" Color="#0B1428"/>
+    <SolidColorBrush x:Key="SidebarActiveBrush" Color="#24304F"/>
+    <SolidColorBrush x:Key="HeaderBrush" Color="#091327"/>
+    <SolidColorBrush x:Key="GlassCardBrush" Color="#CC101B31"/>
+    <SolidColorBrush x:Key="SoftBorderBrush" Color="#2D4163"/>
 
     <!-- Rank brushes -->
     <SolidColorBrush x:Key="IronBrush" Color="#A0A0A0"/>
@@ -243,6 +248,51 @@
         <Setter Property="Padding" Value="14,0"/>
         <Setter Property="Margin" Value="2,0"/>
         <Setter Property="FontSize" Value="12"/>
+    </Style>
+
+    <Style x:Key="SideNavButton" TargetType="Button" BasedOn="{StaticResource BaseButton}">
+        <Setter Property="Height" Value="56"/>
+        <Setter Property="Margin" Value="10,3"/>
+        <Setter Property="Padding" Value="14,0"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="border"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="8"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="border" Property="Background" Value="#14243E"/>
+                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="border" Property="Opacity" Value="0.78"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="HeaderActionButton" TargetType="Button" BasedOn="{StaticResource GhostButton}">
+        <Setter Property="Height" Value="44"/>
+        <Setter Property="Padding" Value="14,0"/>
+        <Setter Property="Background" Value="#1C2850"/>
+        <Setter Property="BorderBrush" Value="#33466F"/>
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
     </Style>
 
     <Style x:Key="WindowChromeButton" TargetType="Button" BasedOn="{StaticResource BaseButton}">

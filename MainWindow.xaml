@@ -4,8 +4,8 @@
         xmlns:vm="clr-namespace:MixOverlays.ViewModels"
         xmlns:views="clr-namespace:MixOverlays.Views"
         xmlns:conv="clr-namespace:MixOverlays.Converters"
-        Title="MixOverlays" Icon="/Icone.ico" Height="750" Width="980"
-        MinWidth="860" MinHeight="600"
+        Title="MixOverlays" Icon="/Icone.ico" Height="920" Width="1720"
+        MinWidth="1180" MinHeight="720"
         Background="Transparent"
         FontFamily="{StaticResource PrimaryFont}"
         WindowStyle="None" AllowsTransparency="True"
@@ -37,18 +37,18 @@
             SizeChanged="MainWindowRoot_SizeChanged">
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="44"/>
+                <RowDefinition Height="52"/>
                 <RowDefinition Height="*"/>
-                <RowDefinition Height="28"/>
+                <RowDefinition Height="0"/>
             </Grid.RowDefinitions>
 
             <!-- ══════════════════════════════════════════════════════ -->
             <!--  TITLE BAR                                             -->
             <!-- ══════════════════════════════════════════════════════ -->
-            <Border Grid.Row="0" Background="{StaticResource BgPrimaryBrush}"
+            <Border Grid.Row="0" Background="{StaticResource HeaderBrush}"
                     CornerRadius="14,14,0,0"
                     MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
-                <Grid Margin="14,0">
+                <Grid Margin="22,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
@@ -57,17 +57,17 @@
 
                     <!-- Logo -->
                     <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Ellipse Width="18" Height="18" Margin="0,0,6,0">
+                        <Ellipse Width="24" Height="24" Margin="0,0,8,0">
                             <Ellipse.Fill>
                                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                    <GradientStop Color="#1F6FEB" Offset="0"/>
-                                    <GradientStop Color="#8B5CF6" Offset="1"/>
+                                    <GradientStop Color="#35D6FF" Offset="0"/>
+                                    <GradientStop Color="#D946EF" Offset="1"/>
                                 </LinearGradientBrush>
                             </Ellipse.Fill>
                         </Ellipse>
                         <TextBlock Text="MixOverlays"
                                    Foreground="{StaticResource TextPrimaryBrush}"
-                                   FontWeight="SemiBold" FontSize="14"
+                                   FontWeight="SemiBold" FontSize="16"
                                    VerticalAlignment="Center"/>
                     </StackPanel>
 
@@ -105,13 +105,135 @@
             <!--  MAIN CONTENT                                          -->
             <!-- ══════════════════════════════════════════════════════ -->
             <Grid Grid.Row="1" Background="{StaticResource BgDeepBrush}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="198"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="0"/>      <!-- Ancienne barre d'onglets masquée -->
                     <RowDefinition Height="*"/>      <!-- Content -->
                 </Grid.RowDefinitions>
 
+                <!-- ─── SIDEBAR style launcher ─── -->
+                <Border Grid.RowSpan="2" Grid.Column="0"
+                        Background="{StaticResource SidebarBrush}"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="0,0,1,0">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <StackPanel Grid.Row="0" Margin="0,26,0,0">
+                            <Button x:Name="BtnSideMyAccount" Style="{StaticResource SideNavButton}"
+                                    Click="NavButton_Click" Tag="MyAccount">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Width="36" Height="36" CornerRadius="8" Margin="0,0,8,0" Background="#1C4F9F">
+                                        <TextBlock Text="⌂" Foreground="#7DB7FF" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <TextBlock Text="Mon Compte" VerticalAlignment="Center" FontSize="14"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button x:Name="BtnSideDashboard" Style="{StaticResource SideNavButton}"
+                                    Click="NavButton_Click" Tag="Dashboard">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="▣" Width="36" FontSize="20" VerticalAlignment="Center" TextAlignment="Center"/>
+                                    <TextBlock Text="Dashboard" VerticalAlignment="Center" FontSize="14"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button x:Name="BtnSideHistory" Style="{StaticResource SideNavButton}"
+                                    Click="NavButton_Click" Tag="History">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="◷" Width="36" FontSize="23" VerticalAlignment="Center" TextAlignment="Center" Foreground="#8B5CF6"/>
+                                    <TextBlock Text="Historique" VerticalAlignment="Center" FontSize="14"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button x:Name="BtnSideChampions" Style="{StaticResource SideNavButton}"
+                                    Click="NavButton_Click" Tag="Champions">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="✿" Width="36" FontSize="18" VerticalAlignment="Center" TextAlignment="Center"/>
+                                    <TextBlock Text="Champions" VerticalAlignment="Center" FontSize="14"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button x:Name="BtnSideStats" Style="{StaticResource SideNavButton}"
+                                    Click="NavButton_Click" Tag="Stats">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="▥" Width="36" FontSize="20" VerticalAlignment="Center" TextAlignment="Center"/>
+                                    <TextBlock Text="Stats" VerticalAlignment="Center" FontSize="14"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button x:Name="BtnSideAnalysis" Style="{StaticResource SideNavButton}"
+                                    Click="NavButton_Click" Tag="Analysis">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="◔" Width="36" FontSize="22" VerticalAlignment="Center" TextAlignment="Center"/>
+                                    <TextBlock Text="Analyse" VerticalAlignment="Center" FontSize="14"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button x:Name="BtnSideCompare" Style="{StaticResource SideNavButton}"
+                                    Click="NavButton_Click" Tag="Compare">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="◌" Width="36" FontSize="22" VerticalAlignment="Center" TextAlignment="Center"/>
+                                    <TextBlock Text="Comparateur" VerticalAlignment="Center" FontSize="14"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button x:Name="BtnSideLive" Style="{StaticResource SideNavButton}"
+                                    Click="NavButton_Click" Tag="Live"
+                                    Visibility="{Binding IsLiveSessionAvailable, Converter={StaticResource BoolVis}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="▶" Width="36" FontSize="18" VerticalAlignment="Center" TextAlignment="Center" Foreground="#3FB950"/>
+                                    <TextBlock Text="Live Session" VerticalAlignment="Center" FontSize="14"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button x:Name="BtnSideSettings" Style="{StaticResource SideNavButton}"
+                                    Click="NavButton_Click" Tag="Settings">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="⚙" Width="36" FontSize="19" VerticalAlignment="Center" TextAlignment="Center"/>
+                                    <TextBlock Text="Paramètres" VerticalAlignment="Center" FontSize="14"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+
+                        <Border Grid.Row="2" Margin="10,0,16,12" Padding="12" CornerRadius="10"
+                                Background="#101A31" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                    <Ellipse Width="40" Height="40" Margin="0,0,9,0">
+                                        <Ellipse.Fill>
+                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                <GradientStop Color="#22D3EE" Offset="0"/>
+                                                <GradientStop Color="#7C3AED" Offset="0.55"/>
+                                                <GradientStop Color="#D946EF" Offset="1"/>
+                                            </LinearGradientBrush>
+                                        </Ellipse.Fill>
+                                    </Ellipse>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="MixOverlays" Foreground="{StaticResource TextPrimaryBrush}" FontWeight="SemiBold" FontSize="13"/>
+                                        <TextBlock Text="PRO  · v1.0" Foreground="{StaticResource TextMutedBrush}" FontSize="10"/>
+                                    </StackPanel>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="9" Height="9" Margin="0,0,6,0" VerticalAlignment="Center"
+                                             Fill="{Binding StatusDotColor, Converter={StaticResource HexBrush}}"/>
+                                    <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource TextMutedBrush}"
+                                               FontSize="11" TextTrimming="CharacterEllipsis" ToolTip="{Binding StatusMessage}"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Border>
+
                 <!-- ─── TOP NAV BAR masquée : Mon Compte devient la page principale ─── -->
-                <Border Grid.Row="0"
+                <Border Grid.Row="0" Grid.Column="1"
                         Visibility="Collapsed"
                         Background="{StaticResource BgPrimaryBrush}"
                         BorderBrush="{StaticResource BorderBrush}"
@@ -157,7 +279,7 @@
                 </Border>
 
                 <!-- ─── PAGES ─── -->
-                <Grid Grid.Row="1">
+                <Grid Grid.Row="1" Grid.Column="1" Margin="18,16,18,16">
                     <!-- PageLive -->
                     <Grid x:Name="PageLive">
                         <Grid.RowDefinitions>
@@ -494,9 +616,8 @@
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
 
-                        <Border Grid.Row="0" Background="{StaticResource BgPrimaryBrush}"
-                                BorderBrush="{StaticResource BorderBrush}"
-                                BorderThickness="0,0,0,1" Padding="16,10">
+                        <Border Grid.Row="0" Background="Transparent"
+                                Padding="10,0,4,16">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -507,21 +628,24 @@
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
 
-                                <TextBlock Text="Mon Compte"
-                                           Grid.Column="0"
-                                           Foreground="{StaticResource TextPrimaryBrush}"
-                                           Style="{StaticResource PageTitle}"
-                                           VerticalAlignment="Center"/>
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                    <TextBlock Text="Mon Compte"
+                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                               FontSize="25" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Historique de vos parties classées"
+                                               Foreground="{StaticResource TextMutedBrush}"
+                                               FontSize="13" Margin="0,2,0,0"/>
+                                </StackPanel>
 
                                 <Button Grid.Column="1" Content="🎮  Live"
-                                        Style="{StaticResource GhostButton}"
+                                        Style="{StaticResource HeaderActionButton}"
                                         Click="OpenLiveSessionButton_Click"
                                         Visibility="{Binding IsLiveSessionAvailable, Converter={StaticResource BoolVis}}"
                                         ToolTip="Afficher la Live Session"
                                         Padding="10,5" Margin="0,0,6,0"/>
 
                                 <TextBox Grid.Column="2"
-                                         Width="220"
+                                         Width="240" Height="44"
                                          Text="{Binding SearchInput, UpdateSourceTrigger=PropertyChanged}"
                                          Margin="0,0,6,0"
                                          VerticalAlignment="Center"
@@ -547,20 +671,20 @@
                                 </TextBox>
 
                                 <Button Grid.Column="3" Content="🔍"
-                                        Style="{StaticResource AccentButton}"
+                                        Style="{StaticResource HeaderActionButton}"
                                         Click="SearchPlayerButton_Click"
                                         ToolTip="Rechercher"
                                         Width="36" Padding="0" Margin="0,0,6,0"/>
 
                                 <Button Grid.Column="4" Content="✕"
-                                        Style="{StaticResource GhostButton}"
+                                        Style="{StaticResource HeaderActionButton}"
                                         Width="36" Padding="0" Margin="0,0,6,0"
                                         Command="{Binding ClearSearchCommand}"
                                         ToolTip="Effacer la recherche"
                                         Visibility="{Binding HasSearchResult, Converter={StaticResource BoolVis}}"/>
 
                                 <Button Grid.Column="5" Content="🔄  Actualiser"
-                                        Style="{StaticResource GhostButton}"
+                                        Style="{StaticResource HeaderActionButton}"
                                         Command="{Binding RefreshMyAccountCommand}"
                                         HorizontalAlignment="Right"
                                         Padding="10,5"/>
@@ -575,7 +699,7 @@
                             <ScrollViewer Grid.Column="0"
                                           VerticalScrollBarVisibility="Auto"
                                           Style="{StaticResource SlimScrollViewer}">
-                                <StackPanel Margin="16">
+                                <StackPanel Margin="0">
                                     <Grid>
                                         <!-- Loading skeleton -->
                                         <StackPanel Visibility="{Binding IsLoadingMyAccount, Converter={StaticResource BoolVis}}"
@@ -1120,6 +1244,61 @@
                                            FontSize="12" Margin="0,10,0,0"/>
                             </StackPanel>
                         </ScrollViewer>
+                    </Grid>
+
+                    <!-- COMING SOON PAGE -->
+                    <Grid x:Name="PageComingSoon" Visibility="Collapsed">
+                        <Border Background="{StaticResource GlassCardBrush}"
+                                BorderBrush="{StaticResource SoftBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="14"
+                                Padding="34">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+
+                                <StackPanel Grid.Row="0">
+                                    <TextBlock x:Name="ComingSoonTitle"
+                                               Text="Module bientôt disponible"
+                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                               FontSize="28"
+                                               FontWeight="SemiBold"/>
+                                    <TextBlock Text="Cette section est prévue dans l’interface du launcher, mais elle n’est pas encore activée."
+                                               Foreground="{StaticResource TextMutedBrush}"
+                                               FontSize="14"
+                                               Margin="0,6,0,0"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Width="520">
+                                    <Border Width="86" Height="86" CornerRadius="24" HorizontalAlignment="Center"
+                                            Background="#182B52" BorderBrush="#38588E" BorderThickness="1">
+                                        <TextBlock Text="✦" Foreground="{StaticResource AccentBlueLightBrush}"
+                                                   FontSize="42" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <TextBlock Text="Bientôt disponible"
+                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                               FontSize="24"
+                                               FontWeight="Bold"
+                                               HorizontalAlignment="Center"
+                                               Margin="0,18,0,0"/>
+                                    <TextBlock x:Name="ComingSoonDescription"
+                                               Text="Je garde l’emplacement visuel pour rester fidèle à la maquette, sans ajouter de fausse fonctionnalité."
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               FontSize="14"
+                                               TextAlignment="Center"
+                                               TextWrapping="Wrap"
+                                               Margin="0,8,0,0"/>
+                                    <Button Content="Retour Mon Compte"
+                                            Style="{StaticResource HeaderActionButton}"
+                                            Click="BackToMyAccountButton_Click"
+                                            HorizontalAlignment="Center"
+                                            Margin="0,24,0,0"
+                                            Padding="18,0"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
                     </Grid>
 
                     <!-- ══════════════════════════════════════════════════════════ -->

@@ -91,7 +91,7 @@
     </UserControl.Resources>
 
     <!-- ROOT — pas de ScrollViewer ici : la MainWindow gère le défilement -->
-    <Border Background="{StaticResource Surface1Brush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="14">
+    <Border Background="{StaticResource GlassCardBrush}" BorderBrush="{StaticResource SoftBorderBrush}" BorderThickness="1" CornerRadius="14">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>  <!-- Banner -->
@@ -125,7 +125,7 @@
             <!-- ══════════════════════════════════════════════════════════════ -->
             <!-- HEADER                                                         -->
             <!-- ══════════════════════════════════════════════════════════════ -->
-            <Border Grid.Row="1" ClipToBounds="True" Height="164">
+            <Border Grid.Row="1" ClipToBounds="True" Height="186">
                 <Grid>
                     <!-- ── Splash art en fond ── -->
                     <Image Source="{Binding TopChampionName, Converter={StaticResource ChampSplash}}"
@@ -138,10 +138,10 @@
                     <Border>
                         <Border.Background>
                             <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                <GradientStop Color="#E81D2633" Offset="0.0"/>
-                                <GradientStop Color="#C41D2633" Offset="0.35"/>
-                                <GradientStop Color="#662B3648" Offset="0.65"/>
-                                <GradientStop Color="#102B3648" Offset="1.0"/>
+                                <GradientStop Color="#F00B162B" Offset="0.0"/>
+                                <GradientStop Color="#D20B162B" Offset="0.35"/>
+                                <GradientStop Color="#77101D35" Offset="0.68"/>
+                                <GradientStop Color="#16101D35" Offset="1.0"/>
                             </LinearGradientBrush>
                         </Border.Background>
                     </Border>
@@ -150,14 +150,14 @@
                     <Border VerticalAlignment="Bottom" Height="50">
                         <Border.Background>
                             <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                <GradientStop Color="#001D2633" Offset="0"/>
-                                <GradientStop Color="#FF1D2633" Offset="1"/>
+                                <GradientStop Color="#000B162B" Offset="0"/>
+                                <GradientStop Color="#FF0B162B" Offset="1"/>
                             </LinearGradientBrush>
                         </Border.Background>
                     </Border>
 
                     <!-- ── Contenu original (une seule fois, par-dessus le splash) ── -->
-                    <Grid Margin="16,14,16,10">
+                    <Grid Margin="20,22,20,14">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
@@ -172,7 +172,7 @@
                             </Border>
 
                             <!-- Tier + Rank -->
-                            <TextBlock FontSize="22" FontWeight="Bold"
+                            <TextBlock FontSize="26" FontWeight="Bold"
                                        Foreground="{Binding SoloRank.tier, Converter={StaticResource RankBrush}}">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
@@ -188,7 +188,7 @@
                                 <Run Text=" "/>
                                 <Run Text="{Binding SoloRank.rank, Mode=OneWay}"/>
                             </TextBlock>
-                            <TextBlock Text="Non classé" FontSize="22" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}">
+                            <TextBlock Text="Non classé" FontSize="26" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Visibility" Value="Collapsed"/>
@@ -284,9 +284,12 @@
                         </StackPanel>
 
                         <!-- Winrates Solo/Duo par rôle, regroupés avec le rang et le winrate global. -->
-                        <ItemsControl Grid.Column="1" ItemsSource="{Binding RoleWinRateStats}"
+                        <Border Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                Background="#88101A31" BorderBrush="#263A5D" BorderThickness="1"
+                                CornerRadius="10" Padding="22,14" Margin="18,18,18,0">
+                        <ItemsControl ItemsSource="{Binding RoleWinRateStats}"
                                       VerticalAlignment="Center" HorizontalAlignment="Center"
-                                      Margin="16,22,16,0">
+                                      Margin="0">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <StackPanel Orientation="Horizontal"/>
@@ -316,6 +319,7 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
+                        </Border>
 
                         <TextBlock Grid.Column="1" Text="{Binding RoleWinRateAnalysisStatus}"
                                    Foreground="{StaticResource TextMutedBrush}" FontSize="9"
@@ -325,7 +329,8 @@
 
                         <!-- Colonne droite : jauge Solo/Duo + statut de partie -->
                         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top" HorizontalAlignment="Right">
-                            <views:WinRateGaugeControl Width="150" Height="128" Margin="12,0,8,0"
+                            <Border Background="#88101A31" BorderBrush="#263A5D" BorderThickness="1" CornerRadius="10" Padding="14,6" Margin="12,0,8,0">
+                            <views:WinRateGaugeControl Width="170" Height="132"
                                                         WinRate="{Binding SoloWinRate}"
                                                         Wins="{Binding SoloWins}"
                                                         Losses="{Binding SoloLosses}">
@@ -340,6 +345,7 @@
                                     </Style>
                                 </views:WinRateGaugeControl.Style>
                             </views:WinRateGaugeControl>
+                            </Border>
 
                             <StackPanel VerticalAlignment="Top" HorizontalAlignment="Right">
                                 <Border CornerRadius="6" Padding="8,3" HorizontalAlignment="Right"
@@ -412,22 +418,22 @@
                 <!-- ═══════════════════════════════════════════════════════ -->
                 <!-- GAUCHE : Historique                                     -->
                 <!-- ═══════════════════════════════════════════════════════ -->
-                <StackPanel Grid.Column="0" Margin="14,12,14,16">
+                <StackPanel Grid.Column="0" Margin="18,14,18,18">
 
                     <ItemsControl ItemsSource="{Binding RecentMatches}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Margin="0,3" CornerRadius="9" Cursor="Hand"
+                                 <Border Margin="0,3" CornerRadius="10" Cursor="Hand"
                                         MouseLeftButtonDown="MatchRow_StopBubble">
                                     <Border.Style>
                                         <Style TargetType="Border">
-                                            <Setter Property="Background" Value="Transparent"/>
+                                             <Setter Property="Background" Value="#5A111D34"/>
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding Win}" Value="True">
-                                                    <Setter Property="Background" Value="#0D3B82F6"/>
+                                                     <Setter Property="Background" Value="#7012223F"/>
                                                 </DataTrigger>
                                                 <DataTrigger Binding="{Binding Win}" Value="False">
-                                                    <Setter Property="Background" Value="#0DF85149"/>
+                                                     <Setter Property="Background" Value="#701D1830"/>
                                                 </DataTrigger>
                                                 <Trigger Property="IsMouseOver" Value="True">
                                                     <Setter Property="Background" Value="#14FFFFFF"/>

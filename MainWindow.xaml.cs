@@ -322,17 +322,77 @@ namespace MixOverlays.Views
             if (_vm == null)
                 return;
 
+            var requestedPage = page;
+
+            if (page == "History")
+                page = "MyAccount";
+
             if (page == "Live" && !_vm.IsLiveSessionAvailable)
                 page = "MyAccount";
 
+            var isComingSoonPage = page is "Dashboard" or "Champions" or "Stats" or "Analysis" or "Compare";
+
             _currentPage = page;
 
-            PageLive.Visibility      = page == "Live"      ? Visibility.Visible : Visibility.Collapsed;
-            PageMyAccount.Visibility = page == "MyAccount" ? Visibility.Visible : Visibility.Collapsed;
-            PageSearch.Visibility    = page == "Search"    ? Visibility.Visible : Visibility.Collapsed;
-            PageSettings.Visibility  = page == "Settings"  ? Visibility.Visible : Visibility.Collapsed;
+            PageLive.Visibility       = page == "Live"       ? Visibility.Visible : Visibility.Collapsed;
+            PageMyAccount.Visibility  = page == "MyAccount"  ? Visibility.Visible : Visibility.Collapsed;
+            PageSearch.Visibility     = page == "Search"     ? Visibility.Visible : Visibility.Collapsed;
+            PageSettings.Visibility   = page == "Settings"   ? Visibility.Visible : Visibility.Collapsed;
+            PageComingSoon.Visibility = isComingSoonPage      ? Visibility.Visible : Visibility.Collapsed;
+
+            if (isComingSoonPage)
+                UpdateComingSoonPage(page);
+
+            UpdateSideNavState(requestedPage, page);
 
             if (_vm != null) _vm.SelectedMatch = null;
+        }
+
+        private void UpdateComingSoonPage(string page)
+        {
+            var title = page switch
+            {
+                "Dashboard" => "Dashboard",
+                "Champions" => "Champions",
+                "Stats"     => "Stats",
+                "Analysis"  => "Analyse",
+                "Compare"   => "Comparateur",
+                _           => "Module"
+            };
+
+            ComingSoonTitle.Text = title;
+            ComingSoonDescription.Text = $"Le module {title} est prévu pour une prochaine version. Il reste visible dans la navigation pour coller à la maquette sans simuler de données.";
+        }
+
+        private void UpdateSideNavState(string requestedPage, string actualPage)
+        {
+            var activeKey = requestedPage == "History" ? "History" : actualPage;
+            var buttons = new (Button Button, string Key)[]
+            {
+                (BtnSideMyAccount, "MyAccount"),
+                (BtnSideDashboard, "Dashboard"),
+                (BtnSideHistory, "History"),
+                (BtnSideChampions, "Champions"),
+                (BtnSideStats, "Stats"),
+                (BtnSideAnalysis, "Analysis"),
+                (BtnSideCompare, "Compare"),
+                (BtnSideLive, "Live"),
+                (BtnSideSettings, "Settings"),
+            };
+
+            foreach (var (button, key) in buttons)
+            {
+                var isActive = key == activeKey;
+                button.Background = isActive
+                    ? (Brush)FindResource("SidebarActiveBrush")
+                    : Brushes.Transparent;
+                button.BorderBrush = isActive
+                    ? (Brush)FindResource("SoftBorderBrush")
+                    : Brushes.Transparent;
+                button.Foreground = isActive
+                    ? (Brush)FindResource("TextPrimaryBrush")
+                    : (Brush)FindResource("TextSecondaryBrush");
+            }
         }
 
         private void SearchBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
