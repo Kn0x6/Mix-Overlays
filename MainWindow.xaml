@@ -29,6 +29,69 @@
         <conv:UrlToImageSourceWithFallbackConverter x:Key="UrlToImgWithFallback"/>
         <conv:WinLossBrushConverter             x:Key="WinLossBrush"/>
         <conv:PercentageToGridLengthConverter   x:Key="PercentToGridLength"/>
+
+        <Style x:Key="LauncherContextMenuStyle" TargetType="ContextMenu">
+            <Setter Property="OverridesDefaultStyle" Value="True"/>
+            <Setter Property="Background" Value="{StaticResource BgPrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource SoftBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="6"/>
+            <Setter Property="MinWidth" Value="170"/>
+            <Setter Property="HasDropShadow" Value="False"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ContextMenu">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="10"
+                                Padding="{TemplateBinding Padding}">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#000000" BlurRadius="18" ShadowDepth="4" Opacity="0.45"/>
+                            </Border.Effect>
+                            <ItemsPresenter/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="LauncherContextMenuItemStyle" TargetType="MenuItem">
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="FontFamily" Value="{StaticResource PrimaryFont}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Padding" Value="10,7"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="MenuItem">
+                        <Border x:Name="MenuItemSurface"
+                                Background="Transparent"
+                                BorderBrush="Transparent"
+                                BorderThickness="1"
+                                CornerRadius="7"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter ContentSource="Header"
+                                              RecognizesAccessKey="True"
+                                              VerticalAlignment="Center"
+                                              HorizontalAlignment="Left"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="MenuItemSurface" Property="Background" Value="{StaticResource BgHoverBrush}"/>
+                                <Setter TargetName="MenuItemSurface" Property="BorderBrush" Value="{StaticResource AccentBlueLightBrush}"/>
+                                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="MenuItemSurface" Property="Background" Value="{StaticResource SidebarActiveBrush}"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Border x:Name="MainWindowRoot"
@@ -1527,6 +1590,14 @@
                                                                 Padding="10,7"
                                                                 Cursor="Hand"
                                                                 MouseLeftButtonUp="MatchParticipant_Click">
+                                                            <Border.ContextMenu>
+                                                                <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
+                                                                             Style="{StaticResource LauncherContextMenuStyle}">
+                                                                    <MenuItem Header="👤 Voir le profil"
+                                                                              Style="{StaticResource LauncherContextMenuItemStyle}"
+                                                                              Click="ViewMatchParticipantProfile_Click"/>
+                                                                </ContextMenu>
+                                                            </Border.ContextMenu>
                                                             <Border.Style>
                                                                 <Style TargetType="Border">
                                                                     <Setter Property="Background" Value="Transparent"/>
@@ -1711,6 +1782,14 @@
                                                                 Padding="10,7"
                                                                 Cursor="Hand"
                                                                 MouseLeftButtonUp="MatchParticipant_Click">
+                                                            <Border.ContextMenu>
+                                                                <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
+                                                                             Style="{StaticResource LauncherContextMenuStyle}">
+                                                                    <MenuItem Header="👤 Voir le profil"
+                                                                              Style="{StaticResource LauncherContextMenuItemStyle}"
+                                                                              Click="ViewMatchParticipantProfile_Click"/>
+                                                                </ContextMenu>
+                                                            </Border.ContextMenu>
                                                             <Border.Style>
                                                                 <Style TargetType="Border">
                                                                     <Setter Property="Background" Value="Transparent"/>
@@ -2073,7 +2152,15 @@
                                                     <ItemsControl ItemsSource="{Binding WinningTeam}">
                                                         <ItemsControl.ItemTemplate>
                                                             <DataTemplate>
-                                                                <Grid Height="73" Margin="0,1">
+                                                                <Grid Height="73" Margin="0,1" Background="Transparent" Cursor="Hand">
+                                                                    <Grid.ContextMenu>
+                                                                        <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
+                                                                                     Style="{StaticResource LauncherContextMenuStyle}">
+                                                                            <MenuItem Header="👤 Voir le profil"
+                                                                                      Style="{StaticResource LauncherContextMenuItemStyle}"
+                                                                                      Click="ViewMatchParticipantProfile_Click"/>
+                                                                        </ContextMenu>
+                                                                    </Grid.ContextMenu>
                                                                     <Grid.RowDefinitions>
                                                                         <RowDefinition Height="52"/>
                                                                         <RowDefinition Height="21"/>
@@ -2171,7 +2258,15 @@
                                                     <ItemsControl ItemsSource="{Binding LosingTeam}">
                                                         <ItemsControl.ItemTemplate>
                                                             <DataTemplate>
-                                                                <Grid Height="73" Margin="0,1">
+                                                                <Grid Height="73" Margin="0,1" Background="Transparent" Cursor="Hand">
+                                                                    <Grid.ContextMenu>
+                                                                        <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
+                                                                                     Style="{StaticResource LauncherContextMenuStyle}">
+                                                                            <MenuItem Header="👤 Voir le profil"
+                                                                                      Style="{StaticResource LauncherContextMenuItemStyle}"
+                                                                                      Click="ViewMatchParticipantProfile_Click"/>
+                                                                        </ContextMenu>
+                                                                    </Grid.ContextMenu>
                                                                     <Grid.RowDefinitions>
                                                                         <RowDefinition Height="52"/>
                                                                         <RowDefinition Height="21"/>

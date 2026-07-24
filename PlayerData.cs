@@ -534,6 +534,8 @@ public long GameDuration { get; set; }
             [430]  = "Normal Blind",
             [440]  = "Ranked Flex",
             [450]  = "ARAM",
+            [480]  = "Swiftplay",
+            [490]  = "Quickplay",
             [700]  = "Clash",
             [830]  = "Co-op vs AI",
             [840]  = "Co-op vs AI",
@@ -543,10 +545,16 @@ public long GameDuration { get; set; }
             [1300] = "Nexus Blitz",
             [1400] = "Ultimate Spellbook",
             [1700] = "Arena",
+            [1710] = "Arena",
+            [1750] = "Arena 3x6",
+            [1810] = "Swarm Solo",
+            [1820] = "Swarm Duo",
+            [1830] = "Swarm Trio",
+            [1840] = "Swarm Squad",
             [1900] = "URF",
         };
 
         public static string GetQueueName(int queueId) =>
-            Queues.TryGetValue(queueId, out var name) ? name : $"Mode {queueId}";
+            Queues.TryGetValue(queueId, out var name) ? name : $"Mode inconnu ({queueId})";
     }
 }

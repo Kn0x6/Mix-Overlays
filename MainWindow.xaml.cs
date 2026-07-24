@@ -207,28 +207,60 @@ namespace MixOverlays.Views
             {
                 if (sender is FrameworkElement fe && fe.DataContext is MatchParticipantViewModel p)
                 {
-                    _vm.SelectedMatch = null;
-
-                    if (_vm.MyAccount?.Puuid == p.Puuid)
-                    {
-                        SetActiveNav("MyAccount");
-                        return;
-                    }
-
-                    SetActiveNav("Search");
-                    _vm.SearchInput = $"{p.GameName}#{p.TagLine}";
-
-                    Application.Current.Dispatcher.Invoke(() =>
-                    {
-                        if (_vm.SearchPlayerCommand.CanExecute(null))
-                            _vm.SearchPlayerCommand.Execute(null);
-                    });
+                    OpenMatchParticipantProfile(p);
+                    e.Handled = true;
                 }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[MatchParticipant_Click] {ex.Message}");
             }
+        }
+
+        private void ViewMatchParticipantProfile_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var participant = (sender as FrameworkElement)?.DataContext as MatchParticipantViewModel;
+
+                // Les ContextMenu WPF vivent hors de l'arbre visuel principal :
+                // fallback via leur DataContext si le MenuItem ne l'a pas hérité.
+                if (participant == null && sender is MenuItem { Parent: ContextMenu menu })
+                    participant = menu.DataContext as MatchParticipantViewModel;
+
+                if (participant == null)
+                    return;
+
+                OpenMatchParticipantProfile(participant);
+                e.Handled = true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ViewMatchParticipantProfile_Click] {ex.Message}");
+            }
+        }
+
+        private void OpenMatchParticipantProfile(MatchParticipantViewModel participant)
+        {
+            if (participant == null)
+                return;
+
+            _vm.SelectedMatch = null;
+
+            if (_vm.MyAccount?.Puuid == participant.Puuid)
+            {
+                SetActiveNav("MyAccount");
+                return;
+            }
+
+            SetActiveNav("Search");
+            _vm.SearchInput = participant.DisplayName;
+
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                if (_vm.SearchPlayerCommand.CanExecute(null))
+                    _vm.SearchPlayerCommand.Execute(null);
+            });
         }
 
         // ─── Title bar ────────────────────────────────────────────────────────
